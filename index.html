@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Quality Rush Ver0.1</title>
+<style>
+  html,body{margin:0;height:100%;background:#1b2330;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+  #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center}
+  canvas{background:#2c3a4f;border-radius:8px;touch-action:none}
+  #overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,.72);text-align:center;padding:0 16px}
+  #overlay.hidden{display:none}
+  button{font-size:20px;padding:12px 28px;margin:8px;border:none;border-radius:10px;background:#f5b700;color:#222;font-weight:bold}
+  #langRow{margin-top:14px}
+  #langRow button{font-size:15px;padding:8px 16px;background:#445;color:#fff}
+  #langRow button.on{background:#fff;color:#222}
+  h1{margin:0 0 8px}
+  #startBtn{font-size:26px;padding:16px 44px}
+  .res{font-size:17px;line-height:1.6}
+  .newRec{display:inline-block;color:#ffd84a;font-size:28px;font-weight:bold;animation:glow .6s ease-in-out infinite alternate}
+  @keyframes glow{from{text-shadow:0 0 4px #ffd84a;transform:scale(1)}to{text-shadow:0 0 18px #fff3a0;transform:scale(1.08)}}
+  .goal{margin-top:10px;font-size:15px;color:#cfe}
+  .goal img{display:block;margin:6px auto 0;width:180px;filter:drop-shadow(0 0 6px rgba(255,255,255,.6))}
+  .goal img.fb{filter:brightness(0) drop-shadow(0 0 6px rgba(255,255,255,.6))}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="overlay">
+    <h1>Quality Rush</h1>
+    <p id="ovText"></p>
+    <button id="startBtn"></button>
+    <div id="langRow"><button id="langJa">日本語</button><button id="langEn">English</button></div>
+  </div>
+</div>
+<script src="lib/matter.min.js"></script>
+<script>
+// ===== 設定（数字はここを変えれば調整できます） =====
+const CONFIG = {
+  W: 400, H: 720,
+  overflowGrace: 2.0,       // 危険ラインより上に部品がある状態が何秒続いたらゲームオーバーか
+  carValue: 1000000,        // 完成車1台の売上（円・Ver0.1は1種類）
+  dropTimeStart: 5,         // レベル1の「落とすまでの制限時間」（秒）
+  dropTimeStep: 0.3,        // レベルが1上がるごとに短くなる秒数
+  dropTimeMin: 2.0,         // いちばん短い制限時間（秒）
+  warnBelow: 1.0,           // 残りこの秒数を切ったら警告音
+  defectRadius: 28,         // 不良部品の大きさ
+};
+// 次のレベルに必要な台数（今のレベル×2＋1）
+const carsToLevelUp = lv => 2; // 車2台ごとにレベルアップ（ぷらん案 2026-10-24）
+// 落ちてくる部品の割合（ネジ, タイヤ, バッテリー, エンジン）
+function dropWeights(lv){
+  if (lv <= 2) return [60,40,0,0];
+  if (lv <= 5) return [40,35,25,0];
+  return [30,30,25,15];
+}
+// 不良部品の出る確率（%）
+function defectChance(lv){
+  if (lv <= 1) return 0;
+  if (lv === 2) return 5;
+  if (lv <= 8) return 10;
+  return Math.min(30, 10 + (lv-8)*2);
+}
+// 進化の順番（小→大）。最後の「完成車」は盤面に残らず出庫します。
+const TIERS = [
+  { emoji:'🔩', r:22, color:'#9aa4b1' },  // ネジ
+  { emoji:'🛞', r:32, color:'#555b66' },  // タイヤ
+  { emoji:'🔋', r:44, color:'#3fae6a' },  // バッテリー
+  { emoji:'⚙️', r:58, color:'#c77d32' },  // エンジン
+  { emoji:'🚙', r:74, color:'#8a8f98', body:true }, // ボディ（塗装前の車体）
+  { emoji:'🚗', r:90, color:'#d9463b' },  // 完成車（合体した瞬間だけ表示）
+];
+const CAR = TIERS.length-1, DEFECT = -1;
+// 完成車の画像（右向き・背景透過）。差し替えはこのファイル名を変えるだけ。読み込めないときは絵文字🚗で表示します。
+const CAR_IMAGE_SRC = 'assets/kei_truck_v01.webp';
+// Ver0.2用：ランク別の車画像（1=軽トラ … 8=トレーラー）。scaleは表示の大きさの倍率。
+const CAR_RANKS = [
+  {src: CAR_IMAGE_SRC, scale: 1.0},
+  {src: 'assets/cars/car_lv2_compact.webp', scale: 1.0},
+  {src: 'assets/cars/car_lv3_sedan.webp',   scale: 1.05},
+  {src: 'assets/cars/car_lv4_wagon.webp',   scale: 1.05},
+  {src: 'assets/cars/car_lv5_suv.webp',     scale: 1.05},
+  {src: 'assets/cars/car_lv6_offroad.webp', scale: 1.05},
+  {src: 'assets/cars/car_lv7_super.webp',   scale: 1.05},
+  {src: 'assets/cars/car_lv8_trailer.webp', scale: 0.85},
+];
+function loadImg(src){ const im = new Image(); im.ok = false; im.onload = ()=>{ im.ok = true; }; im.src = src; return im; }
+CAR_RANKS.forEach(r => r.img = loadImg(r.src));
+// ランク別の売上（円）。レベルの数字＝ランク、Lv8以降はトレーラー（ぷらん案 2026-10-24）
+const CAR_VALUES = [1000000, 2000000, 3500000, 4000000, 5000000, 8000000, 20000000, 30000000];
+// 結果画面の「次の車」のシルエット（あーと作）
+const SILHOUETTES = ['kei','compact','sedan','wagon','suv','offroad','super','trailer'].map((n,i)=>`assets/cars/silhouette/car_lv${i+1}_${n}.webp`);
+const CAR_NAMES = {
+  ja:['軽トラ','コンパクトカー','セダン','ステーションワゴン','SUV','高級オフロード','ハイエンドスポーツ','トレーラー'],
+  en:['Kei Truck','Compact Car','Sedan','Station Wagon','SUV','Luxury Off-Roader','Supercar','Semi Truck'] };
+function fmtYen(v){ return lang==='ja' && v>=10000 ? `${(v/10000).toLocaleString()}万円` : `¥${v.toLocaleString()}`; }
+// 記録の保存：CrazyGamesでは開発キットの保存（SDK.data）、それ以外はブラウザの中（localStorage）
+const Store = {
+  backend(){ try{ const d = window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.data; if (d && d.getItem) return d; }catch(e){} try{ return window.localStorage; }catch(e){ return null; } },
+  get(k, def){ try{ const b=this.backend(); const v=b && b.getItem('qr_'+k); return v==null ? def : JSON.parse(v); }catch(e){ return def; } },
+  set(k, v){ try{ const b=this.backend(); b && b.setItem('qr_'+k, JSON.stringify(v)); }catch(e){} }
+};
+const USE_CAR_RANKS = true; // falseにすると軽トラ固定（Ver0.1の動き）
+const rankForLevel = lv => USE_CAR_RANKS ? Math.min(lv, CAR_VALUES.length) - 1 : 0;
+const carImg = CAR_RANKS[0].img; let carImgOk = false;
+carImg.addEventListener('load', ()=>{ carImgOk = true; });
+function drawCar(x, y, size, rank){
+  const r = (CAR_RANKS[rank] && CAR_RANKS[rank].img.ok) ? CAR_RANKS[rank] : CAR_RANKS[0];
+  if (r.img.ok){ const carImg = r.img, w = size*2.6*r.scale, h = w*carImg.height/carImg.width; ctx.drawImage(carImg, x-w/2, y-h/2-4, w, h); }
+  else { ctx.save(); ctx.translate(x,y); ctx.scale(-1,1); drawEmoji('🚗',0,-4,size*0.85); ctx.restore(); }
+}
+const TEXT = {
+  ja:{ start:'スタート', retry:'もう一回', intro:'指でスライドして位置を決め、離すと部品が落ちます。<br>同じ部品同士がぶつかると進化！完成車になると出庫されます。<br>⚠️不良品は、指を左右の端の🗑️まで動かして捨てよう。', over:'ゲームオーバー', cars:'出庫', level:'レベル', sales:'売上', drop:'投下まで', next:'次', vroom:'ブォーン!', levelUp:'LEVEL UP!', hint:'⚠️不良品は端の🗑️へ！', okDiscard:'不良品を廃棄！', loss:'材料ロス', toNext:n=>`次の車まで あと${n}台`, maxRank:'最高ランク！', rankUp:n=>`${n} にランクアップ！`, perCar:v=>`1台 ${v}`, best:'これまでの最高', thisSales:'今回の売上', newRec:'新記録！', reached:'最高到達', nextGoal:n=>`次はあと少しで ${n}！`, allDone:'トレーラーまで到達！最高ランクです', firstGoal:n=>`まずは ${n} を出庫しよう！`, result:(lv,c,s,t)=>`到達レベル ${lv}<br>出庫 ${c}台 / 売上 ¥${s.toLocaleString()}<br>プレイ時間 ${t}秒` },
+  en:{ start:'Start', retry:'Play again', intro:'Slide to aim, release to drop.<br>Matching parts merge and upgrade! Finished cars roll out.<br>Drag ⚠️ defects to the 🗑️ at either edge to scrap them.', over:'Game Over', cars:'Cars', level:'Level', sales:'Sales', drop:'Drop in', next:'Next', vroom:'VROOM!', levelUp:'LEVEL UP!', hint:'⚠️ Defects go in the 🗑️!', okDiscard:'Defect scrapped!', loss:'Wasted part', toNext:n=>`${n} more to next car`, maxRank:'Top rank!', rankUp:n=>`Rank up: ${n}!`, perCar:v=>`${v} per car`, best:'Best', thisSales:'Sales', newRec:'NEW RECORD!', reached:'Top car', nextGoal:n=>`Next up: ${n}!`, allDone:'You reached the Semi Truck, the top rank!', firstGoal:n=>`Ship your first ${n}!`, result:(lv,c,s,t)=>`Level reached ${lv}<br>Cars ${c} / Sales ¥${s.toLocaleString()}<br>Played ${t}s` },
+};
+let lang = 'ja';
+const L = () => TEXT[lang];
+
+// ===== 画面 =====
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+function resize(){
+  const s = Math.min(window.innerWidth/CONFIG.W, window.innerHeight/CONFIG.H);
+  const dpr = window.devicePixelRatio||1;
+  cv.style.width = CONFIG.W*s+'px'; cv.style.height = CONFIG.H*s+'px';
+  cv.width = CONFIG.W*dpr; cv.height = CONFIG.H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener('resize', resize); resize();
+
+const BOX = { left:20, right:380, top:150, bottom:610 };
+const HOLD_Y = BOX.top - 12;          // 手に持っている部品の高さ
+const DANGER_Y = BOX.top + 30;        // この線より上に部品が溜まると危険
+const LANE_Y = 668;                   // 出庫レーン
+const GAUGE_Y = 62, GAUGE_H = 12;     // 制限時間ゲージ
+const BIN_ZONE = 14;                  // 指が箱の端からこの距離以内なら廃棄箱モード
+
+// ===== 物理 =====
+const { Engine, Bodies, Composite, Events } = Matter;
+let engine, world, state;
+
+function newState(){
+  return { running:false, ending:0, cars:0, carsThisLevel:0, sales:0, level:1, discards:0, topRank:-1, rankUp:null,
+    dropTimer:0, aimX:CONFIG.W/2, bin:0, current:randPiece(1), next:randPiece(1),
+    canDrop:true, armed:false, overflowT:0, shipping:[], effects:[], popups:[], elapsed:0,
+    shake:0, flash:null, banner:null, hint:0 };
+}
+function randPiece(lv){
+  if (Math.random()*100 < defectChance(lv)) return DEFECT;
+  const w = dropWeights(lv), sum = w.reduce((a,b)=>a+b,0);
+  let r = Math.random()*sum;
+  for (let i=0;i<w.length;i++){ if ((r -= w[i]) < 0) return i; }
+  return 0;
+}
+const radiusOf = t => t===DEFECT ? CONFIG.defectRadius : TIERS[t].r;
+function dropLimit(){ return Math.max(CONFIG.dropTimeMin, CONFIG.dropTimeStart - CONFIG.dropTimeStep*(state.level-1)); }
+
+function setupWorld(){
+  engine = Engine.create(); engine.gravity.y = 1.1; world = engine.world;
+  const o = { isStatic:true, friction:0.3 };
+  Composite.add(world, [
+    Bodies.rectangle((BOX.left+BOX.right)/2, BOX.bottom+15, BOX.right-BOX.left+60, 30, o),
+    Bodies.rectangle(BOX.left-15, (BOX.top+BOX.bottom)/2, 30, BOX.bottom-BOX.top+400, o),
+    Bodies.rectangle(BOX.right+15, (BOX.top+BOX.bottom)/2, 30, BOX.bottom-BOX.top+400, o),
+  ]);
+  Events.on(engine, 'collisionStart', onCollide);
+}
+function makePart(tier, x, y){
+  const b = Bodies.circle(x, y, radiusOf(tier), { restitution:0.15, friction:0.1, density:0.0015 });
+  b.tier = tier; b.born = performance.now();
+  Composite.add(world, b); return b;
+}
+const merging = new Set();
+function onCollide(ev){
+  for (const p of ev.pairs){
+    const a=p.bodyA, b=p.bodyB;
+    if (a.tier===undefined || b.tier===undefined || a.tier!==b.tier || a.tier===DEFECT) continue;
+    if (merging.has(a.id)||merging.has(b.id)) continue;
+    merging.add(a.id); merging.add(b.id);
+    const tier=a.tier, x=(a.position.x+b.position.x)/2, y=(a.position.y+b.position.y)/2;
+    setTimeout(()=>{
+      Composite.remove(world,a); Composite.remove(world,b);
+      merging.delete(a.id); merging.delete(b.id);
+      if (!state.running) return;
+      const nt = tier+1;
+      state.effects.push({x,y,r:TIERS[nt].r,t:0});
+      state.shake = Math.max(state.shake, 3);
+      beep(300+nt*90, 0.08);
+      if (nt === CAR) shipCar(x,y); else makePart(nt,x,y);
+    },0);
+  }
+}
+function shipCar(x,y){
+  const rank = rankForLevel(state.level), value = CAR_VALUES[rank];
+  state.cars++; state.carsThisLevel++; state.sales += value; state.shake = 8;
+  state.shipping.push({x, y, phase:0, rank, value});
+  state.topRank = Math.max(state.topRank, rank);
+  beep(880,0.15); setTimeout(()=>beep(1180,0.2),120);
+  if (state.carsThisLevel >= carsToLevelUp(state.level)) levelUp();
+}
+function levelUp(){
+  const oldRank = rankForLevel(state.level);
+  state.level++; state.carsThisLevel = 0;
+  const nr = rankForLevel(state.level);
+  if (nr > oldRank) state.rankUp = { rank:nr, t:0, dur:1.5 };
+  state.banner = { text:L().levelUp, t:0, dur:1.0 };
+  state.flash = { color:'255,255,255', t:0, dur:0.25 };
+  beep(660,0.1); setTimeout(()=>beep(990,0.15),100);
+  if (state.level === 2){ state.next = DEFECT; state.hint = 3.5; }  // Lv2で必ず1個、ヒントつき
+}
+
+// ===== 操作 =====
+// 1本目の指だけを使い、「その部品のために指を置いた」ときだけ離して落とす（二重落下の防止）
+let activePointer = null;
+function toGameX(clientX){ const r = cv.getBoundingClientRect(); return (clientX - r.left) * CONFIG.W / r.width; }
+function setAim(rawX){
+  const r = radiusOf(state.current);
+  if (rawX < BOX.left + BIN_ZONE){ state.bin = -1; state.aimX = BOX.left + 4; return; }
+  if (rawX > BOX.right - BIN_ZONE){ state.bin = 1; state.aimX = BOX.right - 4; return; }
+  state.bin = 0; state.aimX = Math.max(BOX.left+r, Math.min(BOX.right-r, rawX));
+}
+cv.addEventListener('pointerdown', e=>{
+  if (!state.running || !e.isPrimary || activePointer!==null) return;
+  activePointer = e.pointerId; state.armed = state.canDrop; setAim(toGameX(e.clientX));
+});
+cv.addEventListener('pointermove', e=>{
+  if (!state.running) return;
+  if (activePointer!==null && e.pointerId!==activePointer) return;
+  if (activePointer===null && e.pointerType!=='mouse') return;
+  setAim(toGameX(e.clientX));
+});
+function release(e){
+  if (e.pointerId!==activePointer) return;
+  activePointer = null;
+  if (!state.running) return;
+  setAim(toGameX(e.clientX));
+  if (state.armed && state.canDrop) drop();
+  state.armed = false;
+}
+cv.addEventListener('pointerup', release);
+cv.addEventListener('pointercancel', e=>{ if (e.pointerId===activePointer){ activePointer=null; state.armed=false; } });
+
+function drop(){
+  if (!state.canDrop) return;
+  state.armed = false;   // 時間切れで落ちたあと指を離しても、もう1個は落ちない
+  const t = state.current;
+  if (state.bin !== 0) discard(t);
+  else makePart(t, state.aimX, HOLD_Y);
+  state.current = state.next; state.next = randPiece(state.level);
+  if (state.bin === 0) setAim(state.aimX);
+  state.dropTimer = 0; state.canDrop = false;
+  setTimeout(()=>{ if (state) state.canDrop = true; }, 450);
+  beep(220,0.04);
+}
+function discard(t){
+  state.discards++;
+  const x = state.bin<0 ? BOX.left+6 : BOX.right-6;
+  state.popups.push({ text: t===DEFECT ? L().okDiscard : L().loss, color: t===DEFECT ? '#5be37d' : '#ff8a7a', x: state.bin<0 ? 90 : 310, y: HOLD_Y+40, t:0 });
+  state.effects.push({x, y:HOLD_Y, r:24, t:0});
+  if (t===DEFECT){ beep(1046,0.08); setTimeout(()=>beep(1318,0.1),80); } else beep(160,0.15);
+}
+
+// ===== 効果音（仮：電子音） =====
+let actx;
+// iPhoneなどで止まった音を、画面に触れたときに再開する
+function resumeAudio(){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    if (actx.state !== 'running') actx.resume();
+  }catch(e){}
+}
+['pointerdown','touchend','click'].forEach(ev => window.addEventListener(ev, resumeAudio, {passive:true}));
+document.addEventListener('visibilitychange', ()=>{ if (!document.hidden) resumeAudio(); });
+function beep(freq, dur){
+  try{
+    actx = actx || new (window.AudioContext||window.webkitAudioContext)();
+    if (actx.state !== 'running') return;
+    const o=actx.createOscillator(), g=actx.createGain();
+    o.frequency.value=freq; o.type='triangle';
+    g.gain.setValueAtTime(0.15, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur);
+    o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime+dur);
+  }catch(e){}
+}
+
+// ===== ループ =====
+// 物理は1/60秒きざみで動かす（画面が60Hzでも120Hzでも、重くて遅れても動きが同じになる）
+const PHYS_STEP = 1000/60, PHYS_MAX_STEPS = 5;
+let last = performance.now(), physAcc = 0;
+function loop(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now;
+  if (state.running){
+    physAcc += dt*1000; let n = 0;
+    while (physAcc >= PHYS_STEP && n < PHYS_MAX_STEPS){ Engine.update(engine, PHYS_STEP); physAcc -= PHYS_STEP; n++; }
+    if (n === PHYS_MAX_STEPS) physAcc = 0;
+    state.elapsed += dt;
+    if (state.canDrop){
+      const before = dropLimit()-state.dropTimer; state.dropTimer += dt; const left = dropLimit()-state.dropTimer;
+      if (left <= CONFIG.warnBelow && Math.ceil(left*4)!==Math.ceil(before*4)) beep(1500,0.03);
+      if (state.dropTimer >= dropLimit()) drop();
+    }
+    let over=false;
+    for (const b of Composite.allBodies(world)){
+      if (b.isStatic||b.tier===undefined) continue;
+      if (now - b.born > 1200 && b.position.y - b.circleRadius < DANGER_Y && Math.abs(b.velocity.y)<1) over=true;
+    }
+    state.overflowT = over ? state.overflowT+dt : 0;
+    if (state.overflowT > CONFIG.overflowGrace) startEnding();
+  } else if (state.ending > 0){
+    state.ending -= dt;
+    if (state.ending <= 0) showResult();
+  }
+  for (const s of state.shipping) s.phase += dt;
+  state.shipping = state.shipping.filter(s=>s.phase<2.4);
+  for (const e of state.effects) e.t += dt;
+  state.effects = state.effects.filter(e=>e.t<0.35);
+  for (const p of state.popups) p.t += dt;
+  state.popups = state.popups.filter(p=>p.t<1.2);
+  if (state.rankUp){ state.rankUp.t += dt; if (state.rankUp.t > state.rankUp.dur) state.rankUp = null; }
+  if (state.banner){ state.banner.t += dt; if (state.banner.t > state.banner.dur) state.banner = null; }
+  if (state.flash){ state.flash.t += dt; if (state.flash.t > state.flash.dur) state.flash = null; }
+  if (state.hint > 0) state.hint -= dt;
+  state.shake *= 0.85;
+  draw(now);
+  requestAnimationFrame(loop);
+}
+
+function drawEmoji(em, x, y, r){
+  ctx.font = `${Math.round(r*1.5)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(em, x, y+r*0.08);
+}
+function drawPart(tier, x, y, angle, now){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(angle||0);
+  if (tier === DEFECT){
+    const r = CONFIG.defectRadius, k = 0.5+0.5*Math.sin((now||0)/250);
+    ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fillStyle='#6b6f76'; ctx.fill();
+    ctx.lineWidth=4; ctx.strokeStyle=`rgba(255,60,60,${0.45+0.55*k})`; ctx.stroke();
+    ctx.rotate(-(angle||0)); drawEmoji('⚠️', 0, 0, r*0.85);
+  } else {
+    const t = TIERS[tier];
+    if (t.body) ctx.globalAlpha = 0.75;
+    ctx.beginPath(); ctx.arc(0,0,t.r,0,Math.PI*2); ctx.fillStyle=t.color; ctx.fill();
+    ctx.lineWidth=2; ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.stroke();
+    if (t.body){ ctx.filter='grayscale(1) brightness(1.1)'; }
+    drawEmoji(t.emoji, 0, 0, t.r*0.9);
+    ctx.filter='none';
+  }
+  ctx.restore();
+}
+function drawBin(side, now){
+  const x = side<0 ? BOX.left+16 : BOX.right-16, y = HOLD_Y;
+  const on = state.running && state.bin===side;
+  ctx.save();
+  ctx.beginPath(); ctx.arc(x,y,22,0,Math.PI*2);
+  ctx.fillStyle = on ? `rgba(255,80,80,${0.55+0.3*Math.sin(now/90)})` : 'rgba(255,255,255,.14)'; ctx.fill();
+  // ゴミ箱の絵（絵文字が出ない端末でも見えるように図形で描く）
+  ctx.fillStyle='#cfd6df'; ctx.fillRect(x-9, y-6, 18, 18); ctx.fillRect(x-12, y-11, 24, 4); ctx.fillRect(x-4, y-14, 8, 3);
+  ctx.fillStyle='#6b7480'; ctx.fillRect(x-5, y-3, 2, 12); ctx.fillRect(x-1, y-3, 2, 12); ctx.fillRect(x+3, y-3, 2, 12);
+  ctx.restore();
+}
+function draw(now){
+  const W=CONFIG.W,H=CONFIG.H;
+  ctx.save();
+  if (state.shake>0.5) ctx.translate((Math.random()-.5)*state.shake,(Math.random()-.5)*state.shake);
+  ctx.clearRect(-30,-30,W+60,H+60);
+  // HUD
+  const limit = dropLimit(), leftT = Math.max(0, limit-state.dropTimer), low = leftT/limit < 0.3;
+  ctx.fillStyle='#fff'; ctx.textAlign='left'; ctx.textBaseline='top'; ctx.font='bold 16px sans-serif';
+  ctx.fillText(`${L().sales} ¥${state.sales.toLocaleString()}`, 14, 12);
+  ctx.fillText(`${L().cars} ${state.cars}`, 14, 36);
+  ctx.fillText(`Lv ${state.level}`, 110, 36);
+  { // いま作っている車と、次の車までの進み具合
+    const rk = rankForLevel(state.level), need = carsToLevelUp(state.level), atMax = rk >= CAR_VALUES.length-1;
+    const im = CAR_RANKS[rk] && CAR_RANKS[rk].img;
+    if (im && im.ok){ const w=44, h=w*im.height/im.width; ctx.drawImage(im, 152, 45-h/2, w, h); }
+    ctx.font='bold 13px sans-serif'; ctx.textBaseline='middle';
+    const left = need - state.carsThisLevel;
+    ctx.fillText(atMax ? L().maxRank : L().toNext(left), 200, 45);
+    if (!atMax) for (let i=0;i<need;i++){
+      const sw = 22, x0 = W-14-need*(sw+4)+4 + i*(sw+4);
+      ctx.fillStyle = i < state.carsThisLevel ? '#f5b700' : 'rgba(255,255,255,.22)'; ctx.fillRect(x0, 40, sw, 10);
+    }
+    ctx.fillStyle='#fff'; ctx.font='bold 16px sans-serif'; ctx.textBaseline='top';
+  }
+  if (state.running){
+    ctx.textAlign='right';
+    ctx.fillStyle = low ? (Math.sin(now/90)>0 ? '#ff4a3a' : '#ffb0a8') : '#fff';
+    ctx.fillText(`${L().drop} ${leftT.toFixed(1)}s`, W-14, 12);
+  }
+  // 制限時間ゲージ
+  ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(BOX.left, GAUGE_Y, BOX.right-BOX.left, GAUGE_H);
+  if (state.running){
+    ctx.fillStyle = low ? (Math.sin(now/90)>0 ? '#ff3b2f' : '#ff8a7a') : '#f5b700';
+    ctx.fillRect(BOX.left, GAUGE_Y, (BOX.right-BOX.left)*(leftT/limit), GAUGE_H);
+  }
+  // 次の部品（ゲージの下・右端）
+  ctx.fillStyle='#fff'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.font='13px sans-serif';
+  ctx.fillText(L().next, W-52, 98);
+  ctx.save(); ctx.translate(W-32,98); ctx.scale(0.45,0.45); drawPart(state.next, 0, 0, 0, now); ctx.restore();
+  // 盤面
+  ctx.fillStyle='#24303f'; ctx.fillRect(BOX.left, BOX.top-30, BOX.right-BOX.left, BOX.bottom-BOX.top+30);
+  ctx.strokeStyle = state.overflowT>0 ? `rgba(255,60,60,${0.5+0.5*Math.sin(now/80)})` : 'rgba(255,80,80,.5)';
+  ctx.setLineDash([8,6]); ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(BOX.left,DANGER_Y); ctx.lineTo(BOX.right,DANGER_Y); ctx.stroke(); ctx.setLineDash([]);
+  drawBin(-1, now); drawBin(1, now);
+  // 照準と手持ち部品
+  if (state.running && state.canDrop){
+    if (state.bin===0){ ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.beginPath(); ctx.moveTo(state.aimX,HOLD_Y); ctx.lineTo(state.aimX,BOX.bottom); ctx.stroke(); }
+    const hx = state.bin===0 ? state.aimX : (state.bin<0 ? BOX.left+16 : BOX.right-16);
+    const hy = state.bin===0 ? HOLD_Y : HOLD_Y-34;
+    ctx.save(); if (state.bin!==0){ ctx.globalAlpha=0.8; } drawPart(state.current, hx, hy, 0, now); ctx.restore();
+  }
+  for (const b of Composite.allBodies(world)){ if (b.tier!==undefined) drawPart(b.tier, b.position.x, b.position.y, b.angle, now); }
+  for (const e of state.effects){
+    ctx.beginPath(); ctx.arc(e.x,e.y,e.r*(1+e.t*3),0,Math.PI*2);
+    ctx.strokeStyle=`rgba(255,230,120,${1-e.t/0.35})`; ctx.lineWidth=4; ctx.stroke();
+  }
+  // 床と出庫レーン
+  ctx.fillStyle='#3b4a60'; ctx.fillRect(BOX.left-10, BOX.bottom, BOX.right-BOX.left+20, 12);
+  ctx.fillStyle='#151c26'; ctx.fillRect(0, LANE_Y-36, W, 72);
+  ctx.strokeStyle='#f5b700'; ctx.lineWidth=2; ctx.setLineDash([20,14]); ctx.beginPath(); ctx.moveTo(0,LANE_Y+26); ctx.lineTo(W,LANE_Y+26); ctx.stroke(); ctx.setLineDash([]);
+  // 出庫：合体した場所で大きく表示 → レーンへ降りる → 画面の端まで走り去る
+  for (const s of state.shipping){
+    let x,y,size;
+    if (s.phase<0.35){ x=s.x; y=s.y; size = TIERS[CAR].r*(0.6+0.4*Math.min(1,s.phase/0.15)); }
+    else if (s.phase<0.8){ const k=(s.phase-0.35)/0.45; x=s.x; y=s.y+(LANE_Y-s.y)*k*k; size = TIERS[CAR].r + (42-TIERS[CAR].r)*k; }
+    else { const k=(s.phase-0.8)/1.5; x=s.x+(W+120-s.x)*k*k; y=LANE_Y; size=42; }
+    if (s.phase<0.35){ ctx.beginPath(); ctx.arc(x,y,size,0,Math.PI*2); ctx.fillStyle='rgba(217,70,59,.85)'; ctx.fill(); }
+    drawCar(x, y, size, s.rank);
+    if (s.phase>0.8){ ctx.fillStyle='rgba(255,255,255,.75)'; ctx.font='bold 16px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(L().vroom, x-60, y-34); }
+    if (s.phase<1.3){ ctx.fillStyle='#ffd84a'; ctx.font='bold 22px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(`+¥${s.value.toLocaleString()}`, s.x, s.y-TIERS[CAR].r-10-s.phase*30); }
+  }
+  for (const p of state.popups){
+    ctx.globalAlpha = Math.max(0, 1-p.t/1.2); ctx.fillStyle=p.color; ctx.font='bold 18px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(p.text, p.x, p.y - p.t*30); ctx.globalAlpha = 1;
+  }
+  if (state.hint > 0 && state.running){
+    ctx.fillStyle='rgba(0,0,0,.75)'; ctx.fillRect(40, 300, W-80, 50);
+    ctx.fillStyle='#ffd84a'; ctx.font='bold 19px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(L().hint, W/2, 325);
+  }
+  if (state.banner){
+    const k = state.banner.t/state.banner.dur;
+    ctx.globalAlpha = k<0.8 ? 1 : (1-k)/0.2;
+    ctx.fillStyle='rgba(245,183,0,.92)'; ctx.fillRect(0, 230, W, 64);
+    ctx.fillStyle='#222'; ctx.font='bold 34px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(`${state.banner.text}  Lv${state.level}`, W/2 + (k<0.15 ? (1-k/0.15)*-W : 0), 262);
+    ctx.globalAlpha = 1;
+  }
+  if (state.rankUp){
+    const ru = state.rankUp, k = ru.t/ru.dur, im = CAR_RANKS[ru.rank] && CAR_RANKS[ru.rank].img;
+    ctx.globalAlpha = k<0.1 ? k/0.1 : (k>0.8 ? (1-k)/0.2 : 1);
+    ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0, 372, W, 170);
+    const sc = 0.85 + 0.15*Math.min(1, k/0.15);
+    if (im && im.ok){ const w=230*sc*(CAR_RANKS[ru.rank].scale||1), h=w*im.height/im.width; ctx.drawImage(im, W/2-w/2, 452-h/2, w, h); }
+    ctx.fillStyle='#ffd84a'; ctx.font='bold 21px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(L().rankUp(CAR_NAMES[lang][ru.rank]), W/2, 394);
+    ctx.fillStyle='#fff'; ctx.font='bold 17px sans-serif';
+    ctx.fillText(L().perCar(fmtYen(CAR_VALUES[ru.rank])), W/2, 522);
+    ctx.globalAlpha = 1;
+  }
+  ctx.restore();
+  if (state.flash){ ctx.fillStyle=`rgba(${state.flash.color},${0.6*(1-state.flash.t/state.flash.dur)})`; ctx.fillRect(0,0,W,H); }
+  if (state.ending > 0){ ctx.fillStyle=`rgba(0,0,0,${0.5*(1-state.ending/0.9)})`; ctx.fillRect(0,0,W,H); }
+}
+
+// ===== 開始・終了 =====
+const ov=document.getElementById('overlay'), ovText=document.getElementById('ovText'), startBtn=document.getElementById('startBtn');
+let overlayMode = 'title';
+function renderOverlay(){
+  if (overlayMode==='title'){ ovText.innerHTML=L().intro; startBtn.textContent=L().start; }
+  else {
+    const r=window.lastResult, T=L(), names=CAR_NAMES[lang];
+    let html = `<b style="font-size:24px">${T.over}</b><br>`;
+    if (r.newRecord) html += `<span class="newRec">${T.newRec}</span><br>`;
+    html += `<div class="res">${T.thisSales} <b>${fmtYen(r.sales)}</b><br>${T.best} ${fmtYen(r.bestSales)}<br>`;
+    html += `Lv ${r.level} / ${T.cars} ${r.cars} / ${r.seconds}s<br>`;
+    if (r.topRank >= 0) html += `${T.reached}: <b>${names[r.topRank]}</b>`;
+    html += `</div>`;
+    const nx = r.topRank + 1;
+    if (nx < CAR_RANKS.length) html += `<div class="goal">${r.topRank>=0 ? T.nextGoal(names[nx]) : T.firstGoal(names[0])}<img src="${SILHOUETTES[nx]}" alt="" onerror="this.onerror=null;this.className='fb';this.src='${CAR_RANKS[nx].src}'"></div>`;
+    else html += `<div class="goal">${T.allDone}</div>`;
+    ovText.innerHTML = html; startBtn.textContent=T.retry;
+  }
+  document.getElementById('langJa').classList.toggle('on', lang==='ja');
+  document.getElementById('langEn').classList.toggle('on', lang==='en');
+  document.documentElement.lang = lang;
+}
+function startGame(){ setupWorld(); state=newState(); state.running=true; activePointer=null; ov.classList.add('hidden'); beep(440,0.05); }
+function startEnding(){
+  state.running=false; state.ending=0.9; state.shake=16;
+  state.flash={ color:'255,40,40', t:0, dur:0.6 };
+  beep(140,0.4); setTimeout(()=>beep(100,0.5),200);
+  const prevBest = Store.get('bestSales', 0), prevRank = Store.get('bestRank', -1);
+  const newRecord = state.sales > prevBest && state.sales > 0;
+  if (newRecord) Store.set('bestSales', state.sales);
+  if (state.topRank > prevRank) Store.set('bestRank', state.topRank);
+  window.lastResult = { cars:state.cars, sales:state.sales, seconds:Math.round(state.elapsed), level:state.level, discards:state.discards,
+    topRank:state.topRank, bestSales:Math.max(prevBest, state.sales), bestRank:Math.max(prevRank, state.topRank), newRecord };
+}
+function showResult(){ overlayMode='result'; renderOverlay(); ov.classList.remove('hidden'); }
+startBtn.onclick = startGame;
+document.getElementById('langJa').onclick = ()=>{ lang='ja'; renderOverlay(); };
+document.getElementById('langEn').onclick = ()=>{ lang='en'; renderOverlay(); };
+// 言語の初期値：URLの ?lang= ＞ CrazyGamesの開発キットの言語 ＞ （キットがない場所では）端末の言語 ＞ 英語
+function detectLang(){
+  const q = new URLSearchParams(location.search).get('lang');
+  if (q === 'ja' || q === 'en') return q;
+  const sdk = window.CrazyGames && window.CrazyGames.SDK;
+  if (sdk){
+    try{ const loc = (sdk.user && sdk.user.systemInfo && sdk.user.systemInfo.locale) || ''; return loc.slice(0,2) === 'ja' ? 'ja' : 'en'; }
+    catch(e){ return 'en'; }
+  }
+  return (navigator.language||'').slice(0,2) === 'ja' ? 'ja' : 'en';
+}
+lang = detectLang();
+setupWorld(); state=newState(); renderOverlay(); requestAnimationFrame(loop);
+// テスト用：window.QR でゲーム状態を確認できます
+window.QR = { get state(){return state;}, drop, setAim, CONFIG, TIERS, DEFECT, levelUp };
+</script>
+</body>
+</html>
