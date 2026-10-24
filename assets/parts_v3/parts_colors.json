@@ -1,0 +1,74 @@
+{
+ "screw": {
+  "color": "gray",
+  "hex": "#9aa4b1",
+  "mark": "circle",
+  "defect": true
+ },
+ "wheel": {
+  "color": "blue",
+  "hex": "#2f7fe0",
+  "mark": "square",
+  "defect": true
+ },
+ "tire": {
+  "color": "blue",
+  "hex": "#2f7fe0",
+  "mark": "square",
+  "defect": true
+ },
+ "brake": {
+  "color": "green",
+  "hex": "#2fb35a",
+  "mark": "triangle",
+  "defect": true
+ },
+ "frame": {
+  "color": "green",
+  "hex": "#2fb35a",
+  "mark": "triangle",
+  "defect": false
+ },
+ "engine": {
+  "color": "orange",
+  "hex": "#f07a22",
+  "mark": "star",
+  "defect": false
+ },
+ "body": {
+  "color": "red",
+  "hex": "#e03a3a",
+  "mark": "cross",
+  "defect": false
+ },
+ "tire_wheel": {
+  "color": "yellow",
+  "hex": "#f2c230",
+  "mark": "diamond",
+  "defect": false
+ },
+ "brake_frame": {
+  "color": "orange",
+  "hex": "#f07a22",
+  "mark": "star",
+  "defect": false
+ },
+ "engine_chassis": {
+  "color": "yellow",
+  "hex": "#f2c230",
+  "mark": "diamond",
+  "defect": false
+ },
+ "rolling_chassis": {
+  "color": "red",
+  "hex": "#e03a3a",
+  "mark": "cross",
+  "defect": false
+ },
+ "body_car": {
+  "color": "gray",
+  "hex": "#9aa4b1",
+  "mark": "circle",
+  "defect": false
+ }
+}
