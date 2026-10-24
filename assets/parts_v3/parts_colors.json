@@ -17,7 +17,7 @@
   "mark": "square",
   "defect": true
  },
- "brake": {
+ "suspension": {
   "color": "green",
   "hex": "#2fb35a",
   "mark": "triangle",
@@ -47,7 +47,7 @@
   "mark": "diamond",
   "defect": false
  },
- "brake_frame": {
+ "suspension_frame": {
   "color": "orange",
   "hex": "#f07a22",
   "mark": "star",
@@ -70,5 +70,13 @@
   "hex": "#9aa4b1",
   "mark": "circle",
   "defect": false
+ },
+ "mechanic": {
+  "color": "white",
+  "hex": "#ffffff",
+  "mark": "wrench",
+  "defect": false,
+  "special": "repair",
+  "radius": 22
  }
 }
