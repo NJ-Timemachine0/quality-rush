@@ -78,5 +78,12 @@
   "defect": false,
   "special": "repair",
   "radius": 22
+ },
+ "door": {
+  "color": "gray",
+  "hex": "#9aa4b1",
+  "mark": "circle",
+  "defect": true,
+  "replaces": "screw"
  }
 }
