@@ -39,7 +39,10 @@
   "color": "red",
   "hex": "#e03a3a",
   "mark": "cross",
-  "defect": false
+  "defect": false,
+  "made_from": [
+   "panel+glass"
+  ]
  },
  "tire_wheel": {
   "color": "yellow",
@@ -83,7 +86,32 @@
   "color": "gray",
   "hex": "#9aa4b1",
   "mark": "circle",
+  "defect": false,
+  "radius": 30,
+  "made_from": [
+   "panel+hinge",
+   "glass+hinge"
+  ]
+ },
+ "panel": {
+  "color": "purple",
+  "hex": "#9b59d6",
+  "mark": "heart",
+  "defect": false,
+  "radius": 26
+ },
+ "glass": {
+  "color": "purple",
+  "hex": "#9b59d6",
+  "mark": "heart",
   "defect": true,
-  "replaces": "screw"
+  "radius": 20
+ },
+ "hinge": {
+  "color": "purple",
+  "hex": "#9b59d6",
+  "mark": "heart",
+  "defect": true,
+  "radius": 14
  }
 }
