@@ -103,11 +103,14 @@ const CONFIG = {
   // v5m：ちょうつがいを出やすくする（仕様 E''）。部品を1つ出すたびに数え直す。enabled:false で無効
   //   condition：'deficit'＝箱の中の「ボディ付きの車台」(body_car) の数 ＞ 箱の中のドア・ボンネット＋ちょうつがい（不良品はのぞく）の数 のとき（既定）／'any'＝body_car が1つでもあるとき（比較用）
   //   weight：そのあいだの ちょうつがいの割合（ふだんは dropWeights.hinge）
-  hingeBoost: { enabled: true, weight: 10, condition: 'deficit' },   // v5m 既定：'deficit'（仕様 E''）
+  //   v5o：'nearby'（既定）＝箱の中の良品の body_car（ドアのない車）の数 ＞ どれかの body_car の中心から（その車の半径＋nearPx）以内に中心がある良品のドア・ボンネット＋ちょうつがい（箱の中・まだ付いていない）の数 のとき、ちょうつがいの割合を weight に。URL ?hingeNear=80 で nearPx を上書き
+  //        'pity'＝良品の body_car が箱にあって、直近 pityN 個のふつうの部品（不良品・整備士をのぞく、手持ち・次も含む）に ちょうつがいが1つもないとき、次を必ず ちょうつがいにする（割合は変えない）
+  //        URL ?hinge=pity|nearby|deficit|any|off で上書き（off＝enabled:false）
+  hingeBoost: { enabled: true, weight: 10, condition: 'nearby', nearPx: 80, pityN: 6 },   // v5o 既定：'nearby'（車の半径＋80px）
   // v5n（仕様 F）：タイヤ・タイヤホイールの出る割合を n（＝diffN()：出荷台数＋3×(周−1)）で下げる。各 max(min, start − perCar×(n−1))。n<1 は start
   //   tireDecayPreset：'weak'／'mid'（標準）／'strong'。URL ?tire=weak|mid|strong で上書き。'custom' のときは tireDecay の数字をそのまま使う
   //   不良品（DEFECTABLE から選ぶ）は今までどおり素の dropWeights（タイヤの減りは効かせない）
-  tireDecayPreset: 'mid',
+  tireDecayPreset: 'strong',   // v5o：標準を strong に（?tire=mid で v5n の標準）
   tireDecayPresets: { weak:{ start:18, perCar:0.5, min:12 }, mid:{ start:18, perCar:0.8, min:10 }, strong:{ start:18, perCar:1.2, min:8 } },
   tireDecay: { enabled: true, start: 18, perCar: 0.8, min: 10, parts: ['tire','wheel'] },   // parts：dropWeights の id（wheel＝ホイール、tire＝タイヤ。合体品 tire_wheel は落ちてこない）
   bodyOnDemand: false,      // v5k は false。true にすると前の版と同じく、ローリングシャシー（赤✚）があってボディがどこにもないときだけボディを「次」に出す
@@ -134,6 +137,7 @@ const CONFIG = {
   mechanicForceSec: 20,     // 不良品がこの秒数以上箱にあれば、次は必ず整備士（必ず出したら時計は0に戻る）
   mechanicForceCooldown: 30, // 必ず出す整備士は、前に必ず出した時からこの秒数たつまで出さない（6%の偶然は別）
   mechanicMax: 1,           // 同時に出る最大数
+  mechanicCooldownSec: 0,   // v5o：整備士が出たあと（偶然も20秒の必ずも）この秒数は次の整備士を出さない。0＝なし（案は10）。URL ?mechcd=10
   mechanicRepairs: 1,       // 1人が直せる数
   // 整備士は落としたあと自分では動かない（ふつうの丸い部品と同じ）。不良品に触れたら直して消える。直さなければ箱に残る（帰らない）
   mechanicLandedCounts: false, // 箱に着地して残っている整備士を「同時に出る最大数」に数えるか（false＝数えない。数えると残った整備士で次が出なくなる）
@@ -172,7 +176,8 @@ const CONFIG = {
   // rightPhase：右の箱の位相のずれ（0＝左右対称に同時に真ん中へ、0.5＝交互）
   // v5l：動いているときの当たり判定は「描いたごみ箱」（中心から 22×binScale）＋ hitPadPx。壁とごみ箱のあいだは ふつうに落とす場所（仕様 B-3・E-5）。
   //   v5m：hitOuterPx＝外側（壁側）の当たり範囲（ごみ箱の中心から px）。そのまま使う（v5l は min(hitOuterPx, 内側) で内側の値に切られていた）。null なら内側と同じ。ごみ箱が壁に近く、外側のはしが箱の壁より外なら、そこから外はぜんぶごみ箱
-  binMove: { enabled: 'round2', speedPxPerSec: 40, rangePx: 100, pattern: 'sine', hitOuterPx: 18, hitPadPx: 4, rightPhase: 0 },
+  binMove: { enabled: 'round2', speedPxPerSec: 40, rangePx: 100, pattern: 'sine', hitOuterPx: 18, hitPadPx: 4, rightPhase: 0,
+    gapGuard: true, gapLatchPx: 8 },   // v5o：壁とごみ箱のあいだ（すきま）に狙いを置いたら、ごみ箱がそこへ動いてきても捨てない（指を gapLatchPx より動かしたら判定し直す）
   // --- 2周目以降（v5k・docs/round2_parts_spec.md B）---
   // トレーラー（いちばん上の車）を良品で出庫すると次の周へ：車は軽トラから、売上・レベルの数字・出庫台数・箱の中の部品はそのまま、
   // 床は roundFloorReset（v5l：'all'＝全部0から。'claims'＝v5k までのクレーム分だけ）。トレーラーを出すたびに繰り返す
@@ -186,9 +191,10 @@ const CONFIG = {
     //   min／max は下限／上限（null／Infinity＝なし）。係数の調整：perCar 0.20／2.0／0.02 → 下げるなら 0.15／1.5／0.015、上げるなら 0.25／2.5／0.025
     shipped: {
       countBad: true,
-      dropTime:  { zero:6.0, first:5.5, perCar:-0.15,  perMin:-0.05, min:0.9,  max:null },   // 落とすまでの時間（秒）
-      defect:    { zero:0,   first:5,   perCar:1.5,    perMin:0.5,   min:0,    max:80 },     // 不良品の率（%）
-      floorRise: { zero:0,   first:0,   perCar:0.015,  perMin:0.02,  min:0,    max:null },   // 床の上がり（箱の高さの割合）。クレーム分と合わせて riseMax まで
+      // v5o：perCar を元の 0.20／2.0／0.02 に戻す（v5l〜v5n は 13台トレーラー用に 0.15／1.5／0.015）。URL ?perCar=0.2,2,0.02（落とす時間は自動でマイナス）／?perCar=lite（0.15,1.5,0.015）
+      dropTime:  { zero:6.0, first:5.5, perCar:-0.20,  perMin:-0.05, min:0.9,  max:null },   // 落とすまでの時間（秒）
+      defect:    { zero:0,   first:5,   perCar:2.0,    perMin:0.5,   min:0,    max:80 },     // 不良品の率（%）
+      floorRise: { zero:0,   first:0,   perCar:0.02,   perMin:0.02,  min:0,    max:null },   // 床の上がり（箱の高さの割合）。クレーム分と合わせて riseMax まで
       zeroFallbackSec: 120,   // 0台のまま開始からこの秒数をすぎると、落とす時間と床に「1分ごと」の分だけ効かせる（v5j の floorStartFallbackSec 120 と同じ考え。0＝使わない＝0台のあいだずっと 6秒・床0）
       riseMax: 0.70,   // shipped のときの床の上限（時間＋クレーム。time のときは CONFIG.riseMax 0.50）
     },
@@ -199,7 +205,14 @@ const CONFIG = {
   roundFloorReset: 'all',
   // v5l：ドアの吸い寄せ（仕様 E'）。ドア・ボンネット（screw）と ボディ付きの車台（body_car）の縁どうしが gapPx 以内で、
   //   ドアを車台の中心へ ドアの重さ×forceMul の力で毎フレーム引く。maxSec 秒たっても付かなければやめる（離れてもう一度近づけばやり直し）。あふれ線より上では引かない
-  doorMagnet: { enabled: true, gapPx: 16, forceMul: 0.0008, maxSec: 0.4 },
+  //   v5o：gapPx 16→24、forceMul 0.0008→0.0012。retrySec：付かずに終わったら、その秒数あとに（まだ gapPx 以内なら）もう一度引く（何度でも）。0＝やり直さない
+  //   URL ?magGap=24 ?magForce=0.0012 ?magSec=0.4 ?magRetry=3 で上書き
+  doorMagnet: { enabled: true, gapPx: 24, forceMul: 0.0012, maxSec: 0.4, retrySec: 3 },
+  // v5o（仕様 H）：車の丸の大きさは車のランクで変わる（ランク1＝軽トラ … 8＝トレーラー）。当たりと絵は同じ大きさ
+  //   完成車（出庫のときの丸）：carRadiusBase + carRadiusPerRank×(ランク−1) → 90…118。車体（シャーシ付き・ドア前 body_car）：bodyCarRadiusBase + bodyCarRadiusPerRank×(ランク−1) → 74…95
+  //   PerRank 0 で v5n と同じ（90／74）。URL ?carR=90,4 ?bodyR=74,3（1つだけなら base）。ランクは部品ができたときのレベルのランク
+  carRadiusBase: 90, carRadiusPerRank: 4,
+  bodyCarRadiusBase: 74, bodyCarRadiusPerRank: 3,
   roundOnTrailer: true,     // false にすると周回しない（前の版と同じ：トレーラーのまま続く）
   startRound: 1,            // QA用：2以上にすると新しいゲームをその周（軽トラから）で始める。ふつうは1
   // 周ごとの数字：table[0]＝1周目（null は上の設定のまま）、table[1]＝2周目、table[2]＝3周目。
@@ -312,7 +325,15 @@ function recipeResult(ka, kb){
   for (const [, x, y, out] of RECIPES) if ((x===a && y===b) || (x===b && y===a)) return K[out];
   return -1;
 }
-const R = k => ITEMS[k].r;
+// v5o：body_car と car はランクで大きさが変わる（rank：0〜7。省略＝いまのレベルのランク）
+const curRank = () => (typeof state !== 'undefined' && state && state.level) ? Math.max(0, Math.min(CAR_VALUES.length-1, rankForLevel(state.level))) : 0;
+function rankRadius(k, rank){
+  if (rank == null) rank = curRank();
+  if (k === K.car) return CONFIG.carRadiusBase + CONFIG.carRadiusPerRank*rank;
+  if (k === K.body_car) return CONFIG.bodyCarRadiusBase + CONFIG.bodyCarRadiusPerRank*rank;
+  return ITEMS[k].r;
+}
+const R = (k, rank) => rankRadius(k, rank);
 const DEFECTABLE = ITEMS.filter(it=>it.defectable).map(it=>it.i);
 function pickWeighted(wobj, onlyKeys){
   const ent = Object.entries(wobj).filter(([id,w]) => w>0 && (!onlyKeys || onlyKeys.includes(K[id])));
@@ -690,7 +711,8 @@ function mechanicCount(){
   if (state.next && state.next.k===K.mechanic) n++;
   return n;
 }
-const mechanicAllowed = () => state.cars >= 1 && gameBodies().some(b=>b.bad) && mechanicCount() < CONFIG.mechanicMax;
+const mechanicCooldownOk = () => !(CONFIG.mechanicCooldownSec > 0) || state.lastMechAt == null || state.elapsed - state.lastMechAt >= CONFIG.mechanicCooldownSec;   // v5o
+const mechanicAllowed = () => state.cars >= 1 && gameBodies().some(b=>b.bad) && mechanicCount() < CONFIG.mechanicMax && mechanicCooldownOk();
 // 必ず出す整備士：不良品が20秒以上（前に必ず出した時からは時計を0に戻す）＋前に必ず出してから30秒
 const defectAge = b => state.elapsed - Math.max(b.bornT, state.forceClock);
 const mechanicForced = () => mechanicAllowed() && state.elapsed - state.lastForcedT >= CONFIG.mechanicForceCooldown && gameBodies().some(b => b.bad && defectAge(b) >= CONFIG.mechanicForceSec);
@@ -723,12 +745,25 @@ function bodyNeeded(){  // ローリングシャシーがあってボディが�
   const hasBody = bs.some(b => b.k===K.body) || [state.current, state.next].some(p => p && p.k===K.body);
   return hasRolling && !hasBody;
 }
+// v5o：直近のふつうの部品（不良品・整備士をのぞく）を覚える（hingeBoost 'pity' 用）
 function randPiece(lv){
+  const pc = randPieceRaw(lv);
+  if (state && !pc.bad && pc.k !== K.mechanic){ const h = state.normalHist || (state.normalHist = []); h.push(ITEMS[pc.k].id); const n = Math.max(1, (CONFIG.hingeBoost||{}).pityN || 6); while (h.length > n) h.shift(); }
+  return pc;
+}
+function hingePityActive(){
+  const hb = CONFIG.hingeBoost; if (!hb || !hb.enabled || hb.condition !== 'pity' || !state.running) return false;
+  const n = Math.max(1, hb.pityN || 6), h = state.normalHist || [];
+  if (h.length < n || h.slice(-n).includes('hinge')) return false;
+  return gameBodies().some(b => b.k === K.body_car && !b.bad);
+}
+function randPieceRaw(lv){
   if (state.running){
     const forced = mechanicForced();
-    if (forced || (mechanicAllowed() && Math.random() < mechanicChanceNow())){ state.mechanicsSpawned++;
+    if (forced || (mechanicAllowed() && Math.random() < mechanicChanceNow())){ state.mechanicsSpawned++; state.lastMechAt = state.elapsed;
       if (forced){ state.mechForced++; state.lastForcedT = state.elapsed; state.forceClock = state.elapsed; } else state.mechRandom++; toast(L().mechanic, '#fff'); sfx('mechanic_in'); return piece(K.mechanic); }
     { const ing = CONFIG.bodyOnDemand && bodyNeeded() && bodyIngredient(); if (ing) return piece(K[ing]); }   // v5k：ボディは落ちない → 足りない紫の部品（外板／窓ガラス）を出す
+    if (hingePityActive()){ state.hingePity = (state.hingePity||0) + 1; return piece(K.hinge); }   // v5o：'pity'
     if (defectsAllowed() && Math.random()*100 < defectChance()) return piece(pickWeighted(CONFIG.dropWeights, DEFECTABLE), true);   // v5n：不良品は素の割合のまま
     const help = diffCars() < 1 ? CONFIG.helpChanceFirst : (diffCars() <= CONFIG.helpEarlyCars ? CONFIG.helpChanceEarly : CONFIG.helpChance);
     const need = neededParts();
@@ -742,7 +777,21 @@ function hingeBoostActive(){
   const bs = gameBodies().filter(b => !b.bad && !b.mech);
   const cars = bs.filter(b => b.k === K.body_car).length; if (!cars) return false;
   if (hb.condition === 'any') return true;
-  return cars > bs.filter(b => b.k === K.screw || b.k === K.hinge).length;   // 'deficit'（既定）
+  if (hb.condition === 'pity') return false;   // v5o：'pity' は割合を変えず randPiece で次を ちょうつがいにする（hingePityActive）
+  if (hb.condition === 'nearby') return cars > hingeNearbyCount();
+  return cars > bs.filter(b => b.k === K.screw || b.k === K.hinge).length;   // 'deficit'（v5m・v5n の既定）
+}
+// v5o：どれかの良品 body_car の中心から（その車の半径＋nearPx）以内に中心がある良品のドア・ボンネット＋ちょうつがいの数
+function hingeNearbyCount(){
+  const near = (CONFIG.hingeBoost||{}).nearPx != null ? CONFIG.hingeBoost.nearPx : 80;
+  const bs = gameBodies().filter(b => !b.bad && !b.mech), cars = bs.filter(b => b.k === K.body_car);
+  return bs.filter(b => (b.k === K.screw || b.k === K.hinge) && cars.some(c => Math.hypot(c.position.x-b.position.x, c.position.y-b.position.y) <= (c.circleRadius || ITEMS[c.k].r) + near)).length;
+}
+// v5o：各条件がいま成り立つか（ボットの計測用）
+function hingeConditions(){
+  const bs = gameBodies().filter(b => !b.bad && !b.mech), cars = bs.filter(b => b.k === K.body_car).length, dh = bs.filter(b => b.k === K.screw || b.k === K.hinge).length;
+  const n = Math.max(1, (CONFIG.hingeBoost||{}).pityN || 6), h = state.normalHist || [];
+  return { cars, any: cars > 0, deficit: cars > 0 && cars > dh, nearby: cars > 0 && cars > hingeNearbyCount(), pity: cars > 0 && h.length >= n && !h.slice(-n).includes('hinge') };
 }
 function dropWeightsNow(){
   const on = hingeBoostActive(); state.hingeBoostOn = on; if (on) state.hingeBoostDraws = (state.hingeBoostDraws||0) + 1;
@@ -774,6 +823,16 @@ function mechanicChanceNow(round = (state ? state.round||1 : 1)){
 (function(){ try{ const q = new URLSearchParams(location.search);
   const t = q.get('tire'); if (t && (CONFIG.tireDecayPresets||{})[t]) CONFIG.tireDecayPreset = t;
   const m = q.get('mech'); if (m != null && m !== '' && isFinite(+m) && +m >= 0) CONFIG.mechanicRound2Pct = +m;
+  // v5o：?hinge=pity|nearby|deficit|any|off ?mechcd=10 ?magGap ?magForce ?magSec ?magRetry
+  const hg = q.get('hinge'); if (hg === 'off') CONFIG.hingeBoost.enabled = false; else if (['pity','nearby','deficit','any'].includes(hg)){ CONFIG.hingeBoost.enabled = true; CONFIG.hingeBoost.condition = hg; }
+  const num = k => { const v = q.get(k); return (v != null && v !== '' && isFinite(+v) && +v >= 0) ? +v : null; };
+  const hn = num('hingeNear'); if (hn != null) CONFIG.hingeBoost.nearPx = hn;
+  const pr2 = (key, bk, pk) => { const v = q.get(key); if (!v) return; const a = v.split(',').map(Number); if (a.length >= 1 && isFinite(a[0]) && a[0] > 0) CONFIG[bk] = a[0]; if (a.length >= 2 && isFinite(a[1]) && a[1] >= 0) CONFIG[pk] = a[1]; };
+  pr2('carR', 'carRadiusBase', 'carRadiusPerRank'); pr2('bodyR', 'bodyCarRadiusBase', 'bodyCarRadiusPerRank');
+  const pc = q.get('perCar'); if (pc){ const v = pc === 'lite' ? [0.15,1.5,0.015] : (pc === 'orig' ? [0.2,2,0.02] : pc.split(',').map(Number));
+    if (v.length === 3 && v.every(x => isFinite(x) && x >= 0)){ const sh = CONFIG.difficulty.shipped; sh.dropTime.perCar = -v[0]; sh.defect.perCar = v[1]; sh.floorRise.perCar = v[2]; } }
+  const cd = num('mechcd'); if (cd != null) CONFIG.mechanicCooldownSec = cd;
+  [['magGap','gapPx'],['magForce','forceMul'],['magSec','maxSec'],['magRetry','retrySec']].forEach(([u,k]) => { const v = num(u); if (v != null) CONFIG.doorMagnet[k] = v; });
 }catch(e){} })();
 function dropLimitAt(n, min = elapsedMin()){   // n＝完成車の台数、min＝経過分
   if (diffBasis() === 'shipped') return shippedVal('dropTime', n);   // n＝出荷台数＋周の足し分
@@ -900,7 +959,7 @@ function shipCar(x, y, bad){
   state.shipping.push({x, y, phase:0, rank, value, bad, smokeT:0});
   tutStep('tut_car', CONFIG.tutMsgSec);   // 3：最初の車
   let seq = 0;   // お金 → 札 → お知らせ の順に少しずつずらす
-  if (value){ moneyPop(x, y - R(K.car) - 10, `+${fmtYen(value)}`); seq += CONFIG.seqGap; }
+  if (value){ moneyPop(x, y - carRadiusFor(rank) - 10, `+${fmtYen(value)}`); seq += CONFIG.seqGap; }
   if (bad){
     state.carsBad++; state.claims++; state.goodStreak = 0;
     clampClaims();
@@ -975,8 +1034,11 @@ function doorMagnetStep(){
     const key = d.id + ':' + best.id; seen.add(key);
     let rec = state.magnet.get(key);
     if (!rec){ rec = { t0:state.elapsed, done:false, door:d.id, car:best.id }; state.magnet.set(key, rec); state.magnetPulls++; }
-    if (rec.done) continue;
-    if (state.elapsed - rec.t0 > mg.maxSec){ rec.done = true; state.magnetGiveUp++; continue; }   // maxSec たっても付かない：やめる
+    if (rec.done){   // v5o：付かずに終わった → retrySec 秒たってまだ近ければ、もう一度
+      if (!(mg.retrySec > 0) || state.elapsed - rec.doneAt < mg.retrySec) continue;
+      rec.t0 = state.elapsed; rec.done = false; rec.tries = (rec.tries||1) + 1; state.magnetRetries = (state.magnetRetries||0) + 1;
+    }
+    if (state.elapsed - rec.t0 > mg.maxSec){ rec.done = true; rec.doneAt = state.elapsed; state.magnetGiveUp++; continue; }   // maxSec たっても付かない：やめる
     const dx = best.position.x - d.position.x, dy = best.position.y - d.position.y, len = Math.hypot(dx, dy) || 1, f = d.mass*mg.forceMul;
     Matter.Body.applyForce(d, d.position, { x:f*dx/len, y:f*dy/len });
   }
@@ -1057,6 +1119,21 @@ function binSideAt(rawX){
   if (rawX >= z.right[0] && rawX <= z.right[1]) return 1;
   return 0;
 }
+// v5o：すきま（壁とごみ箱のあいだ）に置いた狙いは、ごみ箱が動いてきてもふつうに落とす（仕様 B-3）。指を gapLatchPx より動かすと判定し直す
+function binSideFor(rawX){
+  const s = binSideAt(rawX), bm = CONFIG.binMove || {};
+  if (!binsMoving() || !bm.gapGuard){ state.gapLatch = null; return s; }
+  const L = state.gapLatch, lim = bm.gapLatchPx != null ? bm.gapLatchPx : 8;
+  if (L && Math.abs(rawX - L.x) <= lim){   // すきまに置いた指がほぼ止まっている：ごみ箱が来ても（通りすぎて戻ってきても）捨てない
+    if (s !== 0 && !L.hit){ state.gapGuarded = (state.gapGuarded||0) + 1; L.hit = true; }
+    return 0;
+  }
+  state.gapLatch = null;
+  if (s !== 0) return s;   // 指をごみ箱の上へ動かした：捨てる（当たり範囲は v5m のまま）
+  const side = rawX < binX(-1) ? -1 : (rawX > binX(1) ? 1 : 0);   // ごみ箱より壁がわ＝すきま
+  if (side) state.gapLatch = { side, x:rawX };
+  return 0;
+}
 const BIN_DRAW_R = 22;   // drawBin の丸の半径（binScale をかける前）
 function binHitZones(){   // 動くごみ箱の当たり範囲 [左端, 右端]。外側のはしが箱の壁に届くなら、そこから外は全部
   const bm = CONFIG.binMove || {}, r = BIN_DRAW_R*CONFIG.binScale, pad = bm.hitPadPx != null ? bm.hitPadPx : CONFIG.binTouchMargin;
@@ -1068,7 +1145,7 @@ function binHitZones(){   // 動くごみ箱の当たり範囲 [左端, 右端]�
 function setAim(rawX){
   const r = R(state.current.k);
   state.rawX = rawX;
-  state.bin = binSideAt(rawX);
+  state.bin = binSideFor(rawX);
   state.aimX = clampAim(rawX, r);
 }
 const clampAim = (x, r) => Math.max(BOX.left+r, Math.min(BOX.right-r, x));
@@ -1118,7 +1195,7 @@ function drop(auto){
     makePart(p.k, x, HOLD_Y, { bad:p.bad, auto:true });
     state.idleCount++; state.manualSinceIdle = 0;     // 時間切れが続くほど次の制限時間が短くなる
   } else {
-    if (binsMoving()) state.bin = binSideAt(state.rawX);   // 動くごみ箱：離した瞬間の箱の位置で判定
+    if (binsMoving()) state.bin = binSideFor(state.rawX);   // 動くごみ箱：離した瞬間の箱の位置で判定（v5o：すきまの狙いは捨てない）
     if (state.bin !== 0) discard(p); else { makePart(p.k, state.aimX, HOLD_Y, { bad:p.bad }); sfx('drop'); }
     if (state.idleCount && ++state.manualSinceIdle >= CONFIG.idleReset){ state.idleCount = 0; state.manualSinceIdle = 0; }
   }
@@ -1216,7 +1293,7 @@ function loop(now){
     state.elapsed += dt;
     if (binsMoving()){   // 動くごみ箱：実時間で動かす。指を止めていても箱の位置に合わせて判定し直す
       state.binT += rdt;
-      if (state.current) state.bin = binSideAt(state.rawX);
+      if (state.current) state.bin = binSideFor(state.rawX);
     }
     state.dropClock += rdt;   // 連続投下の間隔は実時間で数える（スロー中も0.6秒）
     if (state.canDrop){
@@ -1299,12 +1376,17 @@ function debris(x, y, n){
   }
 }
 // 出庫の車の位置：合体した場所で大きく表示 → レーンへ降りる → 画面の端まで走り去る
+// v5o（仕様 H）：出庫の丸と絵は車のランクの大きさ（レーンを走る大きさ 42 はそのまま）
+const isTrailerRank = rank => rank === CAR_VALUES.length - 1;
+const carRadiusFor = rank => R(K.car, rank);
 function shipPos(s){
-  const W = CONFIG.W, CR = R(K.car);
+  const W = CONFIG.W, CR = carRadiusFor(s.rank), LS = 42;
   if (s.phase<0.35) return { x:s.x, y:s.y, size: CR*(0.6+0.4*Math.min(1,s.phase/0.15)) };
-  if (s.phase<0.8){ const k=(s.phase-0.35)/0.45; return { x:s.x, y:s.y+(LANE_Y-s.y)*k*k, size: CR + (42-CR)*k }; }
-  const k=(s.phase-0.8)/1.5; return { x:s.x+(W+120-s.x)*k*k, y:LANE_Y, size:42 };
+  if (s.phase<0.8){ const k=(s.phase-0.35)/0.45; return { x:s.x, y:s.y+(LANE_Y-s.y)*k*k, size: CR + (LS-CR)*k }; }
+  const k=(s.phase-0.8)/1.5; return { x:s.x+(W+120-s.x)*k*k, y:LANE_Y, size:LS };
 }
+// v5o：出庫の車の絵の大きさ（drawCar と同じ式。テスト用）
+function carSpriteSize(rank, size){ const r = (CAR_RANKS[rank] && CAR_RANKS[rank].img.ok) ? CAR_RANKS[rank] : CAR_RANKS[0]; const im = r.img; const w = size*2.6*r.scale; return { w, h: im && im.ok ? w*im.height/im.width : null, nativeW: im && im.naturalWidth, nativeH: im && im.naturalHeight }; }
 
 function drawEmoji(em, x, y, r){
   ctx.font = `${Math.round(r*1.5)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
@@ -1332,8 +1414,8 @@ function drawPlaceholder(it, c, r){
   ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.lineWidth=Math.max(3, r*0.18); ctx.strokeStyle=c.hex; ctx.stroke();
   ctx.save(); if (it.id==='hinge') ctx.translate(0, r*0.02); drawMark(c.mark, r*0.42); ctx.restore();
 }
-function drawPart(k, bad, x, y, angle, now, tier, bye){
-  const it = ITEMS[k], r = it.r;
+function drawPart(k, bad, x, y, angle, now, tier, bye, rr){
+  const it = ITEMS[k], r = rr || R(k);   // v5o：箱の中の部品は当たりの半径（circleRadius）で描く
   ctx.save(); ctx.translate(x,y); ctx.rotate(angle||0);
   const im = artFor(k, bad, tier || tierFor(state.level), bye);
   if (im){ const s = r*2*CONFIG.badgeImgScale; ctx.drawImage(im, -s/2, -s/2, s, s); }
@@ -1454,8 +1536,8 @@ function draw(now){
     ctx.save(); ctx.translate(CONFIG.nextX, CONFIG.nextY); ctx.scale(sc, sc); drawPart(state.next.k, state.next.bad, 0, 0, 0, now); ctx.restore(); }
   for (const b of gameBodies()){
     if (b.mech){
-      drawPart(b.k, false, b.position.x, b.position.y, 0, now, 'root');
-    } else drawPart(b.k, b.bad, b.position.x, b.position.y, b.angle, now, b.art);
+      drawPart(b.k, false, b.position.x, b.position.y, 0, now, 'root', undefined, b.circleRadius);
+    } else drawPart(b.k, b.bad, b.position.x, b.position.y, b.angle, now, b.art, undefined, b.circleRadius);
   }
   drawBin(-1, now); drawBin(1, now);
   if (state.running && state.overflowT>0 && overflowInGrace()){   // 最初の1分：あふれそうの文字（猶予中だけ・部品より手前）
@@ -1740,8 +1822,10 @@ window.QR = { get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPE
   get roundBanner(){return state.roundBanner;}, get levelBase(){return state.levelBase;},
   get binPositions(){ return { left:binX(-1), right:binX(1), y:CONFIG.binY, r:BIN_DRAW_R*CONFIG.binScale, moving:binsMoving(), t:state.binT }; },
   binHitZones, roundFloorAll, roundFloorRise, roundShipped, roundMin, get floorRiseNow(){ return +riseFrac().toFixed(4); }, get floorTimeRiseNow(){ return +timeRiseFrac().toFixed(4); },
-  doorMagnetStep, updateTitle, get magnet(){ return { pulls:state.magnetPulls, attach:state.magnetAttach, giveUp:state.magnetGiveUp, active:state.magnet.size }; },
+  doorMagnetStep, updateTitle, get magnet(){ return { pulls:state.magnetPulls, attach:state.magnetAttach, giveUp:state.magnetGiveUp, retries:state.magnetRetries||0, active:state.magnet.size }; },
   setBinTime(t){ state.binT = t; },
+  binSideFor, get gapLatch(){ return state.gapLatch; }, get gapGuarded(){ return state.gapGuarded||0; }, hingePityActive, hingeNearbyCount, hingeConditions, randPieceRaw, mechanicCooldownOk,
+  get normalHist(){ return state.normalHist||[]; }, shipPos, carRadiusFor, carSpriteSize, isTrailerRank, CAR_RANKS, rankRadius, curRank, drawPart, get hingePity(){ return state.hingePity||0; },
   dropWeightsFor, tireWeightAt, tireDecayParams, mechanicChanceNow,
   get tirePreset(){ return CONFIG.tireDecayPreset; }, setTirePreset(p){ if ((CONFIG.tireDecayPresets||{})[p] || p === 'custom') CONFIG.tireDecayPreset = p; return CONFIG.tireDecayPreset; },
   get mechRound2Pct(){ return CONFIG.mechanicRound2Pct; }, setMechRound2Pct(v){ CONFIG.mechanicRound2Pct = v; return v; },
