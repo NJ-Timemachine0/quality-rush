@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Quality Rush Ver0.4</title>
+<title>Quality Rush Ver0.5</title>
 <style>
   html,body{margin:0;height:100%;background:#1b2330;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center}
@@ -104,6 +104,12 @@ const CONFIG = {
   //   condition：'deficit'＝箱の中の「ボディ付きの車台」(body_car) の数 ＞ 箱の中のドア・ボンネット＋ちょうつがい（不良品はのぞく）の数 のとき（既定）／'any'＝body_car が1つでもあるとき（比較用）
   //   weight：そのあいだの ちょうつがいの割合（ふだんは dropWeights.hinge）
   hingeBoost: { enabled: true, weight: 10, condition: 'deficit' },   // v5m 既定：'deficit'（仕様 E''）
+  // v5n（仕様 F）：タイヤ・タイヤホイールの出る割合を n（＝diffN()：出荷台数＋3×(周−1)）で下げる。各 max(min, start − perCar×(n−1))。n<1 は start
+  //   tireDecayPreset：'weak'／'mid'（標準）／'strong'。URL ?tire=weak|mid|strong で上書き。'custom' のときは tireDecay の数字をそのまま使う
+  //   不良品（DEFECTABLE から選ぶ）は今までどおり素の dropWeights（タイヤの減りは効かせない）
+  tireDecayPreset: 'mid',
+  tireDecayPresets: { weak:{ start:18, perCar:0.5, min:12 }, mid:{ start:18, perCar:0.8, min:10 }, strong:{ start:18, perCar:1.2, min:8 } },
+  tireDecay: { enabled: true, start: 18, perCar: 0.8, min: 10, parts: ['tire','wheel'] },   // parts：dropWeights の id（wheel＝ホイール、tire＝タイヤ。合体品 tire_wheel は落ちてこない）
   bodyOnDemand: false,      // v5k は false。true にすると前の版と同じく、ローリングシャシー（赤✚）があってボディがどこにもないときだけボディを「次」に出す
   // --- 足りない部品を助ける：箱で相手を待っている部品の相手を出す確率 ---
   helpChanceFirst: 1.0,     // 足りない相手部品を出す確率：1台目の車が完成するまで（完成車0台のとき）
@@ -124,6 +130,7 @@ const CONFIG = {
   badCarCountsForLevel: false, // 不良車をレベルアップの台数に数えるか
   // --- 整備士 ---
   mechanicChance: 0.06,     // 1回の投下ごとに整備士が「次」に出る確率（1台目の完成後、箱に不良品があるときだけ）
+  mechanicRound2Pct: 3,     // v5n（仕様 F）：2周目からの整備士の確率（％）。4／3（標準）／2。null＝mechanicChance のまま。URL ?mech=4|3|2 で上書き。必ず出す整備士（20秒）は別
   mechanicForceSec: 20,     // 不良品がこの秒数以上箱にあれば、次は必ず整備士（必ず出したら時計は0に戻る）
   mechanicForceCooldown: 30, // 必ず出す整備士は、前に必ず出した時からこの秒数たつまで出さない（6%の偶然は別）
   mechanicMax: 1,           // 同時に出る最大数
@@ -719,10 +726,10 @@ function bodyNeeded(){  // ローリングシャシーがあってボディが�
 function randPiece(lv){
   if (state.running){
     const forced = mechanicForced();
-    if (forced || (mechanicAllowed() && Math.random() < CONFIG.mechanicChance)){ state.mechanicsSpawned++;
+    if (forced || (mechanicAllowed() && Math.random() < mechanicChanceNow())){ state.mechanicsSpawned++;
       if (forced){ state.mechForced++; state.lastForcedT = state.elapsed; state.forceClock = state.elapsed; } else state.mechRandom++; toast(L().mechanic, '#fff'); sfx('mechanic_in'); return piece(K.mechanic); }
     { const ing = CONFIG.bodyOnDemand && bodyNeeded() && bodyIngredient(); if (ing) return piece(K[ing]); }   // v5k：ボディは落ちない → 足りない紫の部品（外板／窓ガラス）を出す
-    if (defectsAllowed() && Math.random()*100 < defectChance()) return piece(pickWeighted(CONFIG.dropWeights, DEFECTABLE), true);
+    if (defectsAllowed() && Math.random()*100 < defectChance()) return piece(pickWeighted(CONFIG.dropWeights, DEFECTABLE), true);   // v5n：不良品は素の割合のまま
     const help = diffCars() < 1 ? CONFIG.helpChanceFirst : (diffCars() <= CONFIG.helpEarlyCars ? CONFIG.helpChanceEarly : CONFIG.helpChance);
     const need = neededParts();
     if (need.length && Math.random() < help){ state.helped = (state.helped||0) + 1; return piece(K[need[Math.floor(Math.random()*need.length)]]); }
@@ -739,8 +746,35 @@ function hingeBoostActive(){
 }
 function dropWeightsNow(){
   const on = hingeBoostActive(); state.hingeBoostOn = on; if (on) state.hingeBoostDraws = (state.hingeBoostDraws||0) + 1;
-  return on ? Object.assign({}, CONFIG.dropWeights, { hinge: CONFIG.hingeBoost.weight }) : CONFIG.dropWeights;
+  return dropWeightsFor(diffN(), on);
 }
+// v5n：n と hingeBoost からの出る割合（タイヤの減り＋ちょうつがいの boost を両方かける）
+function dropWeightsFor(n = diffN(), hinge = false){
+  const w = Object.assign({}, CONFIG.dropWeights), td = tireDecayParams();
+  if (td) { const v = tireWeightAt(n); (CONFIG.tireDecay.parts || ['tire','wheel']).forEach(id => { if (id in w) w[id] = v; }); }
+  if (hinge) w.hinge = CONFIG.hingeBoost.weight;
+  return w;
+}
+function tireDecayParams(){
+  const td = CONFIG.tireDecay; if (!td || !td.enabled) return null;
+  const pr = CONFIG.tireDecayPreset && CONFIG.tireDecayPreset !== 'custom' && (CONFIG.tireDecayPresets||{})[CONFIG.tireDecayPreset];
+  return pr ? Object.assign({}, td, pr) : td;
+}
+function tireWeightAt(n = diffN()){
+  const td = tireDecayParams(); if (!td) return CONFIG.dropWeights.tire;
+  const v = td.start - td.perCar*(Math.max(1, n) - 1);
+  return Math.round(Math.max(td.min, v)*1000)/1000;
+}
+// v5n：整備士の確率（1周目は mechanicChance、2周目からは mechanicRound2Pct％）
+function mechanicChanceNow(round = (state ? state.round||1 : 1)){
+  const p = CONFIG.mechanicRound2Pct;
+  return (round >= 2 && p != null && isFinite(p)) ? p/100 : CONFIG.mechanicChance;
+}
+// v5n：URL で候補を切りかえ（?tire=weak|mid|strong ?mech=4|3|2）
+(function(){ try{ const q = new URLSearchParams(location.search);
+  const t = q.get('tire'); if (t && (CONFIG.tireDecayPresets||{})[t]) CONFIG.tireDecayPreset = t;
+  const m = q.get('mech'); if (m != null && m !== '' && isFinite(+m) && +m >= 0) CONFIG.mechanicRound2Pct = +m;
+}catch(e){} })();
 function dropLimitAt(n, min = elapsedMin()){   // n＝完成車の台数、min＝経過分
   if (diffBasis() === 'shipped') return shippedVal('dropTime', n);   // n＝出荷台数＋周の足し分
   const byCars = n < 1 ? CONFIG.dropTimeStart : CONFIG.dropTimeFirst - CONFIG.dropTimeStep*(n-1);
@@ -913,7 +947,7 @@ function setStartRound(n){
   updateTitle();
 }
 // v5l：ページのタイトルに版と周（ゲーム中だけ「 - Round N」）
-const TITLE_BASE = 'Quality Rush Ver0.4';
+const TITLE_BASE = 'Quality Rush Ver0.5';   // v5n：Ver0.4→0.5
 function updateTitle(){
   const t = (state && state.round) ? `${TITLE_BASE} - Round ${state.round}` : TITLE_BASE;
   if (document.title !== t) document.title = t;
@@ -1708,6 +1742,9 @@ window.QR = { get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPE
   binHitZones, roundFloorAll, roundFloorRise, roundShipped, roundMin, get floorRiseNow(){ return +riseFrac().toFixed(4); }, get floorTimeRiseNow(){ return +timeRiseFrac().toFixed(4); },
   doorMagnetStep, updateTitle, get magnet(){ return { pulls:state.magnetPulls, attach:state.magnetAttach, giveUp:state.magnetGiveUp, active:state.magnet.size }; },
   setBinTime(t){ state.binT = t; },
+  dropWeightsFor, tireWeightAt, tireDecayParams, mechanicChanceNow,
+  get tirePreset(){ return CONFIG.tireDecayPreset; }, setTirePreset(p){ if ((CONFIG.tireDecayPresets||{})[p] || p === 'custom') CONFIG.tireDecayPreset = p; return CONFIG.tireDecayPreset; },
+  get mechRound2Pct(){ return CONFIG.mechanicRound2Pct; }, setMechRound2Pct(v){ CONFIG.mechanicRound2Pct = v; return v; },
   get lastDropAt(){return state.lastDropAt;}, get overflowSince(){return state.overflowSince;}, get firstCarAt(){return state.firstCarAt;} };
 </script>
 </body>
