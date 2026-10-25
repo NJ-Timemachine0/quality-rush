@@ -96,10 +96,14 @@ const CONFIG = {
   idleMinDrop: 1.5,         // そのときのいちばん短い制限時間（秒）。全体の最短 dropTimeMin より短くはならない
   idleReset: 1,             // 自分で落とす（捨てる）とこの回数で元に戻る
   // --- 部品（半径。色と形は COLORS／ITEM_DEFS） ---
-  radius: { screw:30, wheel:18, tire:24, suspension:20, frame:30, engine:36, body:44, panel:26, glass:20, hinge:18,
+  radius: { screw:30, wheel:18, tire:24, suspension:20, frame:30, engine:36, body:44, panel:26, glass:20, hinge:16,   /* v5m：ちょうつがい 18→16 */
             tire_wheel:28, suspension_frame:36, engine_chassis:50, rolling_chassis:62, body_car:74, car:90, mechanic:22 },
   // 落ちてくる部品の割合。v5k：ボディとドア・ボンネット（screw）は落ちてこない（紫の外板・窓ガラス・ちょうつがいから組み立てる）
-  dropWeights:     { screw:0, wheel:18, tire:18, suspension:11, frame:11, engine:11, body:0, panel:14, glass:9, hinge:12 },   // v5l：ちょうつがい 8→12（半径 14→18）
+  dropWeights:     { screw:0, wheel:18, tire:18, suspension:11, frame:11, engine:11, body:0, panel:16, glass:11, hinge:6 },   // v5m：外板 14→16、窓ガラス 9→11、ちょうつがい 12→6（半径 18→16）（仕様 E''）
+  // v5m：ちょうつがいを出やすくする（仕様 E''）。部品を1つ出すたびに数え直す。enabled:false で無効
+  //   condition：'deficit'＝箱の中の「ボディ付きの車台」(body_car) の数 ＞ 箱の中のドア・ボンネット＋ちょうつがい（不良品はのぞく）の数 のとき（既定）／'any'＝body_car が1つでもあるとき（比較用）
+  //   weight：そのあいだの ちょうつがいの割合（ふだんは dropWeights.hinge）
+  hingeBoost: { enabled: true, weight: 10, condition: 'deficit' },   // v5m 既定：'deficit'（仕様 E''）
   bodyOnDemand: false,      // v5k は false。true にすると前の版と同じく、ローリングシャシー（赤✚）があってボディがどこにもないときだけボディを「次」に出す
   // --- 足りない部品を助ける：箱で相手を待っている部品の相手を出す確率 ---
   helpChanceFirst: 1.0,     // 足りない相手部品を出す確率：1台目の車が完成するまで（完成車0台のとき）
@@ -160,8 +164,8 @@ const CONFIG = {
   // hitOuterPx：動いているとき、ごみ箱の中心から外側（壁側）へどこまでをごみ箱に入れる範囲にするか（内側は止まっているときと同じ）
   // rightPhase：右の箱の位相のずれ（0＝左右対称に同時に真ん中へ、0.5＝交互）
   // v5l：動いているときの当たり判定は「描いたごみ箱」（中心から 22×binScale）＋ hitPadPx。壁とごみ箱のあいだは ふつうに落とす場所（仕様 B-3・E-5）。
-  //   hitOuterPx は外側（壁側）の上限として残す（min(hitOuterPx, 見た目の半径＋hitPadPx)）。ごみ箱が壁に近く、外側のはしが箱の壁より外なら、そこから外はぜんぶごみ箱
-  binMove: { enabled: 'round2', speedPxPerSec: 40, rangePx: 100, pattern: 'sine', hitOuterPx: 24, hitPadPx: 4, rightPhase: 0 },
+  //   v5m：hitOuterPx＝外側（壁側）の当たり範囲（ごみ箱の中心から px）。そのまま使う（v5l は min(hitOuterPx, 内側) で内側の値に切られていた）。null なら内側と同じ。ごみ箱が壁に近く、外側のはしが箱の壁より外なら、そこから外はぜんぶごみ箱
+  binMove: { enabled: 'round2', speedPxPerSec: 40, rangePx: 100, pattern: 'sine', hitOuterPx: 18, hitPadPx: 4, rightPhase: 0 },
   // --- 2周目以降（v5k・docs/round2_parts_spec.md B）---
   // トレーラー（いちばん上の車）を良品で出庫すると次の周へ：車は軽トラから、売上・レベルの数字・出庫台数・箱の中の部品はそのまま、
   // 床は roundFloorReset（v5l：'all'＝全部0から。'claims'＝v5k までのクレーム分だけ）。トレーラーを出すたびに繰り返す
@@ -723,7 +727,19 @@ function randPiece(lv){
     const need = neededParts();
     if (need.length && Math.random() < help){ state.helped = (state.helped||0) + 1; return piece(K[need[Math.floor(Math.random()*need.length)]]); }
   }
-  return piece(pickWeighted(CONFIG.dropWeights));
+  return piece(pickWeighted(dropWeightsNow()));
+}
+// v5m：いまの出る割合（hingeBoost の条件のときだけ ちょうつがいを boost.weight に）
+function hingeBoostActive(){
+  const hb = CONFIG.hingeBoost; if (!hb || !hb.enabled || !state.running) return false;
+  const bs = gameBodies().filter(b => !b.bad && !b.mech);
+  const cars = bs.filter(b => b.k === K.body_car).length; if (!cars) return false;
+  if (hb.condition === 'any') return true;
+  return cars > bs.filter(b => b.k === K.screw || b.k === K.hinge).length;   // 'deficit'（既定）
+}
+function dropWeightsNow(){
+  const on = hingeBoostActive(); state.hingeBoostOn = on; if (on) state.hingeBoostDraws = (state.hingeBoostDraws||0) + 1;
+  return on ? Object.assign({}, CONFIG.dropWeights, { hinge: CONFIG.hingeBoost.weight }) : CONFIG.dropWeights;
 }
 function dropLimitAt(n, min = elapsedMin()){   // n＝完成車の台数、min＝経過分
   if (diffBasis() === 'shipped') return shippedVal('dropTime', n);   // n＝出荷台数＋周の足し分
@@ -885,7 +901,7 @@ function startNextRound(){
   preloadTiers(state.level);
   state.roundBanner = { round:state.round, mult:roundVal('salesMult'), t:-0.6, dur:CONFIG.roundBannerSec, sfx:false };
   const w = 0.6 + CONFIG.roundBannerSec;
-  if (floorAll) toast(L().floorRestored, '#9fe', 0, w);   // v5l：'all' は必ず「床がもとに戻った！」
+  if (floorAll) toast(L().floorRestored, '#9fe', 0, w, { keep:true });   // v5l：'all' は必ず「床がもとに戻った！」／v5m：keep＝あふれても捨てない
   else if (floorWasUp) toast(L().floorReset, '#9fe', 0, w);   // 'claims'（v5k）：クレームで上がっていた床が戻ったときだけ
   updateTitle();
   if (binsMoving()) toast(L().binMoving, '#ffd84a', 0, w);
@@ -947,14 +963,19 @@ function levelUp(){
 }
 // お知らせ：1つずつ順番に（重ねない）。wait 秒たってから並ぶ
 function toast(text, color, dur, wait, opt = {}){
-  const t = { text, color, t:0, dur: CONFIG.bannerTime, wait: wait||0, level: !!opt.level, streak: !!opt.streak };
+  const t = { text, color, t:0, dur: CONFIG.bannerTime, wait: wait||0, level: !!opt.level, streak: !!opt.streak, keep: !!opt.keep };   // v5m：keep＝あふれても捨てない
   if (opt.bad) state.toasts = state.toasts.filter(o => !o.streak);   // 不良車のときは古い「3台連続で良品！」を捨てる
   if (opt.front){   // 待ちがあれば先頭へ（いま出ているものは最後まで出す）
     const showing = state.toasts.findIndex(o => !(o.wait > 0) && o.t > 0);
     let i = showing >= 0 ? showing+1 : 0; while (state.toasts[i] && state.toasts[i].level) i++;   // LEVEL UP 同士は順番どおり
     state.toasts.splice(i, 0, t);
   } else state.toasts.push(t);
-  if (state.toasts.length > CONFIG.bannerQueueMax + 1) state.toasts.splice(state.toasts.length-2, 1);
+  if (state.toasts.length > CONFIG.bannerQueueMax + 1){   // v5m：あふれたら、新しいものの1つ前から さかのぼって keep でない待ちを1つ捨てる（keep は捨てない）
+    const head = state.toasts.findIndex(o => !(o.wait > 0) && o.t > 0);
+    let i = state.toasts.length - 2; while (i >= 0 && (state.toasts[i].keep || i === head)) i--;
+    if (i >= 0) state.toasts.splice(i, 1);
+    else if (!t.keep) state.toasts.splice(state.toasts.indexOf(t), 1);   // 全部 keep なら新しいほうを捨てる（keep 同士はあふれてもよい）
+  }
 }
 // お金の文字の高さ：車の位置から上へ、moneyTopY で消える（お知らせの帯より上へは行かない）
 const moneyY = (m, k) => { const y0 = Math.max(m.y, CONFIG.moneyTopY + 12); return y0 + (CONFIG.moneyTopY - y0)*Math.min(1, k); };
@@ -1005,7 +1026,7 @@ function binSideAt(rawX){
 const BIN_DRAW_R = 22;   // drawBin の丸の半径（binScale をかける前）
 function binHitZones(){   // 動くごみ箱の当たり範囲 [左端, 右端]。外側のはしが箱の壁に届くなら、そこから外は全部
   const bm = CONFIG.binMove || {}, r = BIN_DRAW_R*CONFIG.binScale, pad = bm.hitPadPx != null ? bm.hitPadPx : CONFIG.binTouchMargin;
-  const inner = r + pad, outer = Math.min(bm.hitOuterPx != null ? bm.hitOuterPx : inner, inner);
+  const inner = r + pad, outer = bm.hitOuterPx != null ? bm.hitOuterPx : inner;   // v5m：設定した外側の値をそのまま使う（v5l の Math.min(…, inner) をやめた）
   const lx = binX(-1), rx = binX(1);
   const lo = lx - outer <= BOX.left ? -Infinity : lx - outer, hi = rx + outer >= BOX.right ? Infinity : rx + outer;
   return { left:[lo, lx + inner], right:[rx - inner, hi], r, inner, outer };
@@ -1665,7 +1686,7 @@ lang = detectLang();
 setupWorld(); newState(); renderOverlay(); renderPause(); requestAnimationFrame(loop);
 // テスト用：window.QR でゲーム状態を確認できます
 window.QR = { get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPES, COLORS, recipeResult, makePart, shipCar, levelUp, fmtYen, clampAim, BOX, HOLD_Y,
-  get assetsReady(){return assetsReady;}, defectsAllowed, mechanicAllowed, mechanicCount, randPiece, piece, dropLimit, dropLimitAt, defectChance, floorTarget, riseFrac, diffCars, neededParts, mechanicForced, disposalCostOf, disposalPartCost, currentCarPrice, CAR_VALUES, CAR_NAMES, timeRiseFrac, claimCap, carsToLevelUp, moneyY, toast, defectAge,
+  get assetsReady(){return assetsReady;}, binHitZones, hingeBoostActive, dropWeightsNow, defectsAllowed, mechanicAllowed, mechanicCount, randPiece, piece, dropLimit, dropLimitAt, defectChance, floorTarget, riseFrac, diffCars, neededParts, mechanicForced, disposalCostOf, disposalPartCost, currentCarPrice, CAR_VALUES, CAR_NAMES, timeRiseFrac, claimCap, carsToLevelUp, moneyY, toast, defectAge,
   tierFor, artFor, ART, FX, UI, binLiftFor, pauseGame, resumeGame, setMuted, get muted(){return muted;}, sfx, TITLES, TEXT, gameBodies, startGame, startEnding, flowImg,
   get audioUnlocked(){return audioUnlocked;}, sfxBuf, sfxEl,
   floorStartT, overflowLimit, overflowInGrace, dropIntervalOk,
