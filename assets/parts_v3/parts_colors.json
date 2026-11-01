@@ -3,7 +3,13 @@
   "color": "gray",
   "hex": "#9aa4b1",
   "mark": "circle",
-  "defect": true
+  "defect": false,
+  "radius": 38,
+  "made_from": [
+   "door_window+panel",
+   "door_window+glass",
+   "door_window+hinge"
+  ]
  },
  "wheel": {
   "color": "blue",
@@ -27,7 +33,8 @@
   "color": "green",
   "hex": "#2fb35a",
   "mark": "triangle",
-  "defect": false
+  "defect": false,
+  "name": "subframe"
  },
  "engine": {
   "color": "orange",
@@ -40,9 +47,7 @@
   "hex": "#e03a3a",
   "mark": "cross",
   "defect": false,
-  "made_from": [
-   "panel+glass"
-  ]
+  "note": "painted body falls from sky"
  },
  "tire_wheel": {
   "color": "yellow",
@@ -57,22 +62,25 @@
   "defect": false
  },
  "engine_chassis": {
-  "color": "yellow",
-  "hex": "#f2c230",
-  "mark": "diamond",
-  "defect": false
- },
- "rolling_chassis": {
   "color": "red",
   "hex": "#e03a3a",
   "mark": "cross",
-  "defect": false
+  "defect": false,
+  "note": "エンジン付き足回り"
+ },
+ "engine_body": {
+  "color": "yellow",
+  "hex": "#f2c230",
+  "mark": "diamond",
+  "defect": false,
+  "note": "エンジン付きボディ / marriage"
  },
  "body_car": {
   "color": "gray",
   "hex": "#9aa4b1",
   "mark": "circle",
-  "defect": false
+  "defect": false,
+  "note": "走れる車"
  },
  "mechanic": {
   "color": "white",
@@ -82,13 +90,15 @@
   "special": "repair",
   "radius": 22
  },
- "door": {
-  "color": "gray",
-  "hex": "#9aa4b1",
-  "mark": "circle",
+ "door_window": {
+  "color": "purple",
+  "hex": "#9b59d6",
+  "mark": "heart",
   "defect": false,
   "radius": 30,
+  "note": "組みかけドア",
   "made_from": [
+   "panel+glass",
    "panel+hinge",
    "glass+hinge"
   ]
@@ -98,20 +108,22 @@
   "hex": "#9b59d6",
   "mark": "heart",
   "defect": false,
-  "radius": 26
+  "radius": 26,
+  "name": "door panel"
  },
  "glass": {
   "color": "purple",
   "hex": "#9b59d6",
   "mark": "heart",
   "defect": true,
-  "radius": 20
+  "radius": 20,
+  "name": "door glass"
  },
  "hinge": {
   "color": "purple",
   "hex": "#9b59d6",
   "mark": "heart",
   "defect": true,
-  "radius": 14
+  "radius": 16
  }
 }

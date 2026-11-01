@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Quality Rush Ver0.5</title>
+<title>Quality Rush Ver0.6 (DR3)</title>
 <style>
   html,body{margin:0;height:100%;background:#1b2330;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center}
@@ -23,7 +23,8 @@
   #startBtn:disabled{background:#8a7a40;color:#444;opacity:.8}
   #shareBtn{font-size:16px;padding:9px 20px;background:#2f7fe0;color:#fff}
   #shareBtn.hidden{display:none}
-  .flowBig{display:block;width:min(400px,96vw);margin:6px auto;border-radius:10px}   /* v5k: 8列・960px の図（以前は min(340px,92vw)） */
+  .flowBig.wd{width:min(450px,96vw);}
+.flowBig{display:block;width:min(400px,96vw);margin:6px auto;border-radius:10px}   /* v5k: 8列・960px の図（以前は min(340px,92vw)） */
   .flowBig.fb{display:none}
   .res{font-size:17px;line-height:1.55}
   .title{font-size:22px;color:#ffd84a;font-weight:bold}
@@ -39,7 +40,7 @@
 <div id="wrap">
   <canvas id="c"></canvas>
   <div id="overlay" class="ov">
-    <h1>Quality Rush</h1>
+    <h1>Quality Rush Ver0.6 (DR3)</h1>
     <img id="flowTitle" class="flowBig" src="assets/ui/assembly_flow.webp" alt="" onerror="this.className='flowBig fb'">
     <div id="ovText"></div>
     <button id="startBtn" disabled>読み込み中…</button>
@@ -96,10 +97,10 @@ const CONFIG = {
   idleMinDrop: 1.5,         // そのときのいちばん短い制限時間（秒）。全体の最短 dropTimeMin より短くはならない
   idleReset: 1,             // 自分で落とす（捨てる）とこの回数で元に戻る
   // --- 部品（半径。色と形は COLORS／ITEM_DEFS） ---
-  radius: { screw:30, wheel:18, tire:24, suspension:20, frame:30, engine:36, body:44, panel:26, glass:20, hinge:16,   /* v5m：ちょうつがい 18→16 */
-            tire_wheel:28, suspension_frame:36, engine_chassis:50, rolling_chassis:62, body_car:74, car:90, mechanic:22 },
-  // 落ちてくる部品の割合。v5k：ボディとドア・ボンネット（screw）は落ちてこない（紫の外板・窓ガラス・ちょうつがいから組み立てる）
-  dropWeights:     { screw:0, wheel:18, tire:18, suspension:11, frame:11, engine:11, body:0, panel:16, glass:11, hinge:6 },   // v5m：外板 14→16、窓ガラス 9→11、ちょうつがい 12→6（半径 18→16）（仕様 E''）
+  radius: { screw:38, door_window:30, wheel:18, tire:24, suspension:20, frame:30, engine:36, body:44, panel:26, glass:20, hinge:16,
+            tire_wheel:28, suspension_frame:36, engine_chassis:50, engine_body:62, rolling_chassis:62, body_car:74, car:90, mechanic:22 },   // DR3：ドア38、組みかけドア(door_window)30、エンジン付きボディ62。URL ?doorR=38
+  // DR3 部品表v1.1：塗装済みボディは落ちてくる（weight 11）。ドア・組みかけドアは落ちない
+  dropWeights:     { screw:0, wheel:18, tire:18, suspension:11, frame:11, engine:11, body:11, panel:16, glass:11, hinge:6, door_window:0 },
   // v5m：ちょうつがいを出やすくする（仕様 E''）。部品を1つ出すたびに数え直す。enabled:false で無効
   //   condition：'deficit'＝箱の中の「ボディ付きの車台」(body_car) の数 ＞ 箱の中のドア・ボンネット＋ちょうつがい（不良品はのぞく）の数 のとき（既定）／'any'＝body_car が1つでもあるとき（比較用）
   //   weight：そのあいだの ちょうつがいの割合（ふだんは dropWeights.hinge）
@@ -113,7 +114,7 @@ const CONFIG = {
   tireDecayPreset: 'strong',   // v5o：標準を strong に（?tire=mid で v5n の標準）
   tireDecayPresets: { weak:{ start:18, perCar:0.5, min:12 }, mid:{ start:18, perCar:0.8, min:10 }, strong:{ start:18, perCar:1.2, min:8 } },
   tireDecay: { enabled: true, start: 18, perCar: 0.8, min: 10, parts: ['tire','wheel'] },   // parts：dropWeights の id（wheel＝ホイール、tire＝タイヤ。合体品 tire_wheel は落ちてこない）
-  bodyOnDemand: false,      // v5k は false。true にすると前の版と同じく、ローリングシャシー（赤✚）があってボディがどこにもないときだけボディを「次」に出す
+  bodyOnDemand: false,      // DR3：ボディは常に落ちる（v1.1）。true は旧ローリング用（未使用）
   // --- 足りない部品を助ける：箱で相手を待っている部品の相手を出す確率 ---
   helpChanceFirst: 1.0,     // 足りない相手部品を出す確率：1台目の車が完成するまで（完成車0台のとき）
   helpChanceEarly: 0.7,     // 足りない相手部品を出す確率：完成車が helpEarlyCars 台以下のとき（ここを変えるだけで調整できる）
@@ -124,7 +125,7 @@ const CONFIG = {
   disposalMode: 'ratio',    // v5h は 'ratio' で確定（'fixed' は予備・未使用）。 'ratio'＝いま作っている車の売値×割合 ／ 'fixed'＝部品ごとの金額×車の格の倍率
   // ratio：いま完成したら売れる車の値段 × この割合（部品1つごとに1万円単位で四捨五入）。screw はドア・ボンネットの部品
   // v5k：ボディ（外板＋窓ガラス＝20%）とドア・ボンネット（外板＋ちょうつがい＝13%）は中の部品の合計なので、ここには書かない
-  disposalRatio: { wheel:0.03, tire:0.03, suspension:0.07, frame:0.12, engine:0.25, panel:0.10, glass:0.10, hinge:0.03, mechanic:0 },
+  disposalRatio: { wheel:0.03, tire:0.03, suspension:0.07, frame:0.12, engine:0.25, body:0.20, panel:0.10, glass:0.10, hinge:0.03, door_window:0.07, screw:0.13, mechanic:0 },  // DR3：ボディ20%、組みかけドア7%、ドア13%
   disposalRound: 10000,     // 何円単位で丸めるか（ratio のとき）
   // fixed：部品ごとの金額（円）× disposalTierMult（車の格：mass＝ふつう Lv1-4／luxury＝高級 Lv5-6／sport＝スポーツ Lv7〜）
   disposalCost: { screw:100000, wheel:200000, tire:200000, suspension:400000, frame:600000, engine:1200000, body:2500000, panel:1250000, glass:1250000, hinge:100000, mechanic:0 },   // 予備（未使用）
@@ -177,7 +178,9 @@ const CONFIG = {
   // v5l：動いているときの当たり判定は「描いたごみ箱」（中心から 22×binScale）＋ hitPadPx。壁とごみ箱のあいだは ふつうに落とす場所（仕様 B-3・E-5）。
   //   v5m：hitOuterPx＝外側（壁側）の当たり範囲（ごみ箱の中心から px）。そのまま使う（v5l は min(hitOuterPx, 内側) で内側の値に切られていた）。null なら内側と同じ。ごみ箱が壁に近く、外側のはしが箱の壁より外なら、そこから外はぜんぶごみ箱
   binMove: { enabled: 'round2', speedPxPerSec: 40, rangePx: 100, pattern: 'sine', hitOuterPx: 18, hitPadPx: 4, rightPhase: 0,
-    gapGuard: true, gapLatchPx: 8 },   // v5o：壁とごみ箱のあいだ（すきま）に狙いを置いたら、ごみ箱がそこへ動いてきても捨てない（指を gapLatchPx より動かしたら判定し直す）
+    gapGuard: true, gapLatchPx: 8,
+    // DR3：3周目は上下にもサイン波（仮：箱の高さの約10%、周期約3秒）
+    vertEnabled: 'round3', vertAmpFrac: 0.10, vertPeriodSec: 3 },
   // --- 2周目以降（v5k・docs/round2_parts_spec.md B）---
   // トレーラー（いちばん上の車）を良品で出庫すると次の周へ：車は軽トラから、売上・レベルの数字・出庫台数・箱の中の部品はそのまま、
   // 床は roundFloorReset（v5l：'all'＝全部0から。'claims'＝v5k までのクレーム分だけ）。トレーラーを出すたびに繰り返す
@@ -214,7 +217,15 @@ const CONFIG = {
   carRadiusBase: 90, carRadiusPerRank: 4,
   bodyCarRadiusBase: 74, bodyCarRadiusPerRank: 3,
   roundOnTrailer: true,     // false にすると周回しない（前の版と同じ：トレーラーのまま続く）
+  maxRound: 3,              // DR3：この周のトレーラー良品出荷でゲームクリア（決算）。4周目なし
   startRound: 1,            // QA用：2以上にすると新しいゲームをその周（軽トラから）で始める。ふつうは1
+  // --- DR3 決算（総合点・仮）---
+  settleTargetGood: 39,     // 生産量の目標台数（3周分・仮）
+  settleClaimCostRatio: 0.5,// クレーム1件＝その車の値段×この割合（仮）
+  settleMarginTarget: 0.90, // 利益率の満点ライン（90%）
+  settleScore: { prod:300, quality:300, margin:300, roundBonus:100 },
+  settleRanks: [ {min:900, rank:'S'}, {min:750, rank:'A'}, {min:600, rank:'B'}, {min:0, rank:'C'} ],
+  personalRankMax: 10,
   // 周ごとの数字：table[0]＝1周目（null は上の設定のまま）、table[1]＝2周目、table[2]＝3周目。
   // 表より先の周は、表の最後の値に step を1周ごとに足して cap で止める
   //   salesMult：売値の倍率（廃棄コストもこの倍率込みの売値に比例）／defectMax：不良品の上限％／dropTimeMin：いちばん短い制限時間（秒）
@@ -233,6 +244,23 @@ const CONFIG = {
   roundBannerY: 372,        // 帯（round_banner.webp）の上の位置
   roundBannerFontPx: 30,
   binArrowsSec: 1.9, binArrowsBlink: 0.25, binArrowsDy: 30,   // 周のはじめ：ゴミ箱の上で ←→ を点滅（秒・点滅の間隔）
+  // --- v5p：わかりやすさ ---
+  // doorKinds：ドアとしてふるまう部品（ボディ付きの車台に付いて完成車・吸い寄せ・ちょうつがい boost の数）。stackAs：ちがう部品でも同じ部品として重なる組（[A, B, できるもの]）
+  windowDoor: false,        // DR3：窓つきドア経路は廃止。door_window＝組みかけドア（紫）
+  doorKinds: ['screw'],     // 完成車に付くドアは screw のみ
+  stackAs: [],              // DR3：組みかけドア同士は同種合体、ドアとキットは色が違うので不要
+  mergeSameBig: ['engine_chassis','engine_body','body_car','door_window','screw','car'],  // 「1つにまとまった」
+  holdLabel: true,          // 持っている部品の上に名前（紫は「名前：ヒント」）を1行で出す。URL ?label=0 で消す
+  holdLabelFontPx: 12, holdLabelH: 18, holdLabelGap: 5, holdLabelMinY: 97,   // MinY：帯の中心の一番上（ゲージ・「次」と重ならない）
+  holdLabelDefectTag: true, // 不良品は名前のあとに（不良品）
+  partnerGlow: true,        // 持っている部品とくっつく箱の中の部品をゆっくり光らせる。URL ?glow=0 で消す
+  partnerGlowUntilRank: 3,  // この車ランク（1＝軽トラ、3＝セダン）を1台出庫したら、そのゲームではもう光らせない（2周目以降も光らない）。0＝ランクでは止めない。URL ?glowUntil=3
+  partnerGlowPeriodMs: 1200, partnerGlowColor: '255,236,120',
+  fallLabel: true, fallLabelSec: 1.2, fallLabelFontPx: 11,   // 落ちている部品（離したあと）にも名前。URL ?label=0 で両方消す
+  madeGlowSec: 2,           // 「○○ができた！」のとき、その相手（箱の中）を光らせる秒数（光らせる条件は partnerGlow と同じ）
+  newPartNotice: true,      // その部品がはじめて「次」に出たとき（1ゲーム1回ずつ）「新入荷！…」を出す。URL ?newpart=0 で消す
+  newPartBlockDrop: false, // true＝お知らせのあいだは指で離しても落とさない（あとで落とす）。false＝止めるのは時間（自動で落ちる）だけ
+  newPartSec: 1.0, newPartY: 276, newPartFontPx: 13, newPartH: 22,   // 「+N万円」が出ているあいだは待つ。出ているあいだは落とすまでの時間を止める（時間切れで新しい部品が落ちない）
   purpleHint: true,         // 紫の部品をはじめて持ったときに「ちょうつがいが入ればドア…」を出す（1ゲーム1回）
   roundShowFrom: 2,         // 結果画面の「到達：n周目」と称号の「×n」をこの周から出す
   binLift: 34,              // ゴミ箱モードで手持ち部品を浮かせる最大の高さ
@@ -268,21 +296,21 @@ const CONFIG = {
   sfxVolume: 0.6, sfxVolumeSoft: 0.4,
   // --- 部品の絵の仕様（レベルで変わる）。dir が null なら parts_v3 の直下をそのまま使う ---
   artTiers: [
-    { name:'mass',   from:1, dir:'assets/parts_v3/mass/',   files:['engine','wheel','wheel_bad','tire_wheel','screw','screw_bad','panel','glass','glass_bad','hinge','hinge_bad'] },
-    { name:'luxury', from:5, dir:'assets/parts_v3/luxury/', files:['engine','wheel','wheel_bad','tire_wheel','screw','screw_bad','panel','glass','glass_bad','hinge','hinge_bad'] },
+    { name:'mass',   from:1, dir:'assets/parts_v3/mass/',   files:['engine','wheel','wheel_bad','tire_wheel','screw','screw_bad','panel','glass','glass_bad','hinge','hinge_bad','door_window','door_window_bad'] },
+    { name:'luxury', from:5, dir:'assets/parts_v3/luxury/', files:['engine','wheel','wheel_bad','tire_wheel','screw','screw_bad','panel','glass','glass_bad','hinge','hinge_bad','door_window','door_window_bad'] },
     { name:'sport',  from:7, dir:null, files:[] },
   ],
   // 捨てたときの文字（「廃棄 −N円」は赤、不良品・整備士は緑）。黒いふちどりつき。位置はごみ箱から離す（左右の x と、持つ位置からの下の距離）
   discardBadColor: '#ff6b5e', discardGoodColor: '#5be37d', discardTextX: [135, 265], discardTextDY: 56,
   discardOutline: 'rgba(0,0,0,.8)', discardOutlineW: 3,
   // 部品の絵のファイル名（中のキー名 → 絵の名前）。screw（ドア・ボンネット）は door の絵を使う。_bad も同じ名前で探す
-  artFile: { screw:'door', panel:'panel', glass:'glass', hinge:'hinge' },
+  artFile: { screw:'door', panel:'panel', glass:'glass', hinge:'hinge', door_window:'door_window', engine_body:'engine_body' },
   // 絵がまだ届いていない部品（ここにある部品は画像を読みに行かず、紫の仮の絵を描く）。
   // あーとの badge_panel / badge_glass(_bad) / badge_hinge(_bad).webp が parts_v3 に入ったら、ここから消す
   // （仕様フォルダ mass/・luxury/ の絵もあれば、上の artTiers の files に 'panel','glass','glass_bad','hinge','hinge_bad' を足す）
   artPending: [],           // 絵がまだの部品（ここに入れると仮の絵を描き、画像を読まない）。v5k：絵は届いた
   // 不良品としては落ちてこないが、不良の絵（_bad）を使う部品。v5k：ドア・ボンネット（screw）は不良の窓ガラス・ちょうつがいから作ると不良になるので door_bad を使う
-  badArtAlso: ['screw'],
+  badArtAlso: ['screw','door_window'],   // DR3：ドア／組みかけドアは不良材料から作ると不良絵
   // --- 最初の1回だけの説明（docs/tutorial_spec.md） ---
   tutorialMode: 'auto',     // 'auto'＝まだ終えていない人だけ／'always'＝毎回出す（確認用）／'off'＝出さない
   tutMsgSec: 2,             // 3・5・6（車ができた・良品を捨てた・整備士）の一言を出す秒数（実時間）
@@ -306,22 +334,28 @@ const COLORS = {
   orange:{hex:'#f07a22', mark:'star'}, yellow:{hex:'#f2c230', mark:'diamond'}, red:{hex:'#e03a3a', mark:'cross'},
   white:{hex:'#ffffff', mark:'wrench'}, purple:{hex:'#9b59d6', mark:'heart'} };   // 紫（v5k）：外板・窓ガラス・ちょうつがい
 // 同じ色の2つは必ず合体：同じ部品同士→同じ部品1つ（お金なし）、違う部品同士→下のレシピ
-const ITEM_DEFS = [
+const ITEM_DEFS = [  // DR3 部品表v1.1（rolling_chassis は残すがレシピから外す）
   ['screw','gray',false], ['wheel','blue',true], ['tire','blue',true], ['suspension','green',true], ['frame','green',false],
   ['engine','orange',false], ['body','red',false], ['tire_wheel','yellow',false], ['suspension_frame','orange',false],
-  ['engine_chassis','yellow',false], ['rolling_chassis','red',false], ['body_car','gray',false], ['car','gray',false], ['mechanic','white',false],
-  ['panel','purple',false], ['glass','purple',true], ['hinge','purple',true] ];   // v5k：紫の部品（外板は不良品にならない）
+  ['engine_chassis','red',false], ['engine_body','yellow',false], ['rolling_chassis','red',false], ['body_car','gray',false], ['car','gray',false], ['mechanic','white',false],
+  ['panel','purple',false], ['glass','purple',true], ['hinge','purple',true], ['door_window','purple',false] ];
 const ITEMS = ITEM_DEFS.map(([id,color,defect],i)=>({ i, id, color, defectable:defect, r:CONFIG.radius[id] }));
 const K = {}; ITEMS.forEach(it => K[it.id] = it.i);
-const RECIPES = [ // [色, 部品A, 部品B, できるもの]。screw＝ドア・ボンネット（最後はボディ＋ドア・ボンネット→完成車）
-  ['blue','wheel','tire','tire_wheel'], ['green','frame','suspension','suspension_frame'],
-  ['orange','suspension_frame','engine','engine_chassis'], ['yellow','engine_chassis','tire_wheel','rolling_chassis'],
-  ['red','rolling_chassis','body','body_car'], ['gray','body_car','screw','car'],
-  // v5k：紫。外板＋窓ガラス→ボディ、外板＋ちょうつがい→ドア・ボンネット、窓ガラス＋ちょうつがい→ドア・ボンネット（窓つきドア）
-  ['purple','panel','glass','body'], ['purple','panel','hinge','screw'], ['purple','glass','hinge','screw'] ];
+const RECIPES = [ // DR3 v1.1：[色, A, B, できるもの]
+  ['blue','wheel','tire','tire_wheel'],
+  ['green','frame','suspension','suspension_frame'],
+  ['orange','suspension_frame','engine','engine_chassis'],
+  // 紫3つでドア：違う紫2つ→組みかけドア、組みかけドア＋紫→ドア
+  ['purple','panel','glass','door_window'], ['purple','panel','hinge','door_window'], ['purple','glass','hinge','door_window'],
+  ['purple','door_window','panel','screw'], ['purple','door_window','glass','screw'], ['purple','door_window','hinge','screw'],
+  // マリッジ：塗装済みボディ＋エンジン付き足回り → エンジン付きボディ
+  ['red','body','engine_chassis','engine_body'],
+  ['yellow','engine_body','tire_wheel','body_car'],
+  ['gray','body_car','screw','car'] ];
 function recipeResult(ka, kb){
   if (ka === kb) return ka;
   const a = ITEMS[ka].id, b = ITEMS[kb].id;
+  for (const [x, y, out] of (CONFIG.stackAs||[])) if ((x===a && y===b) || (x===b && y===a)) return K[out];   // v5p：ドア＋窓つきドア
   for (const [, x, y, out] of RECIPES) if ((x===a && y===b) || (x===b && y===a)) return K[out];
   return -1;
 }
@@ -334,6 +368,9 @@ function rankRadius(k, rank){
   return ITEMS[k].r;
 }
 const R = (k, rank) => rankRadius(k, rank);
+// v5p：ドアとしてふるまう部品か（CONFIG.doorKinds）／同じ部品として重なるか（stackAs）
+const isDoorK = k => k != null && ITEMS[k] != null && (CONFIG.doorKinds||['screw']).includes(ITEMS[k].id);
+const isStackPair = (ka, kb) => ka === kb || (CONFIG.stackAs||[]).some(([x, y]) => (ITEMS[ka].id===x && ITEMS[kb].id===y) || (ITEMS[ka].id===y && ITEMS[kb].id===x));
 const DEFECTABLE = ITEMS.filter(it=>it.defectable).map(it=>it.i);
 function pickWeighted(wobj, onlyKeys){
   const ent = Object.entries(wobj).filter(([id,w]) => w>0 && (!onlyKeys || onlyKeys.includes(K[id])));
@@ -510,7 +547,7 @@ function drawCar(x, y, size, rank){
 // 文言：新しい・変わった文言は release/ui_text_en_draft.md のキー名のまま
 const TEXT = {
   ja:{ start:'スタート', loading:'読み込み中…', retry:'もう1回',
-    intro:'指でスライドして位置を決め、離すと部品が落ちます。<br>同じ色の部品がくっつくと組み立てが進む！ 完成車は出庫されます。<br>⚠️さびて×の付いた不良品は、左右の端の🗑️へ捨てよう。',
+    intro:'指でスライドして位置を決め、離すと部品が落ちます。<br>同じ色の部品がくっつくと組み立てが進む！ 完成車は出庫されます。<br>⚠️さびて×の付いた不良品は、左右の端の不適合品箱🗑️へ捨てよう。',
     over:'箱があふれた！ゲームオーバー', almostFull:'あふれそう！', cars:'出庫', sales:'売上', drop:'投下まで', next:'次', vroom:'ブォーン!', levelUp:'LEVEL UP!',
     hint:'⚠️さびて×の付いた部品は端の🗑️へ！', okDiscard:'不良品を廃棄！', scrap:v=>`廃棄 −${fmtYen(v)}`,
     toNext:n=>`次の車まで あと${n}台`, maxRank:'最高ランク！', rankUp:n=>`${n} にランクアップ！`, perCar:v=>`1台 ${v}`,
@@ -521,13 +558,26 @@ const TEXT = {
     complaints:'クレーム', goodStreak:'連続良品', complaintTag:'クレーム！',
     titleLine:t=>`称号：${t}`, topCarLine:c=>`最高到達：${c}`, shipped:'出庫', unitCars:'台', time:'プレイ時間', none:'—',
     share:'結果をシェア', copied:'コピーしました', pause:'一時停止', resume:'つづける', soundOn:'🔊 音あり', soundOff:'🔇 音なし',
-    partNames:{ screw:'ドア・ボンネット', wheel:'ホイール', tire:'タイヤ', suspension:'サスペンション', frame:'フレーム', engine:'エンジン', body:'ボディ', car:'完成車', panel:'外板', glass:'窓ガラス', hinge:'ちょうつがい' },
-    floorReset:'ごほうび：床がもとに戻った！', floorRestored:'床がもとに戻った！', hint_purple:'ちょうつがいが入ればドア、入らなければボディ',
-    // 2周目（release/round2_text_draft.md のキー名・文のまま）
-    roundStart:n=>`${n}周目スタート！`, roundSub:'軽トラから作り直し。ゴミ箱が動くよ！', roundBonus:m=>`売上 ×${m}`, binMoving:'ゴミ箱が動いている！', roundsReached:n=>`到達：${n}周目`,
+    // v5p：部品の名前（release/hint_text_v5p.md の表・持っている部品の上に出す）
+    partNames:{ wheel:'ホイール', tire:'タイヤ', frame:'サブフレーム', suspension:'サスペンション', engine:'エンジン', panel:'ドアパネル', glass:'ドアガラス', hinge:'ちょうつがい', tire_wheel:'タイヤ付きホイール', suspension_frame:'足回り', engine_chassis:'エンジン付き足回り', engine_body:'エンジン付きボディ', rolling_chassis:'走る車台', body:'塗装済みボディ', body_car:'走れる車', screw:'ドア', door_window:'組みかけドア', mechanic:'整備士', car:'完成車' },
+    defectTag:'（不良品）',
+    holdHint:{ panel:'ちがう紫をくっつけると組みかけドア', glass:'ちがう紫をくっつけると組みかけドア', hinge:'ちがう紫をくっつけると組みかけドア', door_window:'＋紫をもう1つ＝ドア' },
+    holdHintWD:{},
+    made:{ tire_wheel:'タイヤ付きホイールができた！エンジン付きボディに付けよう', suspension_frame:'足回りができた！＋エンジン＝エンジン付き足回り',
+      engine_chassis:'エンジン付き足回りができた！＋塗装済みボディでマリッジ', engine_body:'エンジン付きボディ！＋タイヤ付きホイール＝走れる車',
+      door_window:'組みかけドアができた！あと紫1つでドア', screw:'ドアができた！＋走れる車＝完成車', body_car:'走れる車ができた！最後にドアを付けて出荷' },
+    holdSep:'：',
+    newPart:{ wheel:'新入荷！ホイール＋タイヤ＝タイヤ付きホイール', tire:'新入荷！タイヤ＋ホイール＝タイヤ付きホイール', frame:'新入荷！サブフレーム＋サスペンション＝足回り',
+      suspension:'新入荷！サスペンション＋サブフレーム＝足回り', engine:'新入荷！エンジン＋足回り＝エンジン付き足回り', body:'新入荷！ボディ＋エンジン付き足回り＝マリッジ！',
+      purple:'新入荷！紫を3つ集めるとドア' },
+    marriage:'マリッジ！', mergeSame:'1つにまとまった',
+    floorReset:'ごほうび：床がもとに戻った！', floorRestored:'床がもとに戻った！', hint_purple:'紫を3つ集めるとドア',
+    roundStart:n=>`${n}周目スタート！`, roundSub:'軽トラから作り直し。不適合品箱が動くよ！', roundBonus:m=>`売上 ×${m}`, binMoving:'不適合品箱が動いている！', roundsReached:n=>`到達：${n}周目`,
+    clear:'3周目クリア！', settle:'決算', unitsShipped:'出荷台数', unitsGood:'良品', unitsBad:'不良', profit:'利益', margin:'利益率', totalScore:'総合点', rankLabel:'ランク', personalRank:'個人ランキング', noRank:'まだ記録なし',
+    binName:'不適合品箱',
     // 最初の説明（release/tutorial_text_draft.md のキー名・文のまま）。tut_merge_ok・tut_bad_ok もりりーさん確定の文
     tut_move:'指で左右に動かして、はなすと落ちるよ', tut_merge:'同じ色の部品どうしをくっつけると組み上がる', tut_car:'部品が全部そろうと車が1台できる！',
-    tut_bad:'×の付いた部品は端のごみ箱へ', tut_scrap:'良い部品を捨てるとお金が減るよ', tut_mechanic:'整備士は不良品にぶつかると直してくれる',
+    tut_bad:'×の付いた部品は端の不適合品箱へ', tut_scrap:'良い部品を捨てるとお金が減るよ', tut_mechanic:'整備士は不良品にぶつかると直してくれる',
     tut_skip:'説明をとばす', howToPlay:'遊び方', tut_merge_ok:'いいね！', tut_bad_ok:'OK！不良品はただで捨てられるよ',
     shareText:r=>`Quality Rushで${r.cars}台を出庫、売上${fmtYen(r.sales)}！ 称号は「${r.title}」でした🚗 #QualityRush` },
   en:{ start:'Start', loading:'Loading…', retry:'Play again',
@@ -542,11 +592,24 @@ const TEXT = {
     complaints:'Complaints', goodStreak:'Good streak', complaintTag:'Complaint!',
     titleLine:t=>`Title: ${t}`, topCarLine:c=>`Top car: ${c}`, shipped:'Cars', unitCars:'', time:'Time', none:'—',
     share:'Share result', copied:'Copied!', pause:'Paused', resume:'Resume', soundOn:'🔊 Sound on', soundOff:'🔇 Sound off',
-    partNames:{ screw:'Door/Bonnet', wheel:'Wheel', tire:'Tire', suspension:'Suspension', frame:'Frame', engine:'Engine', body:'Body', car:'Car', panel:'Panel', glass:'Window glass', hinge:'Hinge' },
-    floorReset:'Bonus: the floor is reset!', floorRestored:'Floor restored!', hint_purple:'Hinge makes a door, no hinge makes a body',
-    roundStart:n=>`Round ${n} start!`, roundSub:'Back to the Kei truck. The bins are moving!', roundBonus:m=>`Sales ×${m}`, binMoving:'The bins are on the move!', roundsReached:n=>`Reached: Round ${n}`,
+    partNames:{ wheel:'Wheel', tire:'Tire', frame:'Subframe', suspension:'Suspension', engine:'Engine', panel:'Door Panel', glass:'Door Glass', hinge:'Hinge', tire_wheel:'Wheel Set', suspension_frame:'Suspension Set', engine_chassis:'Engine Unit', engine_body:'Body w/ Engine', rolling_chassis:'Drivable Chassis', body:'Painted Body', body_car:'Rolling Car', screw:'Door', door_window:'Door Kit', mechanic:'Mechanic', car:'Finished Car' },
+    defectTag:' (Defect)',
+    holdHint:{ panel:'+ another purple = Door Kit', glass:'+ another purple = Door Kit', hinge:'+ another purple = Door Kit', door_window:'+ 1 more purple = Door' },
+    holdHintWD:{},
+    made:{ tire_wheel:'Wheel Set! Attach it to Body w/ Engine', suspension_frame:'Suspension Set! + Engine = Engine Unit',
+      engine_chassis:'Engine Unit! + Painted Body = Marriage', engine_body:'Body w/ Engine! + Wheel Set = Rolling Car',
+      door_window:'Door Kit! 1 more purple = Door', screw:'Door! + Rolling Car = Finished Car', body_car:'Rolling Car! Add a Door to ship it' },
+    holdSep:': ',
+    newPart:{ wheel:'New part! Wheel + Tire = Wheel Set', tire:'New part! Tire + Wheel = Wheel Set', frame:'New part! Subframe + Suspension = Suspension Set',
+      suspension:'New part! Suspension + Subframe = Suspension Set', engine:'New part! Engine + Suspension Set = Engine Unit', body:'New part! Body + Engine Unit = Marriage!',
+      purple:'New part! 3 purples make a Door' },
+    marriage:'Marriage!', mergeSame:'Merged into one',
+    floorReset:'Bonus: the floor is reset!', floorRestored:'Floor restored!', hint_purple:'3 purples make a Door',
+    roundStart:n=>`Round ${n} start!`, roundSub:'Back to the Kei truck. The reject bins are moving!', roundBonus:m=>`Sales ×${m}`, binMoving:'Reject bins on the move!', roundsReached:n=>`Reached: Round ${n}`,
+    clear:'Round 3 cleared!', settle:'Settlement', unitsShipped:'Shipped', unitsGood:'Good', unitsBad:'Bad', profit:'Profit', margin:'Margin', totalScore:'Score', rankLabel:'Rank', personalRank:'Personal ranking', noRank:'No records yet',
+    binName:'Reject bin',
     tut_move:'Slide left or right, then let go to drop', tut_merge:'Match same-color parts to build them up', tut_car:'All parts in place makes a car!',
-    tut_bad:'Drag parts with × to the bin at either edge', tut_scrap:'Scrapping good parts costs you money', tut_mechanic:'The mechanic fixes a bad part it touches',
+    tut_bad:'Drag parts with × to the reject bin at either edge', tut_scrap:'Scrapping good parts costs you money', tut_mechanic:'The mechanic fixes a bad part it touches',
     tut_skip:'Skip tutorial', howToPlay:'How to play', tut_merge_ok:'Nice!', tut_bad_ok:'Good! Defects are free to scrap',
     shareText:r=>`I shipped ${r.cars} cars and made ${fmtYen(r.sales)} in Quality Rush! Title: ${r.title} 🚗 #QualityRush` },
 };
@@ -581,14 +644,15 @@ let engine, world, state, floorBody;
 
 function newState(){
   const s = { running:false, paused:false, ending:0, cars:0, carsGood:0, carsBad:0, carsThisLevel:0, sales:0, salesShown:0, countRate:0, countDelay:0,
-    level:1, discards:0, topRank:-1, rankUp:null,
+    level:1, discards:0, discardLoss:0, grossSales:0, claimCost:0, cleared:false, topRank:-1, rankUp:null,
     dropTimer:0, aimX:CONFIG.W/2, bin:0, current:null, next:null,
     canDrop:true, armed:false, overflowT:0, warnT:0, shipping:[], effects:[], popups:[], toasts:[], parts:[], elapsed:0,
     shake:0, flash:null, banner:null, hint:0, hintArmed:false, defectPending:false, queuedDrop:false, floorY:BOX.bottom,
     claims:0, claimSteps:0, goodStreak:0, money:[], tagDrops:[], repairs:0, mechanicsSpawned:0, mechForced:0, mechRandom:0, lastForcedT:-1e9, forceClock:-1e9, minDropLimit:99, idleCount:0, manualSinceIdle:0, slowmo:0, lastFloorTarget:BOX.bottom,
     firstCarAt:null, lastDropAt:-1e9, dropClock:0, ignoredDrops:0, overflowSince:null,
     round:1, levelBase:0, roundBanner:null, roundStartedAt:[], binT:0, rawX:CONFIG.W/2,
-    roundCars0:0, roundT0:0, magnet:new Map(), magnetPulls:0, magnetAttach:0, magnetGiveUp:0 };   // v5l：周に入ったときの出庫台数と時刻（床の式用）・ドアの吸い寄せ
+    roundCars0:0, roundT0:0, magnet:new Map(), magnetPulls:0, magnetAttach:0, magnetGiveUp:0,
+    glowOff:false, glowOffAt:null, glowOffWhy:null, newSeen:{}, newQueue:[], newCur:null, newShown:[], madeGlow:null, fall:null };   // v5p：光らせるのをやめたか・新入荷のお知らせ   // v5l：周に入ったときの出庫台数と時刻（床の式用）・ドアの吸い寄せ
   state = s;
   s.tut = tutNew(false);
   s.current = randPiece(1); s.next = randPiece(1);
@@ -684,7 +748,7 @@ function drawTutorial(now){
     ctx.fillStyle='#ffd84a'; ctx.font=`bold ${CONFIG.hintFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(L()[key], W/2, y+h/2, W-70);
     if (key === 'tut_move') drawEmoji('👆', W/2 + Math.sin(now/450)*90, y+h+34, 20);   // 指のマーク（左右に動く）
     if (key === 'tut_bad'){   // 両端のごみ箱を指す矢印
-      const bob = Math.sin(now/160)*5, by = CONFIG.binY;
+      const bob = Math.sin(now/160)*5, by = binY(-1);
       ctx.fillStyle='#ffd84a';
       [[-1, binX(-1) + 22], [1, binX(1) - 22]].forEach(([d, x]) => { x += -d*bob;
         ctx.beginPath(); ctx.moveTo(x + d*12, by); ctx.lineTo(x - d*6, by - 11); ctx.lineTo(x - d*6, by - 4); ctx.lineTo(x - d*22, by - 4);
@@ -735,15 +799,15 @@ function neededParts(){
   bs.forEach(b => (PARTNERS[ITEMS[b.k].id] || []).forEach(pid => want(pid, 0)));
   return [...need];
 }
-function bodyIngredient(){   // ボディの材料（外板＋窓ガラス）のうち、箱にも手持ちにもないもの。両方あれば null
-  const have = id => gameBodies().some(b => b.k===K[id] && !b.bad) || [state.current, state.next].some(p => p && p.k===K[id]);
-  const [a, b] = OUT_OF.body; return !have(a) ? a : (!have(b) ? b : null);   // 両方あれば null（出さない）
-}
-function bodyNeeded(){  // ローリングシャシーがあってボディがどこにもないとき
+function bodyNeeded(){  // DR3：エンジン付き足回りがあってボディがどこにもないとき（bodyOnDemand 用）
   const bs = gameBodies();
-  const hasRolling = bs.some(b => b.k===K.rolling_chassis);
+  const hasUnit = bs.some(b => b.k===K.engine_chassis);
   const hasBody = bs.some(b => b.k===K.body) || [state.current, state.next].some(p => p && p.k===K.body);
-  return hasRolling && !hasBody;
+  return hasUnit && !hasBody;
+}
+function bodyIngredient(){   // DR3：ボディは落ちてくる部品なので材料は不要。互換のため body を返す
+  const have = id => gameBodies().some(b => b.k===K[id] && !b.bad) || [state.current, state.next].some(p => p && p.k===K[id]);
+  return have('body') ? null : 'body';
 }
 // v5o：直近のふつうの部品（不良品・整備士をのぞく）を覚える（hingeBoost 'pity' 用）
 function randPiece(lv){
@@ -779,17 +843,17 @@ function hingeBoostActive(){
   if (hb.condition === 'any') return true;
   if (hb.condition === 'pity') return false;   // v5o：'pity' は割合を変えず randPiece で次を ちょうつがいにする（hingePityActive）
   if (hb.condition === 'nearby') return cars > hingeNearbyCount();
-  return cars > bs.filter(b => b.k === K.screw || b.k === K.hinge).length;   // 'deficit'（v5m・v5n の既定）
+  return cars > bs.filter(b => isDoorK(b.k) || b.k === K.hinge).length;   // 'deficit'（v5m・v5n の既定）
 }
 // v5o：どれかの良品 body_car の中心から（その車の半径＋nearPx）以内に中心がある良品のドア・ボンネット＋ちょうつがいの数
 function hingeNearbyCount(){
   const near = (CONFIG.hingeBoost||{}).nearPx != null ? CONFIG.hingeBoost.nearPx : 80;
   const bs = gameBodies().filter(b => !b.bad && !b.mech), cars = bs.filter(b => b.k === K.body_car);
-  return bs.filter(b => (b.k === K.screw || b.k === K.hinge) && cars.some(c => Math.hypot(c.position.x-b.position.x, c.position.y-b.position.y) <= (c.circleRadius || ITEMS[c.k].r) + near)).length;
+  return bs.filter(b => (isDoorK(b.k) || b.k === K.hinge) && cars.some(c => Math.hypot(c.position.x-b.position.x, c.position.y-b.position.y) <= (c.circleRadius || ITEMS[c.k].r) + near)).length;
 }
 // v5o：各条件がいま成り立つか（ボットの計測用）
 function hingeConditions(){
-  const bs = gameBodies().filter(b => !b.bad && !b.mech), cars = bs.filter(b => b.k === K.body_car).length, dh = bs.filter(b => b.k === K.screw || b.k === K.hinge).length;
+  const bs = gameBodies().filter(b => !b.bad && !b.mech), cars = bs.filter(b => b.k === K.body_car).length, dh = bs.filter(b => isDoorK(b.k) || b.k === K.hinge).length;
   const n = Math.max(1, (CONFIG.hingeBoost||{}).pityN || 6), h = state.normalHist || [];
   return { cars, any: cars > 0, deficit: cars > 0 && cars > dh, nearby: cars > 0 && cars > hingeNearbyCount(), pity: cars > 0 && h.length >= n && !h.slice(-n).includes('hinge') };
 }
@@ -832,6 +896,13 @@ function mechanicChanceNow(round = (state ? state.round||1 : 1)){
   const pc = q.get('perCar'); if (pc){ const v = pc === 'lite' ? [0.15,1.5,0.015] : (pc === 'orig' ? [0.2,2,0.02] : pc.split(',').map(Number));
     if (v.length === 3 && v.every(x => isFinite(x) && x >= 0)){ const sh = CONFIG.difficulty.shipped; sh.dropTime.perCar = -v[0]; sh.defect.perCar = v[1]; sh.floorRise.perCar = v[2]; } }
   const cd = num('mechcd'); if (cd != null) CONFIG.mechanicCooldownSec = cd;
+  // v5p：?doorR=38（ドア・窓つきドアの半径）?glow=0 ?glowUntil=3 ?label=0 ?newpart=0
+  const dr = num('doorR'); if (dr != null && dr > 0) (CONFIG.doorKinds||['screw']).forEach(id => { CONFIG.radius[id] = dr; if (K[id] != null) ITEMS[K[id]].r = dr; });
+  const off = k => q.get(k) === '0' || q.get(k) === 'off';
+  if (off('glow')) CONFIG.partnerGlow = false; else if (q.get('glow') === '1') CONFIG.partnerGlow = true;
+  const gu = num('glowUntil'); if (gu != null) CONFIG.partnerGlowUntilRank = Math.floor(gu);
+  if (off('label')) CONFIG.holdLabel = false;
+  if (off('newpart')) CONFIG.newPartNotice = false;
   [['magGap','gapPx'],['magForce','forceMul'],['magSec','maxSec'],['magRetry','retrySec']].forEach(([u,k]) => { const v = num(u); if (v != null) CONFIG.doorMagnet[k] = v; });
 }catch(e){} })();
 function dropLimitAt(n, min = elapsedMin()){   // n＝完成車の台数、min＝経過分
@@ -925,8 +996,8 @@ function onCollide(ev){
     if (ITEMS[a.k].color !== ITEMS[b.k].color) continue;
     const nk = recipeResult(a.k, b.k); if (nk < 0) continue;
     merging.add(a.id); merging.add(b.id);
-    if (nk === K.car && state.magnet.size){ const d = a.k===K.screw ? a : b, c = a.k===K.screw ? b : a, rec = state.magnet.get(d.id+':'+c.id); if (rec && !rec.done) state.magnetAttach++; }   // v5l：吸い寄せ中に付いた
-    const x=(a.position.x+b.position.x)/2, y=(a.position.y+b.position.y)/2, bad = a.bad || b.bad, same = a.k===b.k, color = ITEMS[a.k].color;
+    if (nk === K.car && state.magnet.size){ const d = isDoorK(a.k) ? a : b, c = isDoorK(a.k) ? b : a, rec = state.magnet.get(d.id+':'+c.id); if (rec && !rec.done) state.magnetAttach++; }   // v5l：吸い寄せ中に付いた
+    const x=(a.position.x+b.position.x)/2, y=(a.position.y+b.position.y)/2, bad = a.bad || b.bad, same = isStackPair(a.k, b.k), color = ITEMS[a.k].color;
     const s0 = state;
     setTimeout(()=>{
       Composite.remove(world,a); Composite.remove(world,b);
@@ -935,9 +1006,15 @@ function onCollide(ev){
       state.effects.push({x,y,r:R(nk),t:0});
       tutOnMerge();
       if (nk === K.car){ shipCar(x, y, bad); return; }
-      makePart(nk, x, y, {bad});
+      const nb = makePart(nk, x, y, {bad}); noticeMade(nk, nb);   // v5p：はじめてできた部品のお知らせ
       state.shake = Math.max(state.shake, same ? 1.5 : 3);
-      if (same) state.popups.push({ text:L().stack, color:'#cfe', x, y:y-R(nk)-6, t:0, size:14 });
+      if (nk === K.engine_body){   // DR3：マリッジ演出
+        state.popups.push({ text:L().marriage, color:'#ffd84a', x, y:y-R(nk)-10, t:0, size:22 });
+        state.flash = { color:'255,216,74', t:0, dur:0.35 };
+      } else if (same){
+        const id = ITEMS[nk].id, big = (CONFIG.mergeSameBig||[]).includes(id);
+        state.popups.push({ text: big ? (L().mergeSame||L().stack) : L().stack, color:'#cfe', x, y:y-R(nk)-6, t:0, size:14 });
+      }
       sfx(['blue','green'].includes(color) ? 'merge' : 'merge_big');
     },0);
   }
@@ -950,18 +1027,121 @@ function repair(m, o){
   state.popups.push({ text:L().repaired, color:'#7fffb0', x:o.position.x, y:o.position.y-o.circleRadius-8, t:0 });
   sfx('repair');
 }
+// ===== v5p：わかりやすさ（光る相手・持っている部品の名前・新入荷）=====
+function glowSetOff(why){ if (!state || state.glowOff) return; state.glowOff = true; state.glowOffAt = state.elapsed; state.glowOffWhy = why; }
+function glowStopCheck(rank){ const u = CONFIG.partnerGlowUntilRank; if (u > 0 && rank + 1 >= u) glowSetOff('rank'); }   // rank：0 始まり（2＝セダン）
+const glowAllowed = () => !!(CONFIG.partnerGlow && state && state.running && !state.glowOff && (state.round||1) === 1);   // 1周目・最初のセダンまで
+const glowActive = () => glowAllowed() && !!(state.canDrop && state.current && !state.current.bad && state.current.k !== K.mechanic);
+// 持っている部品 k とくっつく（合体・取り付け）箱の中の良品
+function glowPartners(k = state.current && state.current.k){
+  if (k == null) return [];
+  const col = ITEMS[k].color, out = [];
+  for (const b of gameBodies()){ if (b.mech || b.bad || merging.has(b.id) || ITEMS[b.k].color !== col || isStackPair(k, b.k)) continue; if (recipeResult(k, b.k) >= 0) out.push(b); }   // 同じ部品（重なって1つになるだけ）は光らせない
+  return out;
+}
+function drawPartnerGlow(now){
+  let ps = glowActive() ? glowPartners() : [];
+  const mg = state.madeGlow;   // 「○○ができた！」の相手（2秒）
+  if (mg && glowAllowed()) for (const b of glowPartners(mg.k)) if (b.id !== mg.id && !ps.includes(b)) ps.push(b);
+  if (!ps.length) return;
+  const ph = 0.5 + 0.5*Math.sin(now*2*Math.PI/CONFIG.partnerGlowPeriodMs), c = CONFIG.partnerGlowColor;
+  ctx.save(); ctx.beginPath();   // 1本のパスにまとめて描く（影なし・軽い）
+  for (const b of ps){ const r = b.circleRadius + 3 + ph*2; ctx.moveTo(b.position.x + r, b.position.y); ctx.arc(b.position.x, b.position.y, r, 0, Math.PI*2); }
+  ctx.lineWidth = 7; ctx.strokeStyle = `rgba(${c},${0.10 + 0.20*ph})`; ctx.stroke();
+  ctx.lineWidth = 2.5; ctx.strokeStyle = `rgba(${c},${0.35 + 0.50*ph})`; ctx.stroke();
+  ctx.restore();
+}
+const partName = (k, l = lang) => { const id = ITEMS[k].id, n = (TEXT[l].partNames||{})[id]; return n || id; };
+// 持っている部品の上の1行：名前（紫の良品は「名前：ヒント」、不良品は「名前（不良品）」）
+function holdLabelText(p = state.current, l = lang){
+  if (!p) return '';
+  const T = TEXT[l], id = ITEMS[p.k].id, name = partName(p.k, l);
+  if (p.bad) return name + (CONFIG.holdLabelDefectTag ? T.defectTag : '');
+  const h = (CONFIG.windowDoor && (T.holdHintWD||{})[id]) || (T.holdHint||{})[id];
+  return h ? name + T.holdSep + h : name;
+}
+function holdLabelRect(text, hx, hy, hr){
+  ctx.font = `bold ${CONFIG.holdLabelFontPx}px sans-serif`;
+  const W = CONFIG.W, h = CONFIG.holdLabelH, w = Math.min(W - 8, Math.ceil(ctx.measureText(text).width) + 14);
+  const cy = Math.max(CONFIG.holdLabelMinY, hy - hr - CONFIG.holdLabelGap - h/2);
+  const x = Math.max(4, Math.min(W - 4 - w, hx - w/2));
+  return { x, y: cy - h/2, w, h, cy, textW: ctx.measureText(text).width };
+}
+function drawHoldLabel(){
+  if (!CONFIG.holdLabel || !state.running || !state.canDrop || !state.current) return null;
+  const p = state.current, hr = R(p.k), hx = clampAim(state.aimX, hr), hy = state.bin===0 ? HOLD_Y : HOLD_Y - binLiftFor(hr);
+  const text = holdLabelText(p); if (!text) return;
+  const r = holdLabelRect(text, hx, hy, hr);
+  if (state.bin !== 0) return null;   // ごみ箱をねらっているときは出さない
+  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.68)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(r.x, r.y, r.w, r.h, r.h/2) : ctx.rect(r.x, r.y, r.w, r.h); ctx.fill();
+  const purple = ITEMS[p.k].color === 'purple' && !p.bad;
+  ctx.fillStyle = p.bad ? '#ff9a8a' : (purple ? '#e6ccff' : '#fff'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, r.x + r.w/2, r.cy + 0.5, r.w - 10); ctx.restore();
+  return r;
+}
+// 新入荷：その部品がはじめて「次」（か手持ち）に出たとき1回。お金の文字が出ているあいだは待つ
+function newPartUpdate(rdt){
+  if (!CONFIG.newPartNotice || !state.running) return;
+  const T = TEXT.ja.newPart;
+  for (const p of [state.current, state.next]){
+    if (!p) continue; let id = ITEMS[p.k].id;
+    if (id === 'panel' || id === 'glass' || id === 'hinge') id = 'purple';   // DR3：紫は種類を問わず1回
+    if (T[id] && !state.newSeen[id]){ state.newSeen[id] = true; state.newQueue.push({ id, type:'part' }); }
+  }
+  if (state.madeGlow){ state.madeGlow.t += rdt; if (state.madeGlow.t >= CONFIG.madeGlowSec) state.madeGlow = null; }
+  if (state.newCur){ state.newCur.t += rdt; if (state.newCur.t >= CONFIG.newPartSec){ state.newCur = null; if (state.queuedDrop && state.canDrop && !state.paused && !state.newQueue.length) drop(); } }
+  if (!state.newCur && state.newQueue.length && !state.money.length){
+    const q = state.newQueue.shift(); state.newCur = { id:q.id, type:q.type, t:0 }; state.newShown.push({ id:q.id, type:q.type, t:+state.elapsed.toFixed(2) });
+    if (q.type === 'made') state.madeGlow = { k:K[q.id], id:q.bid, t:0 };
+  }
+}
+// 箱の中ではじめてできた部品（1ゲーム1回ずつ）
+function noticeMade(k, body){
+  if (!CONFIG.newPartNotice || !state.running) return;
+  const id = ITEMS[k].id, key = 'made:' + id;
+  if (!TEXT.ja.made[id] || state.newSeen[key]) return;
+  state.newSeen[key] = true; state.newQueue.push({ id, type:'made', bid: body && body.id });
+}
+const noticeFreeze = () => !!(state && state.newCur);   // お知らせが出ているあいだは時間を止める
+// 落ちている部品（最後に離した部品）の名前
+function drawFallLabel(heldRect){
+  const f = state.fall; if (!CONFIG.holdLabel || !CONFIG.fallLabel || !f || !state.running) return;
+  const b = f.b; if (f.t >= CONFIG.fallLabelSec || merging.has(b.id) || !Composite.get(world, b.id, 'body')) { state.fall = null; return; }
+  const text = partName(b.k) + (b.bad && CONFIG.holdLabelDefectTag ? L().defectTag : '');
+  ctx.save(); ctx.font = `bold ${CONFIG.fallLabelFontPx}px sans-serif`;
+  const w = Math.min(CONFIG.W - 8, Math.ceil(ctx.measureText(text).width) + 10), h = 15, r = b.circleRadius;
+  const cy = b.position.y - r - 4 - h/2, x = Math.max(4, Math.min(CONFIG.W - 4 - w, b.position.x - w/2));
+  if (cy - h/2 < CONFIG.holdLabelMinY + CONFIG.holdLabelH/2 + 2 || (heldRect && cy - h/2 < heldRect.y + heldRect.h + 2 && x < heldRect.x + heldRect.w && x + w > heldRect.x)) { ctx.restore(); return; }   // HUD・持っている部品の名前とは重ねない
+  ctx.globalAlpha = Math.min(1, (CONFIG.fallLabelSec - f.t)/0.25);
+  ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, cy - h/2, w, h, h/2) : ctx.rect(x, cy - h/2, w, h); ctx.fill();
+  ctx.fillStyle = b.bad ? '#ff9a8a' : '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x + w/2, cy + 0.5, w - 6);
+  ctx.restore();
+}
+function drawNewPart(){
+  const n = state.newCur; if (!n || !state.running) return;
+  const text = (n.type === 'made' ? L().made : L().newPart)[n.id]; if (!text) return;
+  const W = CONFIG.W, h = CONFIG.newPartH, y = CONFIG.newPartY, d = CONFIG.newPartSec, f = Math.min(1, n.t/0.12, (d - n.t)/0.2);
+  ctx.save(); ctx.globalAlpha = Math.max(0, f); ctx.font = `bold ${CONFIG.newPartFontPx}px sans-serif`;
+  const w = Math.min(W - 16, Math.ceil(ctx.measureText(text).width) + 20);
+  ctx.fillStyle = 'rgba(20,20,30,.82)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W/2 - w/2, y - h/2, w, h, h/2) : ctx.rect(W/2 - w/2, y - h/2, w, h); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,216,74,.8)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = '#ffd84a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, W/2, y + 0.5, w - 12);
+  ctx.restore();
+}
 function shipCar(x, y, bad){
   const rank = rankForLevel(state.level), fullValue = carValue(rank);
   const value = (!bad || CONFIG.badCarPays) ? fullValue : 0;
   if (state.firstCarAt == null) state.firstCarAt = state.elapsed;   // 1台目の完成の時刻（時間で床が上がるのはここから）
   state.cars++; state.topRank = Math.max(state.topRank, rank);
-  if (value){ state.sales += value; state.countRate = (state.sales - state.salesShown)/CONFIG.countUpTime; state.countDelay = 0.35; }
+  glowStopCheck(rank);   // v5p：セダン（partnerGlowUntilRank）を出庫したら光らせない
+  if (value){ state.sales += value; state.grossSales = (state.grossSales||0) + value; state.countRate = (state.sales - state.salesShown)/CONFIG.countUpTime; state.countDelay = 0.35; }
   state.shipping.push({x, y, phase:0, rank, value, bad, smokeT:0});
   tutStep('tut_car', CONFIG.tutMsgSec);   // 3：最初の車
   let seq = 0;   // お金 → 札 → お知らせ の順に少しずつずらす
   if (value){ moneyPop(x, y - carRadiusFor(rank) - 10, `+${fmtYen(value)}`); seq += CONFIG.seqGap; }
   if (bad){
     state.carsBad++; state.claims++; state.goodStreak = 0;
+    state.claimCost = (state.claimCost||0) + Math.round(fullValue * (CONFIG.settleClaimCostRatio||0.5));   // DR3：クレーム費（車価の50%・仮）
     clampClaims();
     if (state.claimSteps < claimCap()){ state.claimSteps++; state.tagDrops.push({ i: state.claimSteps-1, t: -seq }); }   // 上限を超えたクレームは数えない
     else state.tagDrops.push({ i: -1, t: -seq });   // 数えないときも1回だけ揺らす
@@ -979,12 +1159,16 @@ function shipCar(x, y, bad){
     state.carsThisLevel++;
     if (state.carsThisLevel >= carsToLevelUp(state.level)) levelUp();
   }
-  if (!bad && rank === CAR_VALUES.length-1 && CONFIG.roundOnTrailer) startNextRound();   // トレーラーを良品で出庫 → 次の周
+  if (!bad && rank === CAR_VALUES.length-1 && CONFIG.roundOnTrailer){
+    if ((state.round||1) >= (CONFIG.maxRound||3)) finishClear();   // DR3：3周目クリア → 決算
+    else startNextRound();
+  }
 }
 // 次の周：車は軽トラから（レベルの数字・売上・出庫台数・箱の中はそのまま）。クレームで上がった床だけ戻す
 function startNextRound(){
   if (state.carsThisLevel > 0) levelUp();   // このレベルの途中なら、レベルを1つ上げて新しい周を始める
   state.round = (state.round||1) + 1;
+  glowSetOff('round');   // v5p：2周目からは光らせない（もどらない）
   state.levelBase = state.level - 1; state.carsThisLevel = 0;
   const floorWasUp = state.claimSteps > 0, floorAll = CONFIG.roundFloorReset !== 'claims';
   state.claimSteps = 0; state.goodStreak = 0;
@@ -1002,11 +1186,12 @@ function startNextRound(){
 // 周を決めて始める（QA の startRound 用）。レベル1・軽トラから
 function setStartRound(n){
   state.round = Math.max(1, Math.floor(n||1)); state.levelBase = 0; state.binT = 0;
+  if (state.round >= 2) glowSetOff('round');
   state.roundCars0 = shippedCount(); state.roundT0 = state.elapsed;
   updateTitle();
 }
 // v5l：ページのタイトルに版と周（ゲーム中だけ「 - Round N」）
-const TITLE_BASE = 'Quality Rush Ver0.5';   // v5n：Ver0.4→0.5
+const TITLE_BASE = 'Quality Rush Ver0.6 (DR3)';   // DR3：部品表v1.1・決算・不適合品箱
 function updateTitle(){
   const t = (state && state.round) ? `${TITLE_BASE} - Round ${state.round}` : TITLE_BASE;
   if (document.title !== t) document.title = t;
@@ -1017,7 +1202,7 @@ function doorMagnetStep(){
   if (!mg || !mg.enabled || !state.running){ if (state.magnet.size) state.magnet.clear(); return; }
   const doors = [], cars = [];
   for (const b of Composite.allBodies(world)){
-    if (b.k === K.screw && !merging.has(b.id)) doors.push(b);
+    if (isDoorK(b.k) && !merging.has(b.id)) doors.push(b);
     else if (b.k === K.body_car && !merging.has(b.id)) cars.push(b);
   }
   if (!doors.length || !cars.length){ if (state.magnet.size) state.magnet.clear(); return; }
@@ -1104,6 +1289,18 @@ function binOffset(side){
   return range*(1 - Math.cos(2*Math.PI*ph))/2;   // sine：もとの位置からなめらかに出て戻る
 }
 const binX = side => side < 0 ? CONFIG.binX + binOffset(-1) : CONFIG.W - CONFIG.binX - binOffset(1);
+function binsVertMoving(){
+  const bm = CONFIG.binMove, en = bm && bm.vertEnabled;
+  return en === 'always' || (en === 'round3' && (state.round||1) >= 3);
+}
+function binVertOffset(side){
+  if (!binsVertMoving()) return 0;
+  const bm = CONFIG.binMove || {}, amp = (bm.vertAmpFrac != null ? bm.vertAmpFrac : 0.10) * BOX_H;
+  const per = Math.max(0.2, bm.vertPeriodSec != null ? bm.vertPeriodSec : 3);
+  const ph = state.binT/per + (side > 0 ? (bm.rightPhase||0) : 0);
+  return amp * Math.sin(2*Math.PI*ph);   // サイン波：上下
+}
+const binY = side => CONFIG.binY + binVertOffset(side || -1);
 // 指の x がどちらのごみ箱に入るか（-1／1／0）。止まっているときは前と同じ（壁から binTouchMargin 以内か外）
 function binSideAt(rawX){
   const lx = binX(-1), rx = binX(1);
@@ -1186,17 +1383,18 @@ cv.addEventListener('pointercancel', e=>{ if (e.pointerId===activePointer){ acti
 const dropIntervalOk = () => state.dropClock - state.lastDropAt >= CONFIG.minDropInterval - 1e-6;
 function drop(auto){
   if (!state.canDrop || !state.running) return;
+  if (noticeFreeze() && (auto || CONFIG.newPartBlockDrop)){ if (!auto) state.queuedDrop = true; return; }   // v5p：お知らせのあいだは時間切れで落ちない（newPartBlockDrop＝指で離した分もお知らせのあとに落とす）
   if (!auto && !dropIntervalOk()){ state.ignoredDrops++; return; }   // 連続投下の最短間隔（自動投下は制限時間≧1.5秒なので影響なし）
   state.lastDropAt = state.dropClock;
   state.armed = false; state.queuedDrop = false;
   const p = state.current;
   if (auto){
     const r = R(p.k), x = BOX.left + r + Math.random()*(BOX.right - BOX.left - 2*r);
-    makePart(p.k, x, HOLD_Y, { bad:p.bad, auto:true });
+    state.fall = { b: makePart(p.k, x, HOLD_Y, { bad:p.bad, auto:true }), t:0 };
     state.idleCount++; state.manualSinceIdle = 0;     // 時間切れが続くほど次の制限時間が短くなる
   } else {
     if (binsMoving()) state.bin = binSideFor(state.rawX);   // 動くごみ箱：離した瞬間の箱の位置で判定（v5o：すきまの狙いは捨てない）
-    if (state.bin !== 0) discard(p); else { makePart(p.k, state.aimX, HOLD_Y, { bad:p.bad }); sfx('drop'); }
+    if (state.bin !== 0) discard(p); else { state.fall = { b: makePart(p.k, state.aimX, HOLD_Y, { bad:p.bad }), t:0 }; sfx('drop'); }
     if (state.idleCount && ++state.manualSinceIdle >= CONFIG.idleReset){ state.idleCount = 0; state.manualSinceIdle = 0; }
   }
   tutOnDrop(p, auto);
@@ -1217,6 +1415,7 @@ function discard(p){
   if (!good){
     const cost = disposalCostOf(ITEMS[p.k].id), before = state.sales;
     state.sales = state.sales - cost;   // 0円で止めない（マイナスになる）
+    state.discardLoss = (state.discardLoss||0) + cost;   // DR3：決算のコスト
     if (state.salesShown > state.sales) state.salesShown = state.sales;
     text = L().scrap(before - state.sales);
     tutStep('tut_scrap', CONFIG.tutMsgSec);   // 5：最初に良い部品を捨てたとき
@@ -1297,7 +1496,7 @@ function loop(now){
     }
     state.dropClock += rdt;   // 連続投下の間隔は実時間で数える（スロー中も0.6秒）
     if (state.canDrop){
-      const lim = dropLimit(); if (lim < state.minDropLimit) state.minDropLimit = lim; const before = lim-state.dropTimer; if (!tutFreeze()) state.dropTimer += dt; const left = lim-state.dropTimer;
+      const lim = dropLimit(); if (lim < state.minDropLimit) state.minDropLimit = lim; const before = lim-state.dropTimer; if (!tutFreeze() && !noticeFreeze()) state.dropTimer += dt; const left = lim-state.dropTimer;
       if (left <= CONFIG.warnBelow && Math.ceil(left*4)!==Math.ceil(before*4)) beep(1500,0.03);
       if (state.dropTimer >= lim) drop(true);
     }
@@ -1360,6 +1559,8 @@ function loop(now){
   if (state.roundBanner){ const rb = state.roundBanner; rb.t += rdt; if (rb.t >= 0 && !rb.sfx){ rb.sfx = true; sfx('round_start'); } if (rb.t > rb.dur) state.roundBanner = null; }
   if (CONFIG.purpleHint && !state.purpleHinted && state.running && state.current && ITEMS[state.current.k].color === 'purple'){ state.purpleHinted = true; toast(L().hint_purple, '#d9b8ff', CONFIG.bannerTime*1.4, state.roundBanner ? 0.6 + CONFIG.roundBannerSec : 0); }
   if (state.flash){ state.flash.t += rdt; if (state.flash.t > state.flash.dur) state.flash = null; }
+  newPartUpdate(rdt);   // v5p
+  if (state.fall) state.fall.t += rdt;
   if (state.hint > 0) state.hint -= dt;
   state.shake *= 0.85;
   draw(now);
@@ -1441,7 +1642,7 @@ function drawPart(k, bad, x, y, angle, now, tier, bye, rr){
   ctx.restore();
 }
 function drawBin(side, now){
-  const x = binX(side), y = CONFIG.binY;
+  const x = binX(side), y = binY(side);
   const on = state.running && state.bin===side;
   ctx.save(); ctx.translate(x,y); ctx.scale(CONFIG.binScale, CONFIG.binScale); ctx.translate(-x,-y);
   ctx.beginPath(); ctx.arc(x,y,BIN_DRAW_R,0,Math.PI*2);
@@ -1539,7 +1740,9 @@ function draw(now){
       drawPart(b.k, false, b.position.x, b.position.y, 0, now, 'root', undefined, b.circleRadius);
     } else drawPart(b.k, b.bad, b.position.x, b.position.y, b.angle, now, b.art, undefined, b.circleRadius);
   }
+  drawPartnerGlow(now);   // v5p
   drawBin(-1, now); drawBin(1, now);
+  drawFallLabel(drawHoldLabel()); drawNewPart();   // v5p
   if (state.running && state.overflowT>0 && overflowInGrace()){   // 最初の1分：あふれそうの文字（猶予中だけ・部品より手前）
     ctx.font=`bold ${CONFIG.warnFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
     const tw = ctx.measureText(L().almostFull).width + 20;
@@ -1685,7 +1888,7 @@ function draw(now){
   }
   if (state.roundBanner && state.roundBanner.t >= 0 && binsMoving() && state.roundBanner.t < CONFIG.binArrowsSec && Math.floor(state.roundBanner.t/CONFIG.binArrowsBlink) % 2 === 0){   // ゴミ箱の上で ←→ が点滅
     const ar = UI.binArrows;
-    if (ar && ar.ok) [-1,1].forEach(side => { const w = 48, h = 24, x = Math.max(w/2+2, Math.min(CONFIG.W-w/2-2, binX(side))); ctx.drawImage(ar, x-w/2, CONFIG.binY - CONFIG.binArrowsDy - h/2, w, h); });
+    if (ar && ar.ok) [-1,1].forEach(side => { const w = 48, h = 24, x = Math.max(w/2+2, Math.min(CONFIG.W-w/2-2, binX(side))); ctx.drawImage(ar, x-w/2, binY(side) - CONFIG.binArrowsDy - h/2, w, h); });
   }
   ctx.restore();
   if (state.flash){ ctx.fillStyle=`rgba(${state.flash.color},${0.6*(1-state.flash.t/state.flash.dur)})`; ctx.fillRect(0,0,W,H); }
@@ -1703,26 +1906,40 @@ function renderOverlay(){
   copiedEl.textContent = '';
   if (overlayMode==='title'){
     flowTitle.style.display = '';
-    ovText.innerHTML=T.intro; startBtn.textContent = assetsReady ? T.start : T.loading; startBtn.disabled = !assetsReady;
+    const pr = personalRanks(), best = pr[0];
+    let intro = T.intro;
+    if (best) intro += `<div class="res" style="margin-top:8px">${T.personalRank} Best: <b>${best.score}</b>（${best.rank}）</div>`;
+    ovText.innerHTML=intro; startBtn.textContent = assetsReady ? T.start : T.loading; startBtn.disabled = !assetsReady;
     shareBtn.classList.add('hidden');
     howBtn.textContent = T.howToPlay; howBtn.disabled = !assetsReady; howBtn.classList.remove('hidden');
   } else {
     howBtn.classList.add('hidden');
     flowTitle.style.display = 'none';
-    const r=window.lastResult, names=CAR_NAMES[lang];
+    const r=window.lastResult || {}, names=CAR_NAMES[lang];
     const title = titleFor(r);
-    let html = `<b style="font-size:22px">${T.over}</b><br>`;
+    const head = r.cleared ? (T.clear||'CLEAR') : T.over;
+    let html = `<b style="font-size:22px">${head}</b><br>`;
     if (r.newRecord) html += `<span class="newRec">${T.newRec}</span><br>`;
     html += `<div class="title">${T.titleLine(title)}</div>`;
-    html += `<div class="res">${T.topCarLine(r.topRank>=0 ? names[r.topRank] : T.none)}<br>`;
-    html += `${T.shipped} <b>${r.cars}</b>${T.unitCars}`+(r.claims ? ` / ${T.complaints} ${r.claims}` : '')+`<br>`;
-    html += `${T.thisSales} <b${r.sales<0 ? ' style="color:#ff4a3a"' : ''}>${fmtYen(r.sales)}</b><br>${T.best} ${fmtYen(r.bestSales)}${(r.bestRound||1) >= CONFIG.roundShowFrom ? (lang==='ja' ? `（${T.roundsReached(r.bestRound)}）` : ` (${T.roundsReached(r.bestRound)})`) : ''}<br>`;
-    html += `Lv ${r.level} / ${T.time} ${fmtTime(r.seconds)}`;
+    // DR3 決算
+    const gross = r.grossSales != null ? r.grossSales : r.sales;
+    const profit = r.profit != null ? r.profit : gross;
+    const marginPct = r.margin != null ? (r.margin*100) : 0;
+    html += `<div class="res"><b>${T.settle||'Settlement'}</b><br>`;
+    html += `${T.unitsShipped||T.shipped} <b>${r.carsGood||0}</b>${T.unitCars}（${T.unitsGood||'Good'}） / <b>${r.carsBad||0}</b>（${T.unitsBad||'Bad'}）`+(r.claims ? ` / ${T.complaints} ${r.claims}` : '')+`<br>`;
+    html += `${T.thisSales} <b>${fmtYen(gross||0)}</b><br>`;
+    html += `${T.profit||'Profit'} <b${profit<0 ? ' style="color:#ff4a3a"' : ''}>${fmtYen(profit||0)}</b> / ${T.margin||'Margin'} <b>${(marginPct).toFixed(1)}%</b><br>`;
+    if (r.score != null) html += `<b style="font-size:20px;color:#ffd84a">${T.totalScore||'Score'} ${r.score}/1000　${T.rankLabel||'Rank'} ${r.scoreRank||'C'}</b><br>`;
+    html += `${T.best} ${fmtYen(r.bestSales||0)}`+( (r.bestRound||1) >= CONFIG.roundShowFrom ? (lang==='ja' ? `（${T.roundsReached(r.bestRound)}）` : ` (${T.roundsReached(r.bestRound)})`) : '' )+`<br>`;
+    html += `Lv ${r.level||1} / ${T.time} ${fmtTime(r.seconds||0)}`;
     if ((r.round||1) >= CONFIG.roundShowFrom) html += `<br><b>${T.roundsReached(r.round)}</b>`;
     html += `</div>`;
-    const nx = r.topRank + 1;
-    if (nx < CAR_RANKS.length) html += `<div class="goal">${r.topRank>=0 ? T.nextGoal(names[nx]) : T.firstGoal(names[0])}<img src="${SILHOUETTES[nx]}" alt="" onerror="this.onerror=null;this.className='fb';this.src='${CAR_RANKS[nx].src}'"></div>`;
-    else html += `<div class="goal">${T.allDone}</div>`;
+    // 個人ランキング top10
+    const pr = r.personalRanks || personalRanks();
+    html += `<div class="res" style="margin-top:8px;font-size:14px"><b>${T.personalRank||'Ranking'}</b><br>`;
+    if (!pr.length) html += (T.noRank||'—');
+    else pr.forEach((e,i)=>{ html += `${i+1}. ${e.score}（${e.rank||'?'}） ${fmtYen(e.sales||0)} / ${e.cars||0}${T.unitCars}<br>`; });
+    html += `</div>`;
     ovText.innerHTML = html; startBtn.textContent=T.retry; startBtn.disabled = false;
     shareBtn.textContent = T.share; shareBtn.classList.remove('hidden');
   }
@@ -1757,20 +1974,68 @@ function startGame(){
   state.tut = tutNew(tutWanted(), tutForceNext || CONFIG.tutorialMode === 'always'); tutForceNext = false;
   preloadTiers(1); loadFx();
 }
+function computeSettlement(){
+  const gross = state.grossSales||0, discardLoss = state.discardLoss||0, claimCost = state.claimCost||0;
+  const cost = discardLoss + claimCost, profit = gross - cost;
+  const margin = gross > 0 ? profit / gross : 0;
+  const sc = CONFIG.settleScore || { prod:300, quality:300, margin:300, roundBonus:100 };
+  const target = CONFIG.settleTargetGood || 39, good = state.carsGood||0, shipped = Math.max(1, state.cars||0), claims = state.claims||0;
+  const prod = Math.min(good / target, 1) * sc.prod;
+  const quality = sc.quality * Math.max(0, 1 - claims / shipped);
+  const mTarget = CONFIG.settleMarginTarget || 0.90;
+  const marginPts = margin <= 0 ? 0 : sc.margin * Math.min(margin / mTarget, 1);
+  const round = state.round||1, roundPts = sc.roundBonus * Math.min(round, CONFIG.maxRound||3) / (CONFIG.maxRound||3);
+  const total = Math.round(prod + quality + marginPts + roundPts);
+  let rank = 'C';
+  for (const r of (CONFIG.settleRanks||[])){ if (total >= r.min){ rank = r.rank; break; } }
+  return { gross, discardLoss, claimCost, cost, profit, margin, prod:+prod.toFixed(1), quality:+quality.toFixed(1),
+    marginPts:+marginPts.toFixed(1), roundPts:+roundPts.toFixed(1), total, rank,
+    cars:state.cars, carsGood:good, carsBad:state.carsBad||0, claims, round, cleared:!!state.cleared };
+}
+function savePersonalRank(entry){
+  const key = 'personalRanks', maxn = CONFIG.personalRankMax || 10;
+  let list = Store.get(key, []);
+  if (!Array.isArray(list)) list = [];
+  list.push({ score:entry.total, rank:entry.rank, sales:entry.gross, cars:entry.carsGood, claims:entry.claims, round:entry.round, cleared:!!entry.cleared, at:Date.now() });
+  list.sort((a,b)=> (b.score - a.score) || (b.sales - a.sales) || (a.at - b.at));
+  list = list.slice(0, maxn);
+  Store.set(key, list);
+  Store.set('bestScore', list[0] ? list[0].score : 0);
+  return list;
+}
+function personalRanks(){ const list = Store.get('personalRanks', []); return Array.isArray(list) ? list : []; }
+function finishClear(){
+  if (state.cleared) return;
+  state.cleared = true;
+  if (state.tut.on) state.tut.bad = null;
+  state.running = false; state.ending = 0.9; state.shake = 10;
+  state.flash = { color:'255,216,74', t:0, dur:0.7 };
+  sfx('complete'); setTimeout(()=>sfx('level_up'), 400);
+  finalizeResult(true);
+}
+function finalizeResult(cleared){
+  const settle = computeSettlement();
+  const prevBest = Store.get('bestSales', 0), prevRank = Store.get('bestRank', -1);
+  const newRecord = settle.gross > prevBest && settle.gross > 0;
+  if (newRecord) Store.set('bestSales', settle.gross);
+  if (state.topRank > prevRank) Store.set('bestRank', state.topRank);
+  const prevRound = Store.get('bestRound', 1), round = state.round||1;
+  if (round > prevRound) Store.set('bestRound', round);
+  const ranks = savePersonalRank(settle);
+  window.lastResult = { cars:state.cars, carsGood:state.carsGood, carsBad:state.carsBad||0, claims:state.claims, repairs:state.repairs,
+    sales:state.sales, grossSales:settle.gross, discardLoss:settle.discardLoss, claimCost:settle.claimCost, profit:settle.profit, margin:settle.margin,
+    score:settle.total, scoreRank:settle.rank, scoreBreak:{prod:settle.prod, quality:settle.quality, margin:settle.marginPts, round:settle.roundPts},
+    seconds:Math.round(state.elapsed), level:state.level, discards:state.discards,
+    topRank:state.topRank, bestSales:Math.max(prevBest, settle.gross), bestRank:Math.max(prevRank, state.topRank), newRecord,
+    round, bestRound:Math.max(prevRound, round), cleared:!!cleared, personalRanks:ranks };
+}
 function startEnding(){
+  if (state.cleared) return;   // クリア後のあふれば無視
   if (state.tut.on) state.tut.bad = null;
   state.running=false; state.ending=0.9; state.shake=16;
   state.flash={ color:'255,40,40', t:0, dur:0.6 };
   sfx('game_over');
-  const prevBest = Store.get('bestSales', 0), prevRank = Store.get('bestRank', -1);
-  const newRecord = state.sales > prevBest && state.sales > 0;
-  if (newRecord) Store.set('bestSales', state.sales);
-  if (state.topRank > prevRank) Store.set('bestRank', state.topRank);
-  const prevRound = Store.get('bestRound', 1), round = state.round||1;
-  if (round > prevRound) Store.set('bestRound', round);
-  window.lastResult = { cars:state.cars, carsGood:state.carsGood, claims:state.claims, repairs:state.repairs, sales:state.sales, seconds:Math.round(state.elapsed), level:state.level, discards:state.discards,
-    topRank:state.topRank, bestSales:Math.max(prevBest, state.sales), bestRank:Math.max(prevRank, state.topRank), newRecord,
-    round, bestRound:Math.max(prevRound, round) };
+  finalizeResult(false);
 }
 function showResult(){ overlayMode='result'; renderOverlay(); ov.classList.remove('hidden'); }
 startBtn.onclick = ()=>{ if (overlayMode==='title' && !assetsReady) return; startGame(); };
@@ -1798,6 +2063,7 @@ function detectLang(){
   }
   return (navigator.language||'').slice(0,2) === 'ja' ? 'ja' : 'en';
 }
+if (CONFIG.windowDoor) document.querySelectorAll('img.flowBig').forEach(im => { im.src = 'assets/ui/assembly_flow_wdoor.webp'; im.classList.add('wd'); });   // v5p：?wdoor=1 のときだけ新しい流れ図
 lang = detectLang();
 setupWorld(); newState(); renderOverlay(); renderPause(); requestAnimationFrame(loop);
 // テスト用：window.QR でゲーム状態を確認できます
@@ -1811,7 +2077,8 @@ window.QR = { get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPE
   resetTutorial(){ tutDone = false; tutForceNext = false; tutSeenStore = {}; try{ const b = Store.backend(); b && b.removeItem && (b.removeItem('qr_tutorial_done'), b.removeItem('qr_tutorial_seen')); }catch(e){} },
   reloadTutorialStore(){ tutSeenStore = tutLoadSeen(); tutDone = tutAllSeen(); },
   skipTutorial: tutSkip, tutText, tutHidesHint, tutFreeze, tutSlow, artFile, hitTutSkip, tutSkipRect, howToPlay(){ howBtn.click(); },
-  binsMoving, binOffset, binX, binSideAt,
+  binsMoving, binsVertMoving, binOffset, binVertOffset, binX, binY, binSideAt,
+  computeSettlement, finishClear, finalizeResult, personalRanks, savePersonalRank,
   get round(){return state.round;}, setRound(n){ state.round = n; updateTitle(); },
   difficulty(){ const b = diffBasis(), sp = CONFIG.difficulty.shipped; return { basis:b, shipped:shippedCount(), n:b==='shipped'?diffN():diffCars(), roundAdd:roundVal('diffAdd'), round:state.round,
     minutes:+(b==='shipped'?shippedMin():elapsedMin()).toFixed(3), dropLimit:+dropLimit().toFixed(3), defectChance:+defectChance().toFixed(3), floorRise:+timeRiseFrac().toFixed(4), riseMax:riseMaxNow(),
@@ -1820,13 +2087,15 @@ window.QR = { get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPE
   shippedCount, shippedVal, diffN, shippedMin, riseMaxNow, bodyIngredient, bodyNeeded, elapsedMin, diffBasis,
   roundVal, roundParams, UI, ensureTier, SFX_NAMES, carValue, relLevel, startNextRound, setStartRound, titleFor, RECIPES_FOR, OUT_OF, rankForLevel, artPending, PLACEHOLDER_FILL,
   get roundBanner(){return state.roundBanner;}, get levelBase(){return state.levelBase;},
-  get binPositions(){ return { left:binX(-1), right:binX(1), y:CONFIG.binY, r:BIN_DRAW_R*CONFIG.binScale, moving:binsMoving(), t:state.binT }; },
+  get binPositions(){ return { left:binX(-1), right:binX(1), y:binY(-1), yL:binY(-1), yR:binY(1), r:BIN_DRAW_R*CONFIG.binScale, moving:binsMoving(), vert:binsVertMoving(), t:state.binT }; },
   binHitZones, roundFloorAll, roundFloorRise, roundShipped, roundMin, get floorRiseNow(){ return +riseFrac().toFixed(4); }, get floorTimeRiseNow(){ return +timeRiseFrac().toFixed(4); },
   doorMagnetStep, updateTitle, get magnet(){ return { pulls:state.magnetPulls, attach:state.magnetAttach, giveUp:state.magnetGiveUp, retries:state.magnetRetries||0, active:state.magnet.size }; },
   setBinTime(t){ state.binT = t; },
   binSideFor, get gapLatch(){ return state.gapLatch; }, get gapGuarded(){ return state.gapGuarded||0; }, hingePityActive, hingeNearbyCount, hingeConditions, randPieceRaw, mechanicCooldownOk,
   get normalHist(){ return state.normalHist||[]; }, shipPos, carRadiusFor, carSpriteSize, isTrailerRank, CAR_RANKS, rankRadius, curRank, drawPart, get hingePity(){ return state.hingePity||0; },
   dropWeightsFor, tireWeightAt, tireDecayParams, mechanicChanceNow,
+  isDoorK, isStackPair, glowActive, glowAllowed, noticeMade, noticeFreeze, get madeGlow(){ return state.madeGlow; }, get fall(){ return state.fall; }, glowPartners, glowSetOff, partName, holdLabelText, holdLabelRect, newPartUpdate, PARTNERS,
+  get glow(){ return { off:state.glowOff, at:state.glowOffAt, why:state.glowOffWhy, active:glowActive() }; }, get newPart(){ return { seen:Object.keys(state.newSeen), queue:state.newQueue.slice(), cur:state.newCur, shown:state.newShown.slice() }; },
   get tirePreset(){ return CONFIG.tireDecayPreset; }, setTirePreset(p){ if ((CONFIG.tireDecayPresets||{})[p] || p === 'custom') CONFIG.tireDecayPreset = p; return CONFIG.tireDecayPreset; },
   get mechRound2Pct(){ return CONFIG.mechanicRound2Pct; }, setMechRound2Pct(v){ CONFIG.mechanicRound2Pct = v; return v; },
   get lastDropAt(){return state.lastDropAt;}, get overflowSince(){return state.overflowSince;}, get firstCarAt(){return state.firstCarAt;} };
