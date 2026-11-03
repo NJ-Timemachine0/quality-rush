@@ -1,15 +1,16 @@
 {
  "screw": {
-  "color": "gray",
-  "hex": "#9aa4b1",
-  "mark": "circle",
+  "color": "red",
+  "hex": "#e03a3a",
+  "mark": "cross",
   "defect": false,
   "radius": 38,
   "made_from": [
    "door_window+panel",
    "door_window+glass",
    "door_window+hinge"
-  ]
+  ],
+  "note": "ドア＝次の相手・塗装済みボディ（赤）"
  },
  "wheel": {
   "color": "blue",
@@ -80,7 +81,7 @@
   "hex": "#9aa4b1",
   "mark": "circle",
   "defect": false,
-  "note": "走れる車"
+  "note": "艤装ボディ（灰＝走れるシャシーと同色マリッジ）"
  },
  "mechanic": {
   "color": "white",
@@ -125,5 +126,16 @@
   "mark": "heart",
   "defect": true,
   "radius": 16
+ },
+ "rolling_chassis": {
+  "color": "gray",
+  "hex": "#9aa4b1",
+  "mark": "circle",
+  "defect": false,
+  "radius": 62,
+  "note": "走れるシャシー＝次の相手・艤装ボディ（灰）",
+  "made_from": [
+   "engine_chassis+tire_wheel"
+  ]
  }
 }

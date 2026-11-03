@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Quality Rush Ver0.6 (DR3)</title>
+<title>Quality Rush Ver0.7</title>
 <style>
   html,body{margin:0;height:100%;background:#1b2330;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center}
@@ -40,7 +40,7 @@
 <div id="wrap">
   <canvas id="c"></canvas>
   <div id="overlay" class="ov">
-    <h1>Quality Rush Ver0.6 (DR3)</h1>
+    <h1>Quality Rush Ver0.7</h1>
     <img id="flowTitle" class="flowBig" src="assets/ui/assembly_flow.webp" alt="" onerror="this.className='flowBig fb'">
     <div id="ovText"></div>
     <button id="startBtn" disabled>読み込み中…</button>
@@ -97,10 +97,10 @@ const CONFIG = {
   idleMinDrop: 1.5,         // そのときのいちばん短い制限時間（秒）。全体の最短 dropTimeMin より短くはならない
   idleReset: 1,             // 自分で落とす（捨てる）とこの回数で元に戻る
   // --- 部品（半径。色と形は COLORS／ITEM_DEFS） ---
-  radius: { screw:38, door_window:30, wheel:18, tire:24, suspension:20, frame:30, engine:36, body:44, panel:26, glass:20, hinge:16,
+  radius: { screw:38, door_window:30, wheel:18, tire:24, suspension:20, frame:30, engine:36, body:40, panel:26, glass:20, hinge:16,
             tire_wheel:28, suspension_frame:36, engine_chassis:50, engine_body:62, rolling_chassis:62, body_car:74, car:90, mechanic:22 },   // DR3：ドア38、組みかけドア(door_window)30、エンジン付きボディ62。URL ?doorR=38
   // DR3 部品表v1.1：塗装済みボディは落ちてくる（weight 11）。ドア・組みかけドアは落ちない
-  dropWeights:     { screw:0, wheel:18, tire:18, suspension:11, frame:11, engine:11, body:11, panel:16, glass:11, hinge:6, door_window:0 },
+  dropWeights:     { screw:0, wheel:16, tire:16, suspension:12, frame:12, engine:12, body:7, panel:8, glass:6, hinge:6, door_window:0 },  // v0.7：紫減・シャシー厚め・ボディ控えめ
   // v5m：ちょうつがいを出やすくする（仕様 E''）。部品を1つ出すたびに数え直す。enabled:false で無効
   //   condition：'deficit'＝箱の中の「ボディ付きの車台」(body_car) の数 ＞ 箱の中のドア・ボンネット＋ちょうつがい（不良品はのぞく）の数 のとき（既定）／'any'＝body_car が1つでもあるとき（比較用）
   //   weight：そのあいだの ちょうつがいの割合（ふだんは dropWeights.hinge）
@@ -112,14 +112,15 @@ const CONFIG = {
   //   tireDecayPreset：'weak'／'mid'（標準）／'strong'。URL ?tire=weak|mid|strong で上書き。'custom' のときは tireDecay の数字をそのまま使う
   //   不良品（DEFECTABLE から選ぶ）は今までどおり素の dropWeights（タイヤの減りは効かせない）
   tireDecayPreset: 'strong',   // v5o：標準を strong に（?tire=mid で v5n の標準）
-  tireDecayPresets: { weak:{ start:18, perCar:0.5, min:12 }, mid:{ start:18, perCar:0.8, min:10 }, strong:{ start:18, perCar:1.2, min:8 } },
-  tireDecay: { enabled: true, start: 18, perCar: 0.8, min: 10, parts: ['tire','wheel'] },   // parts：dropWeights の id（wheel＝ホイール、tire＝タイヤ。合体品 tire_wheel は落ちてこない）
-  bodyOnDemand: false,      // DR3：ボディは常に落ちる（v1.1）。true は旧ローリング用（未使用）
+  tireDecayPresets: { weak:{ start:16, perCar:0.5, min:10 }, mid:{ start:16, perCar:0.8, min:8 }, strong:{ start:16, perCar:1.2, min:6 } },
+  tireDecay: { enabled: true, start: 16, perCar: 0.8, min: 8, parts: ['tire','wheel'] },   // v0.7：dropWeights に合わせて start 16
+  bodyOnDemand: false,      // v0.7：ボディは dropWeights で後出し（bodyLate）
+  bodyLate: { enabled:true, minCars:2, whenDoor:true },  // 完成車0〜1台かつ箱にドアなし → body weight 0
   // --- 足りない部品を助ける：箱で相手を待っている部品の相手を出す確率 ---
-  helpChanceFirst: 1.0,     // 足りない相手部品を出す確率：1台目の車が完成するまで（完成車0台のとき）
-  helpChanceEarly: 0.7,     // 足りない相手部品を出す確率：完成車が helpEarlyCars 台以下のとき（ここを変えるだけで調整できる）
+  helpChanceFirst: 0.35,    // v0.7：1台目まで少しだけ補正
+  helpChanceEarly: 0.15,    // v0.7：helpEarlyCars 台以下
   helpEarlyCars: 2,
-  helpChance: 0.50,         // 足りない相手部品を出す確率：それより後
+  helpChance: 0.00,         // v0.7：それ以降は補正オフ
   // --- 良品を捨てたときの廃棄コスト（円・売上から引く。売上はマイナスにもなる。マイナスでもゲームは続く）---
   // 組み立て品は中の部品の合計。不良品と整備士は0円
   disposalMode: 'ratio',    // v5h は 'ratio' で確定（'fixed' は予備・未使用）。 'ratio'＝いま作っている車の売値×割合 ／ 'fixed'＝部品ごとの金額×車の格の倍率
@@ -127,6 +128,7 @@ const CONFIG = {
   // v5k：ボディ（外板＋窓ガラス＝20%）とドア・ボンネット（外板＋ちょうつがい＝13%）は中の部品の合計なので、ここには書かない
   disposalRatio: { wheel:0.03, tire:0.03, suspension:0.07, frame:0.12, engine:0.25, body:0.20, panel:0.10, glass:0.10, hinge:0.03, door_window:0.07, screw:0.13, mechanic:0 },  // DR3：ボディ20%、組みかけドア7%、ドア13%
   disposalRound: 10000,     // 何円単位で丸めるか（ratio のとき）
+  earlyScrapMult: 0.3,      // v0.7 案A：完成車0台のあいだは捨て損を通常の30%
   // fixed：部品ごとの金額（円）× disposalTierMult（車の格：mass＝ふつう Lv1-4／luxury＝高級 Lv5-6／sport＝スポーツ Lv7〜）
   disposalCost: { screw:100000, wheel:200000, tire:200000, suspension:400000, frame:600000, engine:1200000, body:2500000, panel:1250000, glass:1250000, hinge:100000, mechanic:0 },   // 予備（未使用）
   disposalTierMult: { mass:1, luxury:2, sport:3 },
@@ -146,6 +148,14 @@ const CONFIG = {
   // --- 演出 ---
   slowmoScale: 0.35,        // 良品の完成車：スローの速さ（1＝通常）
   slowmoTime: 0.5,          // スローの長さ（実時間の秒）
+  // v0.7：合体段階演出（小／中／大）と不良なし完成の爆発
+  mergeFx: {
+    small: { shake:2, sfx:'merge', slowmo:0, sparks:1 },
+    mid:   { shake:5, sfx:'merge_big', slowmo:0.15, sparks:5 },
+    big:   { shake:10, sfx:'merge_big', slowmo:0.35, sparks:14 }
+  },
+  explodeGood: { enabled:true, weakRankMax:0, midRankMax:5,  // rank 0=軽トラ弱、1〜5=中、6〜7=強（トレーラー最大）
+    weakN:3, midFrac:0.5, flashDur:0.45 },
   countUpTime: 0.8,         // 売上のカウントアップの秒数
   complaintShake: 16,       // クレームの画面の揺れ
   maxParticles: 60,         // 煙・破片・コインなどの最大数（重くならないように）
@@ -233,7 +243,7 @@ const CONFIG = {
   rounds: {
     table: [
       { salesMult:1.0, defectMax:null, dropTimeMin:null, floorTimeMax:null, binSpeed:null, binRange:null, diffAdd:0 },
-      { salesMult:1.5, defectMax:42,   dropTimeMin:1.3,  floorTimeMax:0.45, binSpeed:40,   binRange:100, diffAdd:3 },
+      { salesMult:1.5, defectMax:42,   dropTimeMin:1.3,  floorTimeMax:0.45, binSpeed:50,   binRange:110, diffAdd:3 },  // v0.7：仕様仮値 50/110
       { salesMult:2.0, defectMax:49,   dropTimeMin:1.1,  floorTimeMax:0.50, binSpeed:50,   binRange:110, diffAdd:6 },
     ],
     step: { salesMult:0.5, defectMax:7,  dropTimeMin:-0.2, floorTimeMax:0.05, binSpeed:10, binRange:10, diffAdd:3 },   // defectMax／dropTimeMin／floorTimeMax は basis:'time' のときだけ使う（D章で shipped は不使用）
@@ -249,7 +259,7 @@ const CONFIG = {
   windowDoor: false,        // DR3：窓つきドア経路は廃止。door_window＝組みかけドア（紫）
   doorKinds: ['screw'],     // 完成車に付くドアは screw のみ
   stackAs: [],              // DR3：組みかけドア同士は同種合体、ドアとキットは色が違うので不要
-  mergeSameBig: ['engine_chassis','engine_body','body_car','door_window','screw','car'],  // 「1つにまとまった」
+  mergeSameBig: ['engine_chassis','rolling_chassis','body_car','door_window','screw','car'],  // v0.7
   holdLabel: true,          // 持っている部品の上に名前（紫は「名前：ヒント」）を1行で出す。URL ?label=0 で消す
   holdLabelFontPx: 12, holdLabelH: 18, holdLabelGap: 5, holdLabelMinY: 97,   // MinY：帯の中心の一番上（ゲージ・「次」と重ならない）
   holdLabelDefectTag: true, // 不良品は名前のあとに（不良品）
@@ -304,7 +314,7 @@ const CONFIG = {
   discardBadColor: '#ff6b5e', discardGoodColor: '#5be37d', discardTextX: [135, 265], discardTextDY: 56,
   discardOutline: 'rgba(0,0,0,.8)', discardOutlineW: 3,
   // 部品の絵のファイル名（中のキー名 → 絵の名前）。screw（ドア・ボンネット）は door の絵を使う。_bad も同じ名前で探す
-  artFile: { screw:'door', panel:'panel', glass:'glass', hinge:'hinge', door_window:'door_window', engine_body:'engine_body' },
+  artFile: { screw:'door', panel:'panel', glass:'glass', hinge:'hinge', door_window:'door_window', engine_body:'engine_body', body_car:'outfitted_body' },  // v0.7：艤装ボディ
   // 絵がまだ届いていない部品（ここにある部品は画像を読みに行かず、紫の仮の絵を描く）。
   // あーとの badge_panel / badge_glass(_bad) / badge_hinge(_bad).webp が parts_v3 に入ったら、ここから消す
   // （仕様フォルダ mass/・luxury/ の絵もあれば、上の artTiers の files に 'panel','glass','glass_bad','hinge','hinge_bad' を足す）
@@ -334,24 +344,24 @@ const COLORS = {
   orange:{hex:'#f07a22', mark:'star'}, yellow:{hex:'#f2c230', mark:'diamond'}, red:{hex:'#e03a3a', mark:'cross'},
   white:{hex:'#ffffff', mark:'wrench'}, purple:{hex:'#9b59d6', mark:'heart'} };   // 紫（v5k）：外板・窓ガラス・ちょうつがい
 // 同じ色の2つは必ず合体：同じ部品同士→同じ部品1つ（お金なし）、違う部品同士→下のレシピ
-const ITEM_DEFS = [  // DR3 部品表v1.1（rolling_chassis は残すがレシピから外す）
-  ['screw','gray',false], ['wheel','blue',true], ['tire','blue',true], ['suspension','green',true], ['frame','green',false],
+const ITEM_DEFS = [  // v0.7：2ライン＋マリッジ（色＝次の合体相手。screw=赤／rolling_chassis=灰／engine_chassis=黄／body_car=灰）
+  ['screw','red',false], ['wheel','blue',true], ['tire','blue',true], ['suspension','green',true], ['frame','green',false],
   ['engine','orange',false], ['body','red',false], ['tire_wheel','yellow',false], ['suspension_frame','orange',false],
-  ['engine_chassis','red',false], ['engine_body','yellow',false], ['rolling_chassis','red',false], ['body_car','gray',false], ['car','gray',false], ['mechanic','white',false],
+  ['engine_chassis','yellow',false], ['engine_body','yellow',false], ['rolling_chassis','gray',false], ['body_car','gray',false], ['car','gray',false], ['mechanic','white',false],
   ['panel','purple',false], ['glass','purple',true], ['hinge','purple',true], ['door_window','purple',false] ];
 const ITEMS = ITEM_DEFS.map(([id,color,defect],i)=>({ i, id, color, defectable:defect, r:CONFIG.radius[id] }));
 const K = {}; ITEMS.forEach(it => K[it.id] = it.i);
-const RECIPES = [ // DR3 v1.1：[色, A, B, できるもの]
+const RECIPES = [ // v0.7：シャシー側／ボディ側 → 最後マリッジ（8合体）
   ['blue','wheel','tire','tire_wheel'],
   ['green','frame','suspension','suspension_frame'],
-  ['orange','suspension_frame','engine','engine_chassis'],
+  ['yellow','suspension_frame','engine','engine_chassis'],
+  ['yellow','engine_chassis','tire_wheel','rolling_chassis'],  // 走れるシャシー（灰＝次の相手・艤装ボディ）
   // 紫3つでドア：違う紫2つ→組みかけドア、組みかけドア＋紫→ドア
   ['purple','panel','glass','door_window'], ['purple','panel','hinge','door_window'], ['purple','glass','hinge','door_window'],
   ['purple','door_window','panel','screw'], ['purple','door_window','glass','screw'], ['purple','door_window','hinge','screw'],
-  // マリッジ：塗装済みボディ＋エンジン付き足回り → エンジン付きボディ
-  ['red','body','engine_chassis','engine_body'],
-  ['yellow','engine_body','tire_wheel','body_car'],
-  ['gray','body_car','screw','car'] ];
+  // ボディ側：塗装済みボディ＋ドア（同赤）→ 艤装ボディ／マリッジ：艤装ボディ＋走れるシャシー（同灰）→ 完成車
+  ['red','body','screw','body_car'],
+  ['gray','body_car','rolling_chassis','car'] ];
 function recipeResult(ka, kb){
   if (ka === kb) return ka;
   const a = ITEMS[ka].id, b = ITEMS[kb].id;
@@ -559,16 +569,17 @@ const TEXT = {
     titleLine:t=>`称号：${t}`, topCarLine:c=>`最高到達：${c}`, shipped:'出庫', unitCars:'台', time:'プレイ時間', none:'—',
     share:'結果をシェア', copied:'コピーしました', pause:'一時停止', resume:'つづける', soundOn:'🔊 音あり', soundOff:'🔇 音なし',
     // v5p：部品の名前（release/hint_text_v5p.md の表・持っている部品の上に出す）
-    partNames:{ wheel:'ホイール', tire:'タイヤ', frame:'サブフレーム', suspension:'サスペンション', engine:'エンジン', panel:'ドアパネル', glass:'ドアガラス', hinge:'ちょうつがい', tire_wheel:'タイヤ付きホイール', suspension_frame:'足回り', engine_chassis:'エンジン付き足回り', engine_body:'エンジン付きボディ', rolling_chassis:'走る車台', body:'塗装済みボディ', body_car:'走れる車', screw:'ドア', door_window:'組みかけドア', mechanic:'整備士', car:'完成車' },
+    partNames:{ wheel:'ホイール', tire:'タイヤ', frame:'サブフレーム', suspension:'サスペンション', engine:'エンジン', panel:'ドアパネル', glass:'ドアガラス', hinge:'ちょうつがい', tire_wheel:'タイヤ付きホイール', suspension_frame:'足回り', engine_chassis:'エンジン付き足回り', engine_body:'エンジン付きボディ', rolling_chassis:'走れるシャシー', body:'塗装済みボディ', body_car:'艤装ボディ', screw:'ドア', door_window:'組みかけドア', mechanic:'整備士', car:'完成車' },
     defectTag:'（不良品）',
     holdHint:{ panel:'ちがう紫をくっつけると組みかけドア', glass:'ちがう紫をくっつけると組みかけドア', hinge:'ちがう紫をくっつけると組みかけドア', door_window:'＋紫をもう1つ＝ドア' },
     holdHintWD:{},
-    made:{ tire_wheel:'タイヤ付きホイールができた！エンジン付きボディに付けよう', suspension_frame:'足回りができた！＋エンジン＝エンジン付き足回り',
-      engine_chassis:'エンジン付き足回りができた！＋塗装済みボディでマリッジ', engine_body:'エンジン付きボディ！＋タイヤ付きホイール＝走れる車',
-      door_window:'組みかけドアができた！あと紫1つでドア', screw:'ドアができた！＋走れる車＝完成車', body_car:'走れる車ができた！最後にドアを付けて出荷' },
+    made:{ tire_wheel:'タイヤ付きホイールができた！エンジン付き足回りに付けよう', suspension_frame:'足回りができた！＋エンジン＝エンジン付き足回り',
+      engine_chassis:'エンジン付き足回り！＋タイヤ付きホイール＝走れるシャシー', rolling_chassis:'走れるシャシーができた！艤装ボディとマリッジ',
+      door_window:'組みかけドアができた！あと紫1つでドア', screw:'ドアができた！＋塗装済みボディ＝艤装ボディ',
+      body_car:'艤装ボディができた！走れるシャシーとマリッジで完成車' },
     holdSep:'：',
     newPart:{ wheel:'新入荷！ホイール＋タイヤ＝タイヤ付きホイール', tire:'新入荷！タイヤ＋ホイール＝タイヤ付きホイール', frame:'新入荷！サブフレーム＋サスペンション＝足回り',
-      suspension:'新入荷！サスペンション＋サブフレーム＝足回り', engine:'新入荷！エンジン＋足回り＝エンジン付き足回り', body:'新入荷！ボディ＋エンジン付き足回り＝マリッジ！',
+      suspension:'新入荷！サスペンション＋サブフレーム＝足回り', engine:'新入荷！エンジン＋足回り＝エンジン付き足回り', body:'新入荷！ボディ＋ドア＝艤装ボディ。シャシーとマリッジ！',
       purple:'新入荷！紫を3つ集めるとドア' },
     marriage:'マリッジ！', mergeSame:'1つにまとまった',
     floorReset:'ごほうび：床がもとに戻った！', floorRestored:'床がもとに戻った！', hint_purple:'紫を3つ集めるとドア',
@@ -592,16 +603,17 @@ const TEXT = {
     complaints:'Complaints', goodStreak:'Good streak', complaintTag:'Complaint!',
     titleLine:t=>`Title: ${t}`, topCarLine:c=>`Top car: ${c}`, shipped:'Cars', unitCars:'', time:'Time', none:'—',
     share:'Share result', copied:'Copied!', pause:'Paused', resume:'Resume', soundOn:'🔊 Sound on', soundOff:'🔇 Sound off',
-    partNames:{ wheel:'Wheel', tire:'Tire', frame:'Subframe', suspension:'Suspension', engine:'Engine', panel:'Door Panel', glass:'Door Glass', hinge:'Hinge', tire_wheel:'Wheel Set', suspension_frame:'Suspension Set', engine_chassis:'Engine Unit', engine_body:'Body w/ Engine', rolling_chassis:'Drivable Chassis', body:'Painted Body', body_car:'Rolling Car', screw:'Door', door_window:'Door Kit', mechanic:'Mechanic', car:'Finished Car' },
+    partNames:{ wheel:'Wheel', tire:'Tire', frame:'Subframe', suspension:'Suspension', engine:'Engine', panel:'Door Panel', glass:'Door Glass', hinge:'Hinge', tire_wheel:'Wheel Set', suspension_frame:'Suspension Set', engine_chassis:'Engine Unit', engine_body:'Body w/ Engine', rolling_chassis:'Rolling Chassis', body:'Painted Body', body_car:'Outfitted Body', screw:'Door', door_window:'Door Kit', mechanic:'Mechanic', car:'Finished Car' },
     defectTag:' (Defect)',
     holdHint:{ panel:'+ another purple = Door Kit', glass:'+ another purple = Door Kit', hinge:'+ another purple = Door Kit', door_window:'+ 1 more purple = Door' },
     holdHintWD:{},
-    made:{ tire_wheel:'Wheel Set! Attach it to Body w/ Engine', suspension_frame:'Suspension Set! + Engine = Engine Unit',
-      engine_chassis:'Engine Unit! + Painted Body = Marriage', engine_body:'Body w/ Engine! + Wheel Set = Rolling Car',
-      door_window:'Door Kit! 1 more purple = Door', screw:'Door! + Rolling Car = Finished Car', body_car:'Rolling Car! Add a Door to ship it' },
+    made:{ tire_wheel:'Wheel Set! Attach to Engine Unit', suspension_frame:'Suspension Set! + Engine = Engine Unit',
+      engine_chassis:'Engine Unit! + Wheel Set = Rolling Chassis', rolling_chassis:'Rolling Chassis! Marriage with Outfitted Body',
+      door_window:'Door Kit! 1 more purple = Door', screw:'Door! + Painted Body = Outfitted Body',
+      body_car:'Outfitted Body! Marriage with Rolling Chassis to finish' },
     holdSep:': ',
     newPart:{ wheel:'New part! Wheel + Tire = Wheel Set', tire:'New part! Tire + Wheel = Wheel Set', frame:'New part! Subframe + Suspension = Suspension Set',
-      suspension:'New part! Suspension + Subframe = Suspension Set', engine:'New part! Engine + Suspension Set = Engine Unit', body:'New part! Body + Engine Unit = Marriage!',
+      suspension:'New part! Suspension + Subframe = Suspension Set', engine:'New part! Engine + Suspension Set = Engine Unit', body:'New part! Body + Door = Outfitted Body. Marriage with chassis!',
       purple:'New part! 3 purples make a Door' },
     marriage:'Marriage!', mergeSame:'Merged into one',
     floorReset:'Bonus: the floor is reset!', floorRestored:'Floor restored!', hint_purple:'3 purples make a Door',
@@ -646,7 +658,7 @@ function newState(){
   const s = { running:false, paused:false, ending:0, cars:0, carsGood:0, carsBad:0, carsThisLevel:0, sales:0, salesShown:0, countRate:0, countDelay:0,
     level:1, discards:0, discardLoss:0, grossSales:0, claimCost:0, cleared:false, topRank:-1, rankUp:null,
     dropTimer:0, aimX:CONFIG.W/2, bin:0, current:null, next:null,
-    canDrop:true, armed:false, overflowT:0, warnT:0, shipping:[], effects:[], popups:[], toasts:[], parts:[], elapsed:0,
+    canDrop:true, armed:false, overflowT:0, warnT:0, shipping:[], effects:[], popups:[], toasts:[], parts:[], elapsed:0, wallStart:performance.now(), holdSnap:null,
     shake:0, flash:null, banner:null, hint:0, hintArmed:false, defectPending:false, queuedDrop:false, floorY:BOX.bottom,
     claims:0, claimSteps:0, goodStreak:0, money:[], tagDrops:[], repairs:0, mechanicsSpawned:0, mechForced:0, mechRandom:0, lastForcedT:-1e9, forceClock:-1e9, minDropLimit:99, idleCount:0, manualSinceIdle:0, slowmo:0, lastFloorTarget:BOX.bottom,
     firstCarAt:null, lastDropAt:-1e9, dropClock:0, ignoredDrops:0, overflowSince:null,
@@ -819,7 +831,7 @@ function hingePityActive(){
   const hb = CONFIG.hingeBoost; if (!hb || !hb.enabled || hb.condition !== 'pity' || !state.running) return false;
   const n = Math.max(1, hb.pityN || 6), h = state.normalHist || [];
   if (h.length < n || h.slice(-n).includes('hinge')) return false;
-  return gameBodies().some(b => b.k === K.body_car && !b.bad);
+  return gameBodies().some(b => b.k === K.body && !b.bad);  // v0.7：ボディ待ち
 }
 function randPieceRaw(lv){
   if (state.running){
@@ -839,7 +851,7 @@ function randPieceRaw(lv){
 function hingeBoostActive(){
   const hb = CONFIG.hingeBoost; if (!hb || !hb.enabled || !state.running) return false;
   const bs = gameBodies().filter(b => !b.bad && !b.mech);
-  const cars = bs.filter(b => b.k === K.body_car).length; if (!cars) return false;
+  const cars = bs.filter(b => b.k === K.body).length; if (!cars) return false;  // v0.7
   if (hb.condition === 'any') return true;
   if (hb.condition === 'pity') return false;   // v5o：'pity' は割合を変えず randPiece で次を ちょうつがいにする（hingePityActive）
   if (hb.condition === 'nearby') return cars > hingeNearbyCount();
@@ -848,12 +860,12 @@ function hingeBoostActive(){
 // v5o：どれかの良品 body_car の中心から（その車の半径＋nearPx）以内に中心がある良品のドア・ボンネット＋ちょうつがいの数
 function hingeNearbyCount(){
   const near = (CONFIG.hingeBoost||{}).nearPx != null ? CONFIG.hingeBoost.nearPx : 80;
-  const bs = gameBodies().filter(b => !b.bad && !b.mech), cars = bs.filter(b => b.k === K.body_car);
+  const bs = gameBodies().filter(b => !b.bad && !b.mech), cars = bs.filter(b => b.k === K.body);  // v0.7
   return bs.filter(b => (isDoorK(b.k) || b.k === K.hinge) && cars.some(c => Math.hypot(c.position.x-b.position.x, c.position.y-b.position.y) <= (c.circleRadius || ITEMS[c.k].r) + near)).length;
 }
 // v5o：各条件がいま成り立つか（ボットの計測用）
 function hingeConditions(){
-  const bs = gameBodies().filter(b => !b.bad && !b.mech), cars = bs.filter(b => b.k === K.body_car).length, dh = bs.filter(b => isDoorK(b.k) || b.k === K.hinge).length;
+  const bs = gameBodies().filter(b => !b.bad && !b.mech), cars = bs.filter(b => b.k === K.body).length, dh = bs.filter(b => isDoorK(b.k) || b.k === K.hinge).length;  // v0.7
   const n = Math.max(1, (CONFIG.hingeBoost||{}).pityN || 6), h = state.normalHist || [];
   return { cars, any: cars > 0, deficit: cars > 0 && cars > dh, nearby: cars > 0 && cars > hingeNearbyCount(), pity: cars > 0 && h.length >= n && !h.slice(-n).includes('hinge') };
 }
@@ -862,10 +874,21 @@ function dropWeightsNow(){
   return dropWeightsFor(diffN(), on);
 }
 // v5n：n と hingeBoost からの出る割合（タイヤの減り＋ちょうつがいの boost を両方かける）
+function bodyUnlocked(){  // v0.7：ボディ後出し（完成車2台〜、または箱／手持ちにドアあり）
+  const bl = CONFIG.bodyLate; if (!bl || !bl.enabled) return true;
+  if ((state.cars||0) >= (bl.minCars||2)) return true;
+  if (bl.whenDoor){
+    const hasDoor = gameBodies().some(b => isDoorK(b.k) && !b.bad)
+      || [state.current, state.next].some(p => p && isDoorK(p.k) && !p.bad);
+    if (hasDoor) return true;
+  }
+  return false;
+}
 function dropWeightsFor(n = diffN(), hinge = false){
   const w = Object.assign({}, CONFIG.dropWeights), td = tireDecayParams();
   if (td) { const v = tireWeightAt(n); (CONFIG.tireDecay.parts || ['tire','wheel']).forEach(id => { if (id in w) w[id] = v; }); }
   if (hinge) w.hinge = CONFIG.hingeBoost.weight;
+  if (w.body > 0 && !bodyUnlocked()) w.body = 0;   // v0.7 後出し
   return w;
 }
 function tireDecayParams(){
@@ -980,6 +1003,28 @@ function makePart(k, x, y, opts){
   if (opts.auto) b.autoDropped = true;   // 記録だけ（時間切れで落ちた部品もふつうの部品と同じ）
   Composite.add(world, b); return b;
 }
+
+// v0.7：合体の大きさ（小／中／大）
+function mergeTierOf(nk, same){
+  if (same) return 'small';
+  if (nk === K.car) return 'big';
+  const id = ITEMS[nk].id;
+  if (id === 'engine_chassis' || id === 'screw' || id === 'body_car' || id === 'rolling_chassis') return 'mid';
+  return 'small';
+}
+function applyMergeFx(tier, x, y, r){
+  const fx = (CONFIG.mergeFx && CONFIG.mergeFx[tier]) || CONFIG.mergeFx.small;
+  state.shake = Math.max(state.shake, fx.shake||2);
+  if (fx.slowmo > 0) state.slowmo = Math.max(state.slowmo, fx.slowmo);
+  sfx(fx.sfx || 'merge');
+  const n = fx.sparks|0;
+  for (let i=0;i<n;i++){
+    const ang = Math.random()*Math.PI*2, sp = 80 + Math.random()*180 + (tier==='big'?120:0);
+    addParticle({ frames:FX.sparkle, frameDur:CONFIG.sparkleFrame, x:x+(Math.random()-.5)*r*0.4, y:y+(Math.random()-.5)*r*0.4,
+      vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp - 40, g:200, s0:r*0.35, s1:r*0.15, life:0.35+Math.random()*0.25, fb:'sparkle', fade:true });
+  }
+}
+
 const merging = new Set();
 function onCollide(ev){
   if (!state.running) return;
@@ -993,11 +1038,10 @@ function onCollide(ev){
       if (!o.mech && o.bad && !m.done) repair(m, o);
       continue;
     }
-    if (ITEMS[a.k].color !== ITEMS[b.k].color) continue;
-    const nk = recipeResult(a.k, b.k); if (nk < 0) continue;
+    const nk = recipeResult(a.k, b.k); if (nk < 0) continue;   // v0.7：レシピがあれば合体（ボディ＋ドア／マリッジは同色）
     merging.add(a.id); merging.add(b.id);
-    if (nk === K.car && state.magnet.size){ const d = isDoorK(a.k) ? a : b, c = isDoorK(a.k) ? b : a, rec = state.magnet.get(d.id+':'+c.id); if (rec && !rec.done) state.magnetAttach++; }   // v5l：吸い寄せ中に付いた
-    const x=(a.position.x+b.position.x)/2, y=(a.position.y+b.position.y)/2, bad = a.bad || b.bad, same = isStackPair(a.k, b.k), color = ITEMS[a.k].color;
+    if (nk === K.body_car && state.magnet.size){ const d = isDoorK(a.k) ? a : b, c = isDoorK(a.k) ? b : a, rec = state.magnet.get(d.id+':'+c.id); if (rec && !rec.done) state.magnetAttach++; }   // ドア→ボディ吸い寄せ
+    const x=(a.position.x+b.position.x)/2, y=(a.position.y+b.position.y)/2, bad = a.bad || b.bad, same = isStackPair(a.k, b.k), ka0=a.k, kb0=b.k;
     const s0 = state;
     setTimeout(()=>{
       Composite.remove(world,a); Composite.remove(world,b);
@@ -1005,17 +1049,18 @@ function onCollide(ev){
       if (state !== s0 || !state.running) return;
       state.effects.push({x,y,r:R(nk),t:0});
       tutOnMerge();
-      if (nk === K.car){ shipCar(x, y, bad); return; }
-      const nb = makePart(nk, x, y, {bad}); noticeMade(nk, nb);   // v5p：はじめてできた部品のお知らせ
-      state.shake = Math.max(state.shake, same ? 1.5 : 3);
-      if (nk === K.engine_body){   // DR3：マリッジ演出
-        state.popups.push({ text:L().marriage, color:'#ffd84a', x, y:y-R(nk)-10, t:0, size:22 });
-        state.flash = { color:'255,216,74', t:0, dur:0.35 };
-      } else if (same){
+      const tier = mergeTierOf(nk, same);
+      applyMergeFx(tier, x, y, R(nk));
+      if (nk === K.car){   // v0.7：マリッジ＝完成 → 演出のあと出荷
+        state.popups.push({ text:L().marriage, color:'#ffd84a', x, y:y-R(nk)-10, t:0, size:24 });
+        state.flash = { color:'255,216,74', t:0, dur:0.45 };
+        shipCar(x, y, bad); return;
+      }
+      const nb = makePart(nk, x, y, {bad}); noticeMade(nk, nb);
+      if (same){
         const id = ITEMS[nk].id, big = (CONFIG.mergeSameBig||[]).includes(id);
         state.popups.push({ text: big ? (L().mergeSame||L().stack) : L().stack, color:'#cfe', x, y:y-R(nk)-6, t:0, size:14 });
       }
-      sfx(['blue','green'].includes(color) ? 'merge' : 'merge_big');
     },0);
   }
 }
@@ -1035,8 +1080,8 @@ const glowActive = () => glowAllowed() && !!(state.canDrop && state.current && !
 // 持っている部品 k とくっつく（合体・取り付け）箱の中の良品
 function glowPartners(k = state.current && state.current.k){
   if (k == null) return [];
-  const col = ITEMS[k].color, out = [];
-  for (const b of gameBodies()){ if (b.mech || b.bad || merging.has(b.id) || ITEMS[b.k].color !== col || isStackPair(k, b.k)) continue; if (recipeResult(k, b.k) >= 0) out.push(b); }   // 同じ部品（重なって1つになるだけ）は光らせない
+  const out = [];
+  for (const b of gameBodies()){ if (b.mech || b.bad || merging.has(b.id) || isStackPair(k, b.k)) continue; if (recipeResult(k, b.k) >= 0) out.push(b); }   // v0.7：色違いレシピも光る
   return out;
 }
 function drawPartnerGlow(now){
@@ -1068,8 +1113,11 @@ function holdLabelRect(text, hx, hy, hr){
   return { x, y: cy - h/2, w, h, cy, textW: ctx.measureText(text).width };
 }
 function drawHoldLabel(){
-  if (!CONFIG.holdLabel || !state.running || !state.canDrop || !state.current) return null;
-  const p = state.current, hr = R(p.k), hx = clampAim(state.aimX, hr), hy = state.bin===0 ? HOLD_Y : HOLD_Y - binLiftFor(hr);
+  if (!CONFIG.holdLabel || !state.running || !state.canDrop || !state.current) { state.holdSnap = null; return null; }
+  const p = state.current;
+  // v0.7：描画と同じ参照でスナップ（1フレーム遅れ防止）
+  state.holdSnap = { k:p.k, bad:!!p.bad };
+  const hr = R(p.k), hx = clampAim(state.aimX, hr), hy = state.bin===0 ? HOLD_Y : HOLD_Y - binLiftFor(hr);
   const text = holdLabelText(p); if (!text) return;
   const r = holdLabelRect(text, hx, hy, hr);
   if (state.bin !== 0) return null;   // ごみ箱をねらっているときは出さない
@@ -1128,6 +1176,41 @@ function drawNewPart(){
   ctx.fillStyle = '#ffd84a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, W/2, y + 0.5, w - 12);
   ctx.restore();
 }
+
+// v0.7：不良なし完成の爆発（ランク別）。箱の部品を飛ばす
+function explodeStrength(rank){
+  const eg = CONFIG.explodeGood || {};
+  if (rank <= (eg.weakRankMax|0)) return 'weak';
+  if (rank <= (eg.midRankMax != null ? eg.midRankMax : 5)) return 'mid';
+  return 'max';
+}
+function explodeGoodShip(x, y, rank){
+  const eg = CONFIG.explodeGood; if (!eg || !eg.enabled) return;
+  const mode = explodeStrength(rank);
+  state.shake = Math.max(state.shake, mode==='max' ? 18 : mode==='mid' ? 12 : 6);
+  state.flash = { color:'255,230,160', t:0, dur: eg.flashDur || 0.45 };
+  debris(x, y, mode==='max' ? 16 : mode==='mid' ? 10 : 5);
+  for (let i=0;i<(mode==='max'?10:6);i++){
+    const ang = Math.random()*Math.PI*2, sp = 120+Math.random()*220;
+    addParticle({ frames:FX.sparkle, frameDur:CONFIG.sparkleFrame, x, y, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp-80, g:180,
+      s0:40, s1:10, life:0.5+Math.random()*0.3, fb:'sparkle', fade:true });
+  }
+  const bs = gameBodies().filter(b => !b.mech);
+  let targets = [];
+  if (mode === 'max') targets = bs.slice();
+  else if (mode === 'mid'){ const n = Math.max(1, Math.floor(bs.length * (eg.midFrac != null ? eg.midFrac : 0.5))); targets = bs.slice().sort(()=>Math.random()-0.5).slice(0, n); }
+  else {
+    targets = bs.filter(b => Math.hypot(b.position.x-x, b.position.y-y) < 140).slice(0, eg.weakN != null ? eg.weakN : 3);
+  }
+  for (const b of targets){
+    const art = artFor(b.k, b.bad, b.art || 'root');
+    const ang = Math.atan2(b.position.y - y, b.position.x - x) + (Math.random()-.5)*0.8;
+    const sp = (mode==='max' ? 280 : mode==='mid' ? 200 : 140) + Math.random()*160;
+    addParticle({ art, fb:'debris', x:b.position.x, y:b.position.y, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp - 120 - Math.random()*80, g:900,
+      s0:b.circleRadius*2, s1:b.circleRadius*1.2, life:0.9+Math.random()*0.5, rot:b.angle||0, vr:(Math.random()-.5)*8, fade:true });
+    Composite.remove(world, b);
+  }
+}
 function shipCar(x, y, bad){
   const rank = rankForLevel(state.level), fullValue = carValue(rank);
   const value = (!bad || CONFIG.badCarPays) ? fullValue : 0;
@@ -1149,8 +1232,9 @@ function shipCar(x, y, bad){
     toast(L().badCar, '#ff9a8a', 0, seq, { bad:true });
     sfx('defect_putter'); setTimeout(()=>sfx('complaint'), 350);
   } else {
-    state.carsGood++; state.goodStreak++; state.shake = 8;
-    state.slowmo = CONFIG.slowmoTime;
+    state.carsGood++; state.goodStreak++; state.shake = Math.max(state.shake, 8);
+    state.slowmo = Math.max(state.slowmo, CONFIG.slowmoTime);
+    explodeGoodShip(x, y, rank);   // v0.7：不良なし完成の爆発
     if (state.goodStreak >= CONFIG.recoverStreak && state.claimSteps > 0){ state.claimSteps--; state.goodStreak = 0; toast(L().recover, '#7fffb0', 0, seq, { streak:true }); }
     sfx('complete'); setTimeout(()=>sfx('coin'), 450);
     for (let i=0;i<6;i++) addParticle({ coin:true, art:FX.coin, x0:x+(Math.random()-.5)*60, y0:y+(Math.random()-.5)*40, tx:60, ty:20, delay:0.15+i*0.06, life:0.75+i*0.06, s0:20, s1:14, fb:'coin', fade:false });
@@ -1191,7 +1275,7 @@ function setStartRound(n){
   updateTitle();
 }
 // v5l：ページのタイトルに版と周（ゲーム中だけ「 - Round N」）
-const TITLE_BASE = 'Quality Rush Ver0.6 (DR3)';   // DR3：部品表v1.1・決算・不適合品箱
+const TITLE_BASE = 'Quality Rush Ver0.7';   // v0.7：2ライン＋マリッジ・演出段階・爆発
 function updateTitle(){
   const t = (state && state.round) ? `${TITLE_BASE} - Round ${state.round}` : TITLE_BASE;
   if (document.title !== t) document.title = t;
@@ -1203,7 +1287,7 @@ function doorMagnetStep(){
   const doors = [], cars = [];
   for (const b of Composite.allBodies(world)){
     if (isDoorK(b.k) && !merging.has(b.id)) doors.push(b);
-    else if (b.k === K.body_car && !merging.has(b.id)) cars.push(b);
+    else if (b.k === K.body && !merging.has(b.id)) cars.push(b);  // v0.7：ドア→塗装済みボディ
   }
   if (!doors.length || !cars.length){ if (state.magnet.size) state.magnet.clear(); return; }
   const seen = new Set();
@@ -1399,6 +1483,7 @@ function drop(auto){
   }
   tutOnDrop(p, auto);
   state.current = state.next; state.next = randPiece(state.level);
+  state.holdSnap = null;   // v0.7：持ち替え直後のラベル遅れ防止
   if (state.bin === 0) setAim(state.aimX);
   state.dropTimer = 0; state.canDrop = false;
   const s0 = state;
@@ -1413,7 +1498,9 @@ function discard(p){
   const side = state.bin<0 ? -1 : 1, W = CONFIG.W, x = binX(side), off = binOffset(side);
   let text = L().okDiscard, good = p.bad || p.k===K.mechanic;
   if (!good){
-    const cost = disposalCostOf(ITEMS[p.k].id), before = state.sales;
+    let cost = disposalCostOf(ITEMS[p.k].id);
+    if ((state.cars||0) < 1 && CONFIG.earlyScrapMult != null) cost = Math.round(cost * CONFIG.earlyScrapMult);  // v0.7 案A：通常の30%（丸めは部品コスト側で済）
+    const before = state.sales;
     state.sales = state.sales - cost;   // 0円で止めない（マイナスになる）
     state.discardLoss = (state.discardLoss||0) + cost;   // DR3：決算のコスト
     if (state.salesShown > state.sales) state.salesShown = state.sales;
@@ -1931,7 +2018,7 @@ function renderOverlay(){
     html += `${T.profit||'Profit'} <b${profit<0 ? ' style="color:#ff4a3a"' : ''}>${fmtYen(profit||0)}</b> / ${T.margin||'Margin'} <b>${(marginPct).toFixed(1)}%</b><br>`;
     if (r.score != null) html += `<b style="font-size:20px;color:#ffd84a">${T.totalScore||'Score'} ${r.score}/1000　${T.rankLabel||'Rank'} ${r.scoreRank||'C'}</b><br>`;
     html += `${T.best} ${fmtYen(r.bestSales||0)}`+( (r.bestRound||1) >= CONFIG.roundShowFrom ? (lang==='ja' ? `（${T.roundsReached(r.bestRound)}）` : ` (${T.roundsReached(r.bestRound)})`) : '' )+`<br>`;
-    html += `Lv ${r.level||1} / ${T.time} ${fmtTime(r.seconds||0)}`;
+    html += `Lv ${r.level||1} / ${T.time} ${fmtTime(r.seconds != null ? r.seconds : 0)}`;
     if ((r.round||1) >= CONFIG.roundShowFrom) html += `<br><b>${T.roundsReached(r.round)}</b>`;
     html += `</div>`;
     // 個人ランキング top10
@@ -2022,10 +2109,13 @@ function finalizeResult(cleared){
   const prevRound = Store.get('bestRound', 1), round = state.round||1;
   if (round > prevRound) Store.set('bestRound', round);
   const ranks = savePersonalRank(settle);
+  // v0.7：プレイ時間はゲーム内 elapsed を優先。0 の誤表示防止に壁時計も参照
+  const wallSec = state.wallStart ? (performance.now() - state.wallStart) / 1000 : 0;
+  const playSec = Math.max(0, Math.round(state.elapsed > 0.5 ? state.elapsed : Math.max(state.elapsed, wallSec)));
   window.lastResult = { cars:state.cars, carsGood:state.carsGood, carsBad:state.carsBad||0, claims:state.claims, repairs:state.repairs,
     sales:state.sales, grossSales:settle.gross, discardLoss:settle.discardLoss, claimCost:settle.claimCost, profit:settle.profit, margin:settle.margin,
     score:settle.total, scoreRank:settle.rank, scoreBreak:{prod:settle.prod, quality:settle.quality, margin:settle.marginPts, round:settle.roundPts},
-    seconds:Math.round(state.elapsed), level:state.level, discards:state.discards,
+    seconds:playSec, level:state.level, discards:state.discards,
     topRank:state.topRank, bestSales:Math.max(prevBest, settle.gross), bestRank:Math.max(prevRank, state.topRank), newRecord,
     round, bestRound:Math.max(prevRound, round), cleared:!!cleared, personalRanks:ranks };
 }
@@ -2093,7 +2183,7 @@ window.QR = { get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPE
   setBinTime(t){ state.binT = t; },
   binSideFor, get gapLatch(){ return state.gapLatch; }, get gapGuarded(){ return state.gapGuarded||0; }, hingePityActive, hingeNearbyCount, hingeConditions, randPieceRaw, mechanicCooldownOk,
   get normalHist(){ return state.normalHist||[]; }, shipPos, carRadiusFor, carSpriteSize, isTrailerRank, CAR_RANKS, rankRadius, curRank, drawPart, get hingePity(){ return state.hingePity||0; },
-  dropWeightsFor, tireWeightAt, tireDecayParams, mechanicChanceNow,
+  dropWeightsFor, tireWeightAt, tireDecayParams, mechanicChanceNow, bodyUnlocked, mergeTierOf, applyMergeFx, explodeGoodShip, explodeStrength,
   isDoorK, isStackPair, glowActive, glowAllowed, noticeMade, noticeFreeze, get madeGlow(){ return state.madeGlow; }, get fall(){ return state.fall; }, glowPartners, glowSetOff, partName, holdLabelText, holdLabelRect, newPartUpdate, PARTNERS,
   get glow(){ return { off:state.glowOff, at:state.glowOffAt, why:state.glowOffWhy, active:glowActive() }; }, get newPart(){ return { seen:Object.keys(state.newSeen), queue:state.newQueue.slice(), cur:state.newCur, shown:state.newShown.slice() }; },
   get tirePreset(){ return CONFIG.tireDecayPreset; }, setTirePreset(p){ if ((CONFIG.tireDecayPresets||{})[p] || p === 'custom') CONFIG.tireDecayPreset = p; return CONFIG.tireDecayPreset; },
