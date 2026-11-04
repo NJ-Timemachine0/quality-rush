@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Quality Rush Ver0.8</title>
+<title>Quality Rush Ver0.9</title>
 <style>
   html,body{margin:0;height:100%;background:#1b2330;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center}
@@ -40,7 +40,7 @@
 <div id="wrap">
   <canvas id="c"></canvas>
   <div id="overlay" class="ov">
-    <h1>Quality Rush Ver0.8</h1>
+    <h1>Quality Rush Ver0.9</h1>
     <img id="flowTitle" class="flowBig" src="assets/ui/assembly_flow.webp" alt="" onerror="this.className='flowBig fb'">
     <div id="ovText"></div>
     <button id="startBtn" disabled>読み込み中…</button>
@@ -274,8 +274,12 @@ const CONFIG = {
   noMatchShow: true,        // v0.8：相手が箱にいないとき「相手まだ」。URL は glow と連動
   noMatchSec: 1.5,          // v0.8：表示秒数（仮）
   // --- v0.8：道すじ表示（画面上部・2列→合体）。URL ?path=0 で消す ---
-  pathShow: true, pathH: 96, pathDotPx: 30, pathCurScale: 1.35, pathGray: 0.8,
-  pathY: 88,                // 道すじ帯の上端（仮）。HUDの下・箱の上
+  pathShow: true, pathH: 50, pathDotPx: 20, pathCurScale: 1.35, pathGray: 0.8,
+  pathBoxGap: 60,           // v0.9：帯の下端＝BOX.top − これ（持ち部品＋名前の帯ぶん）。pathY は BOX 定義のあとで計算（192−60−50＝82）
+  pathRowGap: 24,           // v0.9：2段（上＝ボディ側・下＝シャシー側）の中心どうしの間
+  holdLabelSideMinR: 26,    // v0.9：この半径以上の部品は名前を部品の横に出す（それ未満は真上 y134 固定）
+  holdLabelTopY: 134,       // v0.9：真上に出すときの名前の帯の上端（y134〜152）
+  holdLabelSideGap: 6,      // v0.9：横に出すとき部品の端からの間
   pathPulseMs: 1200,        // 今の段の丸がゆっくり光る周期（仮）
   // --- v0.8：開始時の分解演出。URL ?intro=0 で消す ---
   introBreakSec: 2.0, introBreakShow: 'first', // 'first'＝初回だけ／'always'／'off'
@@ -287,7 +291,7 @@ const CONFIG = {
   purpleHint: true,         // 紫の部品をはじめて持ったときに「ちょうつがいが入ればドア…」を出す（1ゲーム1回）
   roundShowFrom: 2,         // 結果画面の「到達：n周目」と称号の「×n」をこの周から出す
   binLift: 34,              // ゴミ箱モードで手持ち部品を浮かせる最大の高さ
-  hudBottom: 90,            // 浮かせた部品の上端がこれより上に出ない（「次」・ゲージと重ならない）
+  hudBottom: 134,           // 浮かせた部品の上端がこれより上に出ない（「次」・ゲージと重ならない）
   loadTimeout: 10,          // 画像の読み込みを待つ最長の秒数
   badgeImgScale: 1.03,
   // --- 文字の大きさ（px） ---
@@ -656,7 +660,8 @@ window.addEventListener('resize', resize); resize();
 const flowImg = () => { const hi = CONFIG.flowW*cssScale*devPx >= CONFIG.flowHiResMinPx;
   const a = hi ? UI.flowSlim : UI.flowSlim360, b = hi ? UI.flowSlim360 : UI.flowSlim; return a.ok ? a : (b.ok ? b : null); };
 
-const BOX = { left:20, right:380, top:192, bottom:610 };  // v0.8：道すじ表示ぶん上を空ける（pathY+pathH）
+const BOX = { left:20, right:380, top:192, bottom:610 };  // v0.9：top 192 は固定（難易度）。道すじ帯はここから計算：pathY＝top−pathBoxGap−pathH
+CONFIG.pathY = BOX.top - CONFIG.pathBoxGap - CONFIG.pathH;   // 82（帯 y82〜132）
 const BOX_H = BOX.bottom - BOX.top;
 const HOLD_Y = BOX.top - 12;
 const DANGER_Y = BOX.top + 30;
@@ -1092,8 +1097,8 @@ function repair(m, o){
 }
 // ===== v5p：わかりやすさ（光る相手・持っている部品の名前・新入荷）=====
 function glowSetOff(why){ if (!state || state.glowOff) return; state.glowOff = true; state.glowOffAt = state.elapsed; state.glowOffWhy = why; }
-function glowStopCheck(rank){ const u = CONFIG.partnerGlowUntilRank; if (u > 0 && rank + 1 >= u) glowSetOff('rank'); }   // rank：0 始まり（2＝セダン）
-const glowAllowed = () => !!(CONFIG.partnerGlow && state && state.running && !state.glowOff && (state.round||1) === 1);   // 1周目・最初のセダンまで
+function glowStopCheck(rank){ const u = CONFIG.partnerGlowUntilRank; if (u > 0 && rank + 1 >= u) glowSetOff('rank'); }   // rank は0始まり。partnerGlowUntilRank 2 ＝ コンパクトカーまで光らせる
+const glowAllowed = () => !!(CONFIG.partnerGlow && state && state.running && !state.glowOff && (state.round||1) === 1);   // 1周目・コンパクトカーまで
 const glowActive = () => glowAllowed() && !!(state.canDrop && state.current && !state.current.bad && state.current.k !== K.mechanic);
 // 持っている部品 k とくっつく（合体・取り付け）箱の中の良品
 function glowPartners(k = state.current && state.current.k){
@@ -1181,17 +1186,15 @@ function pathCurrentIds(){
   return cur;
 }
 function pathDotPos(){
-  // 左3・右4・中央マリッジ＋完成車。拡大ドット分の余白を確保して帯内に収める（仮）
-  const W = CONFIG.W, y0 = CONFIG.pathY, h = CONFIG.pathH;
-  const leftX = 54, rightX = W - 54, midX = W/2;
-  const rPad = CONFIG.pathDotPx * CONFIG.pathCurScale / 2 + 2;   // 縁＋カレント拡大ぶん
-  const usable = Math.max(24, h - 2 * rPad);
-  const colY = (i, n) => y0 + rPad + i * (usable / Math.max(1, n - 1));
+  // v0.9（A2）：横長2段。上段＝ボディ側3つ（右寄せ）、下段＝シャシー側4つ、右端で合体→完成車
+  const y0 = CONFIG.pathY, h = CONFIG.pathH, mid = y0 + h/2, g = CONFIG.pathRowGap;
+  const topY = mid - g/2 - 1, botY = mid + g/2 - 1;   // 94 / 118（下段の光る輪が名前の帯 y134 にかからないよう1px上げる）
+  const xs = [66, 140, 214, 288], marX = 322, carX = 366;
   const dots = [];
-  PATH_LEFT.forEach((id,i)=> dots.push({ id, x:leftX, y:colY(i, PATH_LEFT.length) }));
-  PATH_RIGHT.forEach((id,i)=> dots.push({ id, x:rightX, y:colY(i, PATH_RIGHT.length) }));
-  dots.push({ id:'marriage', x:midX, y:y0 + rPad + usable * 0.28 });
-  dots.push({ id:'car', x:midX, y:y0 + rPad + usable * 0.72 });
+  PATH_LEFT.forEach((id,i)=> dots.push({ id, x:xs[i+1], y:topY, row:0 }));
+  PATH_RIGHT.forEach((id,i)=> dots.push({ id, x:xs[i], y:botY, row:1 }));
+  dots.push({ id:'marriage', x:marX, y:mid });
+  dots.push({ id:'car', x:carX, y:mid });
   return dots;
 }
 function drawPath(now){
@@ -1202,11 +1205,15 @@ function drawPath(now){
   const mar = dots.find(d=>d.id==='marriage'), car = dots.find(d=>d.id==='car');
   ctx.save();
   ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 2;
-  for (const d of dots){
-    if (d.id==='marriage' || d.id==='car') continue;
-    if (!mar) break;
-    ctx.beginPath(); ctx.moveTo(d.x, d.y); ctx.lineTo(mar.x, mar.y); ctx.stroke();
+  for (const row of [0,1]){
+    const rd = dots.filter(d=>d.row===row); if (!rd.length || !mar) continue;
+    const last = rd[rd.length-1];
+    ctx.beginPath(); ctx.moveTo(rd[0].x, rd[0].y); ctx.lineTo(last.x, last.y); ctx.lineTo(mar.x, mar.y); ctx.stroke();
   }
+  ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  { const t0 = dots.find(d=>d.row===0), t1 = dots.find(d=>d.row===1);
+    if (t0) ctx.fillText(lang==='ja'?'ボディ':'Body', t0.x - 16, t0.y);
+    if (t1) ctx.fillText(lang==='ja'?'シャシー':'Chassis', t1.x - 16, t1.y); }
   if (mar && car){ ctx.beginPath(); ctx.moveTo(mar.x, mar.y); ctx.lineTo(car.x, car.y); ctx.stroke(); }
   for (const d of dots){
     const isCur = cur.has(d.id), sc = isCur ? CONFIG.pathCurScale : 1, px = CONFIG.pathDotPx * sc;
@@ -1228,7 +1235,7 @@ function drawPath(now){
       // 4-1：縁の色＝部品の色表
       ctx.beginPath(); ctx.arc(d.x, d.y, px/2 + 1, 0, Math.PI*2);
       ctx.strokeStyle = rimHex(d.id); ctx.globalAlpha = colored ? 0.95 : 0.45; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1;
-      if (isCur){ ctx.beginPath(); ctx.arc(d.x, d.y, px/2 + 3 + pulse*2, 0, Math.PI*2); ctx.strokeStyle = `rgba(255,236,120,${0.30+0.45*pulse})`; ctx.lineWidth = 3; ctx.stroke(); }
+      if (isCur){ ctx.beginPath(); ctx.arc(d.x, d.y, px/2 + 1.5 + pulse, 0, Math.PI*2); ctx.strokeStyle = `rgba(255,236,120,${0.30+0.45*pulse})`; ctx.lineWidth = 2; ctx.stroke(); }
     }
   }
   ctx.restore();
@@ -1310,8 +1317,16 @@ function holdLabelText(p = state.current, l = lang){
 function holdLabelRect(text, hx, hy, hr){
   ctx.font = `bold ${CONFIG.holdLabelFontPx}px sans-serif`;
   const W = CONFIG.W, h = CONFIG.holdLabelH, w = Math.min(W - 8, Math.ceil(ctx.measureText(text).width) + 14);
-  const cy = Math.max(CONFIG.holdLabelMinY, hy - hr - CONFIG.holdLabelGap - h/2);
-  const x = Math.max(4, Math.min(W - 4 - w, hx - w/2));
+  const lift = HOLD_Y - hy;   // ゴミ箱モードの持ち上げぶん、名前も一緒に上へ
+  let cy, x;
+  if (hr >= CONFIG.holdLabelSideMinR){   // 大きい部品：横（中心の高さ、端から6px、左半分なら右側）
+    cy = hy; const off = hr*1.03 + CONFIG.holdLabelSideGap;
+    x = hx < W/2 ? hx + off : hx - off - w;
+    x = Math.max(4, Math.min(W - 4 - w, x));
+  } else {
+    cy = CONFIG.holdLabelTopY + h/2 - lift;
+    x = Math.max(4, Math.min(W - 4 - w, hx - w/2));
+  }
   return { x, y: cy - h/2, w, h, cy, textW: ctx.measureText(text).width };
 }
 function drawHoldLabel(){
@@ -1322,7 +1337,7 @@ function drawHoldLabel(){
   const hr = R(p.k), hx = clampAim(state.aimX, hr), hy = state.bin===0 ? HOLD_Y : HOLD_Y - binLiftFor(hr);
   const text = holdLabelText(p); if (!text) return;
   const r = holdLabelRect(text, hx, hy, hr);
-  if (state.bin !== 0) return null;   // ごみ箱をねらっているときは出さない
+  // v0.9：ゴミ箱モードでも出す（持ち上げぶん名前も一緒に上へ。holdLabelRect の lift）
   ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.68)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(r.x, r.y, r.w, r.h, r.h/2) : ctx.rect(r.x, r.y, r.w, r.h); ctx.fill();
   const purple = ITEMS[p.k].color === 'purple' && !p.bad;
   ctx.fillStyle = p.bad ? '#ff9a8a' : (purple ? '#e6ccff' : '#fff'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -1478,7 +1493,7 @@ function setStartRound(n){
   updateTitle();
 }
 // v5l：ページのタイトルに版と周（ゲーム中だけ「 - Round N」）
-const TITLE_BASE = 'Quality Rush Ver0.8';   // v0.7：2ライン＋マリッジ・演出段階・爆発
+const TITLE_BASE = 'Quality Rush Ver0.9';   // v0.7：2ライン＋マリッジ・演出段階・爆発
 function updateTitle(){
   const t = (state && state.round) ? `${TITLE_BASE} - Round ${state.round}` : TITLE_BASE;
   if (document.title !== t) document.title = t;
