@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Quality Rush Ver0.9</title>
+<title>Quality Rush Ver0.9.1</title>
 <style>
   html,body{margin:0;height:100%;background:#1b2330;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center}
@@ -40,7 +40,7 @@
 <div id="wrap">
   <canvas id="c"></canvas>
   <div id="overlay" class="ov">
-    <h1>Quality Rush Ver0.9</h1>
+    <h1>Quality Rush Ver0.9.1</h1>
     <img id="flowTitle" class="flowBig" src="assets/ui/assembly_flow.webp" alt="" onerror="this.className='flowBig fb'">
     <div id="ovText"></div>
     <button id="startBtn" disabled>読み込み中…</button>
@@ -164,7 +164,7 @@ const CONFIG = {
   smokeGrow: 1.3,           // 煙が広がる大きさ（車の大きさに対して）
   lowFpsMs: 24,             // 1フレームの平均がこれ(ms)を超えたら演出を間引く
   // --- 文字の出し方 ---
-  bannerY: 200,             // お知らせの帯の高さ（箱の上のほうに固定）
+  bannerY: 240,             // お知らせの帯の高さ（箱の上のほうに固定）
   bannerTime: 1.2,          // お知らせ1つの表示秒数（重なるときは順番に。LEVEL UP も同じ列で、待ちがあれば先頭に入る）
   levelBannerColor: '#222', // LEVEL UP の文字の色
   bannerQueueMax: 4,        // 待たせるお知らせの最大数
@@ -276,10 +276,14 @@ const CONFIG = {
   // --- v0.8：道すじ表示（画面上部・2列→合体）。URL ?path=0 で消す ---
   pathShow: true, pathH: 50, pathDotPx: 20, pathCurScale: 1.35, pathGray: 0.8,
   pathBoxGap: 60,           // v0.9：帯の下端＝BOX.top − これ（持ち部品＋名前の帯ぶん）。pathY は BOX 定義のあとで計算（192−60−50＝82）
-  pathRowGap: 24,           // v0.9：2段（上＝ボディ側・下＝シャシー側）の中心どうしの間
-  holdLabelSideMinR: 26,    // v0.9：この半径以上の部品は名前を部品の横に出す（それ未満は真上 y134 固定）
+  pathRowGap: 26,           // v0.9：2段（上＝ボディ側・下＝シャシー側）の中心どうしの間
+  holdLabelSideMinR: 27,    // v0.9：この半径以上の部品は名前を部品の横に出す（それ未満は真上 y134 固定）
   holdLabelTopY: 134,       // v0.9：真上に出すときの名前の帯の上端（y134〜152）
-  holdLabelSideGap: 6,      // v0.9：横に出すとき部品の端からの間
+  holdLabelSideGap: 6,
+  holdTopMargin: 4,         // v0.9.1：持ち部品の絵の上端は 道すじ下端(132)+これ 以上（絵の半径上限＝HOLD_Y−136＝44）
+  holdRestoreSec: 0.15,     // v0.9.1：離したあと絵が元の大きさに戻る時間（物理は最初から元の大きさ）
+  holdWidthLineAlpha: 0.4,  // v0.9.1：箱の上の縁 y192〜196 に本当の幅（半径×2）の白線
+  noMatchColor: '#ffa53a',  // v0.9.1：帯の中の「（相手まだ）」の色      // v0.9：横に出すとき部品の端からの間
   pathPulseMs: 1200,        // 今の段の丸がゆっくり光る周期（仮）
   // --- v0.8：開始時の分解演出。URL ?intro=0 で消す ---
   introBreakSec: 2.0, introBreakShow: 'first', // 'first'＝初回だけ／'always'／'off'
@@ -602,7 +606,7 @@ const TEXT = {
     floorReset:'ごほうび：床がもとに戻った！', floorRestored:'床がもとに戻った！', hint_purple:'紫を3つ集めるとドア',
     roundStart:n=>`${n}周目スタート！`, roundSub:'軽トラから作り直し。不適合品箱が動くよ！', roundBonus:m=>`売上 ×${m}`, binMoving:'不適合品箱が動いている！', roundsReached:n=>`到達：${n}周目`,
     clear:'3周目クリア！', settle:'決算', unitsShipped:'出荷台数', unitsGood:'良品', unitsBad:'不良', profit:'利益', margin:'利益率', totalScore:'総合点', rankLabel:'ランク', personalRank:'個人ランキング', noRank:'まだ記録なし',
-    binName:'不適合品箱', noMatch:'相手まだ⌛', introReplay:'組み立てを見る',
+    binName:'不適合品箱', noMatch:'相手まだ⌛', noMatchTag:'（相手まだ）', introReplay:'組み立てを見る',
     // 最初の説明（release/tutorial_text_draft.md のキー名・文のまま）。tut_merge_ok・tut_bad_ok もりりーさん確定の文
     tut_move:'指で左右に動かして、はなすと落ちるよ', tut_merge:'同じ色の部品どうしをくっつけると組み上がる', tut_car:'部品が全部そろうと車が1台できる！',
     tut_bad:'×の付いた部品は端の不適合品箱へ', tut_scrap:'良い部品を捨てるとお金が減るよ', tut_mechanic:'整備士は不良品にぶつかると直してくれる',
@@ -636,7 +640,7 @@ const TEXT = {
     floorReset:'Bonus: the floor is reset!', floorRestored:'Floor restored!', hint_purple:'3 purples make a Door',
     roundStart:n=>`Round ${n} start!`, roundSub:'Back to the Kei truck. The reject bins are moving!', roundBonus:m=>`Sales ×${m}`, binMoving:'Reject bins on the move!', roundsReached:n=>`Reached: Round ${n}`,
     clear:'Round 3 cleared!', settle:'Settlement', unitsShipped:'Shipped', unitsGood:'Good', unitsBad:'Bad', profit:'Profit', margin:'Margin', totalScore:'Score', rankLabel:'Rank', personalRank:'Personal ranking', noRank:'No records yet',
-    binName:'Reject bin', noMatch:'No match yet ⌛', introReplay:'Watch assembly',
+    binName:'Reject bin', noMatch:'No match yet ⌛', noMatchTag:' (no match yet)', introReplay:'Watch assembly',
     tut_move:'Slide left or right, then let go to drop', tut_merge:'Match same-color parts to build them up', tut_car:'All parts in place makes a car!',
     tut_bad:'Drag parts with × to the reject bin at either edge', tut_scrap:'Scrapping good parts costs you money', tut_mechanic:'The mechanic fixes a bad part it touches',
     tut_skip:'Skip tutorial', howToPlay:'How to play', tut_merge_ok:'Nice!', tut_bad_ok:'Good! Defects are free to scrap',
@@ -1140,6 +1144,7 @@ function drawPartnerGlow(now){
 function drawNoMatch(heldRect){
   if (!CONFIG.noMatchShow || !state.noMatch.show || !glowActive()) return;
   if (state.noMatch.t >= CONFIG.noMatchSec){ state.noMatch.show = false; return; }
+  return;   // v0.9.1：「（相手まだ）」は名前の帯の中に出す（holdLabelParts）。部品の下には出さない
   const text = L().noMatch || '相手まだ⌛';
   ctx.save(); ctx.font = 'bold 13px sans-serif';
   const w = Math.min(CONFIG.W - 8, Math.ceil(ctx.measureText(text).width) + 12), h = 16;
@@ -1235,7 +1240,7 @@ function drawPath(now){
       // 4-1：縁の色＝部品の色表
       ctx.beginPath(); ctx.arc(d.x, d.y, px/2 + 1, 0, Math.PI*2);
       ctx.strokeStyle = rimHex(d.id); ctx.globalAlpha = colored ? 0.95 : 0.45; ctx.lineWidth = 2; ctx.stroke(); ctx.globalAlpha = 1;
-      if (isCur){ ctx.beginPath(); ctx.arc(d.x, d.y, px/2 + 1.5 + pulse, 0, Math.PI*2); ctx.strokeStyle = `rgba(255,236,120,${0.30+0.45*pulse})`; ctx.lineWidth = 2; ctx.stroke(); }
+      if (isCur){ ctx.beginPath(); ctx.arc(d.x, d.y, px/2, 0, Math.PI*2); ctx.strokeStyle = `rgba(255,236,120,${0.30+0.45*pulse})`; ctx.lineWidth = 3; ctx.stroke(); }
     }
   }
   ctx.restore();
@@ -1314,34 +1319,64 @@ function holdLabelText(p = state.current, l = lang){
   const h = (CONFIG.windowDoor && (T.holdHintWD||{})[id]) || (T.holdHint||{})[id];
   return h ? name + T.holdSep + h : name;
 }
-function holdLabelRect(text, hx, hy, hr){
-  ctx.font = `bold ${CONFIG.holdLabelFontPx}px sans-serif`;
-  const W = CONFIG.W, h = CONFIG.holdLabelH, w = Math.min(W - 8, Math.ceil(ctx.measureText(text).width) + 14);
-  const lift = HOLD_Y - hy;   // ゴミ箱モードの持ち上げぶん、名前も一緒に上へ
-  let cy, x;
-  if (hr >= CONFIG.holdLabelSideMinR){   // 大きい部品：横（中心の高さ、端から6px、左半分なら右側）
-    cy = hy; const off = hr*1.03 + CONFIG.holdLabelSideGap;
-    x = hx < W/2 ? hx + off : hx - off - w;
-    x = Math.max(4, Math.min(W - 4 - w, x));
-  } else {
-    cy = CONFIG.holdLabelTopY + h/2 - lift;
-    x = Math.max(4, Math.min(W - 4 - w, hx - w/2));
+// v0.9.1：名前・説明・「（相手まだ）」を1本の帯に。{name, desc, tag}
+function holdLabelParts(p = state.current, l = lang){
+  if (!p) return null;
+  const T = TEXT[l], id = ITEMS[p.k].id, name = partName(p.k, l);
+  let desc = '';
+  if (p.bad) return { name: name + (CONFIG.holdLabelDefectTag ? T.defectTag : ''), desc:'', tag:'' };
+  desc = (CONFIG.windowDoor && (T.holdHintWD||{})[id]) || (T.holdHint||{})[id] || '';
+  if (!desc && ITEMS[p.k].color === 'purple' && CONFIG.purpleHint) desc = T.hint_purple || '';
+  const tag = (CONFIG.noMatchShow && state.noMatch && state.noMatch.show && glowActive()) ? (T.noMatchTag || '') : '';
+  return { name, desc, tag, sep: T.holdSep };
+}
+function fitLabel(parts, maxW){
+  // 説明だけを「…」で切る（名前と（相手まだ）は切らない）
+  const pad = 14, mw = t => ctx.measureText(t).width;
+  let desc = parts.desc ? parts.sep + parts.desc : '';
+  const fixed = mw(parts.name) + mw(parts.tag);
+  if (fixed + mw(desc) + pad > maxW && desc){
+    while (desc.length > 1 && fixed + mw(desc + '…') + pad > maxW) desc = desc.slice(0, -1);
+    desc = desc.length > parts.sep.length ? desc + '…' : '';
   }
-  return { x, y: cy - h/2, w, h, cy, textW: ctx.measureText(text).width };
+  return { name: parts.name, desc, tag: parts.tag, w: Math.ceil(fixed + mw(desc)) + pad };
+}
+function holdLabelRect(text, hx, hy, hr, origR){
+  ctx.font = `bold ${CONFIG.holdLabelFontPx}px sans-serif`;
+  const parts = typeof text === 'string' ? { name:text, desc:'', tag:'', sep:'' } : text;
+  const W = CONFIG.W, h = CONFIG.holdLabelH, maxW = W - 8;
+  const lift = HOLD_Y - hy;   // ゴミ箱モードの持ち上げぶん、名前も一緒に上へ
+  let cy, x, f;
+  if ((origR != null ? origR : hr) >= CONFIG.holdLabelSideMinR){   // 大きい部品：横（中心の高さ、端から6px、空いているほう）
+    cy = hy; const off = hr*1.03 + CONFIG.holdLabelSideGap;
+    const rightSpace = W - 4 - (hx + off), leftSpace = (hx - off) - 4, right = hx < W/2;
+    f = fitLabel(parts, Math.min(maxW, Math.max(40, right ? rightSpace : leftSpace)));
+    x = right ? hx + off : hx - off - f.w;
+    x = Math.max(4, Math.min(W - 4 - f.w, x));
+  } else {
+    f = fitLabel(parts, maxW);
+    cy = CONFIG.holdLabelTopY + h/2 - lift;
+    x = Math.max(4, Math.min(W - 4 - f.w, hx - f.w/2));
+  }
+  const w = Math.min(maxW, f.w);
+  return { x, y: cy - h/2, w, h, cy, textW: w - 14, parts: f };
 }
 function drawHoldLabel(){
   if (!CONFIG.holdLabel || !state.running || !state.canDrop || !state.current) { state.holdSnap = null; return null; }
   const p = state.current;
   // v0.7：描画と同じ参照でスナップ（1フレーム遅れ防止）
   state.holdSnap = { k:p.k, bad:!!p.bad };
-  const hr = R(p.k), hx = clampAim(state.aimX, hr), hy = state.bin===0 ? HOLD_Y : HOLD_Y - binLiftFor(hr);
-  const text = holdLabelText(p); if (!text) return;
-  const r = holdLabelRect(text, hx, hy, hr);
-  // v0.9：ゴミ箱モードでも出す（持ち上げぶん名前も一緒に上へ。holdLabelRect の lift）
+  const hd = heldDraw();
+  const parts = holdLabelParts(p); if (!parts || !parts.name) return;
+  const r = holdLabelRect(parts, hd.hx, hd.hy, hd.dr, hd.r);
   ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.68)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(r.x, r.y, r.w, r.h, r.h/2) : ctx.rect(r.x, r.y, r.w, r.h); ctx.fill();
-  const purple = ITEMS[p.k].color === 'purple' && !p.bad;
-  ctx.fillStyle = p.bad ? '#ff9a8a' : (purple ? '#e6ccff' : '#fff'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(text, r.x + r.w/2, r.cy + 0.5, r.w - 10); ctx.restore();
+  const purple = ITEMS[p.k].color === 'purple' && !p.bad, f = r.parts;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  let tx = r.x + 7; const ty = r.cy + 0.5;
+  ctx.fillStyle = p.bad ? '#ff9a8a' : (purple ? '#e6ccff' : '#fff'); ctx.fillText(f.name, tx, ty); tx += ctx.measureText(f.name).width;
+  if (f.desc){ ctx.fillText(f.desc, tx, ty); tx += ctx.measureText(f.desc).width; }
+  if (f.tag){ ctx.fillStyle = CONFIG.noMatchColor; ctx.fillText(f.tag, tx, ty); }
+  ctx.restore();
   return r;
 }
 // 新入荷：その部品がはじめて「次」（か手持ち）に出たとき1回。お金の文字が出ているあいだは待つ
@@ -1493,7 +1528,7 @@ function setStartRound(n){
   updateTitle();
 }
 // v5l：ページのタイトルに版と周（ゲーム中だけ「 - Round N」）
-const TITLE_BASE = 'Quality Rush Ver0.9';   // v0.7：2ライン＋マリッジ・演出段階・爆発
+const TITLE_BASE = 'Quality Rush Ver0.9.1';   // v0.7：2ライン＋マリッジ・演出段階・爆発
 function updateTitle(){
   const t = (state && state.round) ? `${TITLE_BASE} - Round ${state.round}` : TITLE_BASE;
   if (document.title !== t) document.title = t;
@@ -1870,7 +1905,7 @@ function loop(now){
   if (state.rankUp){ state.rankUp.t += rdt; if (state.rankUp.t > state.rankUp.dur) state.rankUp = null; }
   if (state.banner){ state.banner.t += rdt; if (state.banner.t > state.banner.dur) state.banner = null; }
   if (state.roundBanner){ const rb = state.roundBanner; rb.t += rdt; if (rb.t >= 0 && !rb.sfx){ rb.sfx = true; sfx('round_start'); } if (rb.t > rb.dur) state.roundBanner = null; }
-  if (CONFIG.purpleHint && !state.purpleHinted && state.running && state.current && ITEMS[state.current.k].color === 'purple'){ state.purpleHinted = true; toast(L().hint_purple, '#d9b8ff', CONFIG.bannerTime*1.4, state.roundBanner ? 0.6 + CONFIG.roundBannerSec : 0); }
+  if (CONFIG.purpleHint && !state.purpleHinted && state.running && state.current && ITEMS[state.current.k].color === 'purple'){ state.purpleHinted = true; }   // v0.9.1：お知らせではなく名前の帯の説明に出す（holdLabelParts）
   if (state.flash){ state.flash.t += rdt; if (state.flash.t > state.flash.dur) state.flash = null; }
   newPartUpdate(rdt);   // v5p
   if (state.fall) state.fall.t += rdt;
@@ -1968,6 +2003,15 @@ function drawBin(side, now){
 }
 // ゴミ箱モードの持ち上げ：大きい部品ほど少なく（上端が hudBottom より上に出ない＝「次」やゲージと重ならない）
 const binLiftFor = r => Math.min(CONFIG.binLift, Math.max(0, HOLD_Y - r - CONFIG.hudBottom));
+// v0.9.1：持っている間だけ絵を縮める（保険）。min(1, 44/(r*1.03))。当たり判定・clampAim・HOLD_Y は元の半径のまま
+const holdMaxR = () => HOLD_Y - (CONFIG.pathY + CONFIG.pathH + CONFIG.holdTopMargin);   // 44
+const holdScale = r => Math.min(1, holdMaxR() / (r * 1.03));
+function heldDraw(){
+  if (!state || !state.current) return null;
+  const k = state.current.k, r = R(k), s = holdScale(r), hx = clampAim(state.aimX, r), dr = r * s;
+  const hy = state.bin===0 ? HOLD_Y : HOLD_Y - binLiftFor(dr * 1.03);   // 絵の端（×1.03）で計算＝上端が hudBottom 134 より上に出ない
+  return { k, r, s, dr, hx, hy, top: hy - dr*1.03 };
+}
 function drawParticle(p){
   if (p.delay > 0) return;
   const k = p.t/p.life;
@@ -2009,10 +2053,10 @@ function draw(now){
   ctx.setLineDash([8,6]); ctx.lineWidth = (state.overflowT>0 && overflowInGrace()) ? 4 : 2; ctx.beginPath(); ctx.moveTo(BOX.left,DANGER_Y); ctx.lineTo(BOX.right,DANGER_Y); ctx.stroke(); ctx.setLineDash([]);
   // 手持ち部品（HUDより先に描く）
   if (state.running && state.canDrop && state.current){
-    const hr = R(state.current.k), hx = clampAim(state.aimX, hr);
-    if (state.bin===0){ ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.beginPath(); ctx.moveTo(hx,HOLD_Y); ctx.lineTo(hx,BOX.bottom); ctx.stroke(); }
-    const hy = state.bin===0 ? HOLD_Y : HOLD_Y - binLiftFor(hr);
-    ctx.save(); if (state.bin!==0) ctx.globalAlpha=0.8; drawPart(state.current.k, state.current.bad, hx, hy, 0, now); ctx.restore();
+    const hd = heldDraw(), hr = hd.r, hx = hd.hx, hy = hd.hy;
+    if (state.bin===0){ ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.beginPath(); ctx.moveTo(hx,HOLD_Y); ctx.lineTo(hx,BOX.bottom); ctx.stroke();
+      ctx.fillStyle=`rgba(255,255,255,${CONFIG.holdWidthLineAlpha})`; ctx.fillRect(hx-hr, BOX.top, hr*2, 4); }   // v0.9.1：本当の幅
+    ctx.save(); if (state.bin!==0) ctx.globalAlpha=0.8; ctx.translate(hx, hy); ctx.scale(hd.s, hd.s); drawPart(state.current.k, state.current.bad, 0, 0, 0, now); ctx.restore();
   }
   // HUD
   const limit = dropLimit(), leftT = Math.max(0, limit-state.dropTimer), low = leftT/limit < 0.3;
@@ -2054,7 +2098,9 @@ function draw(now){
   for (const b of gameBodies()){
     if (b.mech){
       drawPart(b.k, false, b.position.x, b.position.y, 0, now, 'root', undefined, b.circleRadius);
-    } else drawPart(b.k, b.bad, b.position.x, b.position.y, b.angle, now, b.art, undefined, b.circleRadius);
+    } else { let rr = b.circleRadius; const f = state.fall;   // v0.9.1：離した直後は縮めた絵から0.15秒で元へ（見た目だけ）
+      if (f && f.b === b && f.t < CONFIG.holdRestoreSec){ const s0 = holdScale(b.circleRadius); rr *= s0 + (1 - s0) * Math.min(1, f.t / CONFIG.holdRestoreSec); }
+      drawPart(b.k, b.bad, b.position.x, b.position.y, b.angle, now, b.art, undefined, rr); }
   }
   drawPartnerGlow(now);   // v5p
   drawBin(-1, now); drawBin(1, now);
@@ -2420,7 +2466,7 @@ window.QR = { get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPE
   binSideFor, get gapLatch(){ return state.gapLatch; }, get gapGuarded(){ return state.gapGuarded||0; }, hingePityActive, hingeNearbyCount, hingeConditions, randPieceRaw, mechanicCooldownOk,
   get normalHist(){ return state.normalHist||[]; }, shipPos, carRadiusFor, carSpriteSize, isTrailerRank, CAR_RANKS, rankRadius, curRank, drawPart, get hingePity(){ return state.hingePity||0; },
   dropWeightsFor, tireWeightAt, tireDecayParams, mechanicChanceNow, bodyUnlocked, mergeTierOf, applyMergeFx, explodeGoodShip, explodeStrength,
-  isDoorK, isStackPair, glowActive, glowAllowed, noticeMade, noticeFreeze, get madeGlow(){ return state.madeGlow; }, get fall(){ return state.fall; }, glowPartners, glowSetOff, partName, holdLabelText, holdLabelRect, newPartUpdate, PARTNERS,
+  isDoorK, isStackPair, glowActive, glowAllowed, noticeMade, noticeFreeze, get madeGlow(){ return state.madeGlow; }, get fall(){ return state.fall; }, glowPartners, glowSetOff, partName, holdLabelText, holdLabelRect, holdLabelParts, holdScale, heldDraw, newPartUpdate, PARTNERS,
   glowRefresh, rimHex, pathMark, pathReset, pathDotPos, pathCurrentIds, PATH_LEFT, PATH_RIGHT, PATH_ALL, ART_GRAY, buildGrayBadges, drawPath, drawIntro, startIntro, skipIntro, introActive, replayIntro, introWanted,
   get pathMade(){ return state.pathMade; }, get glowCache(){ return state.glowCache; }, get noMatch(){ return state.noMatch; }, get intro(){ return state.intro; },
   get glow(){ return { off:state.glowOff, at:state.glowOffAt, why:state.glowOffWhy, active:glowActive(), list:(state.glowCache&&state.glowCache.list)||[] }; }, get newPart(){ return { seen:Object.keys(state.newSeen), queue:state.newQueue.slice(), cur:state.newCur, shown:state.newShown.slice() }; },
