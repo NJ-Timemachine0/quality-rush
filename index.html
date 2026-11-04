@@ -265,7 +265,7 @@ const CONFIG = {
   holdLabelFontPx: 12, holdLabelH: 18, holdLabelGap: 5, holdLabelMinY: 100,   // MinY：帯の中心の一番上（ゲージ・「次」と重ならない）
   holdLabelDefectTag: true, // 不良品は名前のあとに（不良品）
   partnerGlow: true,        // 持っている部品とくっつく箱の中の部品をゆっくり光らせる。URL ?glow=0 で消す
-  partnerGlowUntilRank: 3,  // この車ランク（1＝軽トラ、3＝セダン）を1台出庫したら、そのゲームではもう光らせない（2周目以降も光らない）。0＝ランクでは止めない。URL ?glowUntil=3
+  partnerGlowUntilRank: 2,  // この車ランク（1＝軽トラ、2＝コンパクトカー、3＝セダン）を1台出庫したら、そのゲームではもう光らせない（2周目以降も光らない）。0＝ランクでは止めない。URL ?glowUntil=3
   partnerGlowPeriodMs: 1200, partnerGlowColor: '255,236,120',
   partnerGlowMax: 3,        // v0.8：光らせる相手の上限（落とす位置に近い順）。仮
   partnerGlowWidth: 8,      // v0.8：光る輪の太さ（仮）
@@ -1418,7 +1418,7 @@ function shipCar(x, y, bad){
   const value = (!bad || CONFIG.badCarPays) ? fullValue : 0;
   if (state.firstCarAt == null) state.firstCarAt = state.elapsed;   // 1台目の完成の時刻（時間で床が上がるのはここから）
   state.cars++; state.topRank = Math.max(state.topRank, rank);
-  glowStopCheck(rank);   // v5p：セダン（partnerGlowUntilRank）を出庫したら光らせない
+  glowStopCheck(rank);   // v5p：コンパクトカー（partnerGlowUntilRank 2、弘司さん決定 11/4）を出庫したら光らせない
   pathMark('marriage'); pathMark('car'); pathReset();   // v0.8：1台出したら道すじを灰色に戻す
   if (value){ state.sales += value; state.grossSales = (state.grossSales||0) + value; state.countRate = (state.sales - state.salesShown)/CONFIG.countUpTime; state.countDelay = 0.35; }
   state.shipping.push({x, y, phase:0, rank, value, bad, smokeT:0});
