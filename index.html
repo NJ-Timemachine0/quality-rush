@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Quality Rush Ver0.9.3</title>
+<title>Quality Rush Ver0.9.4</title>
 <link rel="icon" href="data:,">
 <style>
   html,body{margin:0;height:100%;background:#1b2330;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
@@ -24,6 +24,7 @@
   #startBtn:disabled{background:#8a7a40;color:#444;opacity:.8}
   #shareBtn{font-size:16px;padding:9px 20px;background:#2f7fe0;color:#fff}
   #shareBtn.hidden{display:none}
+  #howConfirm.hidden{display:none!important}
   .flowBig.wd{width:min(450px,96vw);}
 .flowBig{display:block;width:min(400px,96vw);margin:6px auto;border-radius:10px}   /* v5k: 8列・960px の図（以前は min(340px,92vw)） */
   .flowBig.fb{display:none}
@@ -41,7 +42,7 @@
 <div id="wrap">
   <canvas id="c"></canvas>
   <div id="overlay" class="ov">
-    <h1>Quality Rush Ver0.9.3</h1>
+    <h1>Quality Rush Ver0.9.4</h1>
     <img id="flowTitle" class="flowBig" src="assets/ui/assembly_flow.webp" alt="" onerror="this.className='flowBig fb'">
     <div id="ovText"></div>
     <button id="startBtn" disabled>読み込み中…</button>
@@ -58,6 +59,11 @@
     <button id="introReplayBtn" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
     <button id="howBtn2" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
     <button id="muteBtn2" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
+    <div id="howConfirm" class="hidden" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(10,14,24,.94);padding:24px;text-align:center">
+      <p id="howConfirmText" style="color:#fff;font-weight:bold;font-size:17px;line-height:1.5;margin:0 0 6px"></p>
+      <button id="howYes"></button>
+      <button id="howNo" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
+    </div>
   </div>
 </div>
 <script src="lib/matter.min.js"></script>
@@ -164,7 +170,7 @@ const CONFIG = {
   blackHoleFx: true,        // v0.9.2：トレーラー（最大）の爆発の前にブラックホール演出。?bh=0 で無効
   bhImplodeSec: 1.0, bhFreezeSec: 0.1, bhMaxFx: 150, bhShake: 28,
   celebQuietSec: 1.5, notifGap: 6, celebOutline: 3, celebFade: 0.2,   // v0.9.3（1）：トレーラーのお祝い中は小さい文字・新入荷を止める
-  roundBinGrace: false,     // v0.9.3（2）：周のはじめに動く箱の上でも捨てない…はまだ入れない（設定だけ）
+  roundBinGrace: 2,         // v0.9.4：周のはじめ、動く不適合品箱をこの秒数だけ止める（0＝なし）。?binGrace=秒
   holdLabelBinPad: 4,       // v0.9.3（3a）：横の名前の帯は x32〜368（不適合品箱の端＋4）
   fitMaxW: 330, fitMinPx: 13,   // v0.9.3（3c）：長い文は小さく→2行（横につぶさない）
   tutDefectAt: 4, tutDefectKind: 'wheel', tutSampleDefect: true, tutLinesSec: 2.5, tutLinesBlinkSec: 1.2,
@@ -625,7 +631,7 @@ const TEXT = {
     // 最初の説明（release/tutorial_text_draft.md のキー名・文のまま）。tut_merge_ok・tut_bad_ok もりりーさん確定の文
     tut_move:'指で左右に動かして、はなすと落ちるよ', tut_merge:'同じ色の部品どうしをくっつけると組み上がる', tut_car:'部品が全部そろうと車が1台できる！',
     tut_bad:'×の付いた部品は端の不適合品箱へ', tut_scrap:'良い部品を捨てるとお金が減るよ', tut_mechanic:'整備士は不良品にぶつかると直してくれる',
-    tut_wait:'相手がまだ箱にないよ。先に置いておこう', tut_lines:'上の丸＝ボディ、下の丸＝シャシーのライン', tut_marriage:'灰色どうしをくっつけるとマリッジ！', tut_claim:'×の部品が入ったまま出すとクレーム', howConfirm:'今のゲームを終えて、説明つきで始めますか？', introShort:'スライドして離すと落ちる。同じ色をくっつけて車を作ろう！',
+    tut_wait:'相手がまだ箱にないよ。先に置いておこう', tut_lines:'上の丸＝ボディ、下の丸＝シャシーのライン', tut_marriage:'灰色どうしをくっつけるとマリッジ！', tut_claim:'×の部品が入ったまま出すとクレーム', howConfirm:'今のゲームを終えて、説明つきで始めますか？', yes:'はい', back:'もどる', introShort:'スライドして離すと落ちる。同じ色をくっつけて車を作ろう！',
     tut_skip:'説明をとばす', howToPlay:'遊び方', tut_merge_ok:'いいね！', tut_bad_ok:'OK！不良品はただで捨てられるよ',
     shareText:r=>`Quality Rushで${r.cars}台を出庫、売上${fmtYen(r.sales)}！ 称号は「${r.title}」でした🚗 #QualityRush` },
   en:{ start:'Start', loading:'Loading…', retry:'Play again',
@@ -659,7 +665,7 @@ const TEXT = {
     binName:'Reject bin', noMatch:'No match yet ⌛', noMatchTag:' (no match yet)', introReplay:'Watch assembly',
     tut_move:'Slide left or right, then let go to drop', tut_merge:'Match same-color parts to build them up', tut_car:'All parts in place makes a car!',
     tut_bad:'Drag parts with × to the reject bin at either edge', tut_scrap:'Scrapping good parts costs you money', tut_mechanic:'The mechanic fixes a bad part it touches',
-    tut_wait:'No match yet. Drop it, its pair will come', tut_lines:'Top row = body line, bottom = chassis', tut_marriage:'Join the two gray parts: Marriage!', tut_claim:'Ship a car with a × part: complaint!', howConfirm:'End this game and start with the tutorial?', introShort:'Slide, release to drop. Match colors to build a car!',
+    tut_wait:'No match yet. Drop it, its pair will come', tut_lines:'Top row = body line, bottom = chassis', tut_marriage:'Join the two gray parts: Marriage!', tut_claim:'Ship a car with a × part: complaint!', howConfirm:'End this game and start with the tutorial?', yes:'Yes', back:'Back', introShort:'Slide, release to drop. Match colors to build a car!',
     tut_skip:'Skip tutorial', howToPlay:'How to play', tut_merge_ok:'Nice!', tut_bad_ok:'Good! Defects are free to scrap',
     shareText:r=>`I shipped ${r.cars} cars and made ${fmtYen(r.sales)} in Quality Rush! Title: ${r.title} 🚗 #QualityRush` },
 };
@@ -764,7 +770,7 @@ function tutUpdate(rdt){
   if (held && state.current.k === K.mechanic) tutStep('tut_mechanic', CONFIG.tutMsgSec);
   t.curT += rdt; if (t.linesT >= 0) t.linesT += rdt;
   if (t.bad) t.bad.t += rdt;
-  else if (t.queue.length){ tutSaveSeen(t.queue[0].key); if (t.queue[0].key === 'tut_lines' && t.linesT < 0) t.linesT = 0; t.queue[0].t += rdt;   // 3・5・6：帯に出たときに保存
+  else if (t.queue.length && t.cur !== 'tut_move'){ tutSaveSeen(t.queue[0].key); if (t.queue[0].key === 'tut_lines' && t.linesT < 0) t.linesT = 0; t.queue[0].t += rdt;   // 3・5・6：帯に出たときに保存
     if (t.queue[0].t >= t.queue[0].dur) t.queue.shift(); }
 }
 function tutOnDrop(p, auto){
@@ -790,6 +796,7 @@ const tutHidesHint = () => {
 function tutText(){
   const t = state.tut; if (!t.on || !state.running) return null;
   if (t.bad) return 'tut_bad';
+  if (t.cur === 'tut_move') return t.cur;   // v0.9.4：手順1を先に（状況の文は待たせる）
   if (t.queue.length) return t.queue[0].key;
   return t.cur;
 }
@@ -989,6 +996,7 @@ function mechanicChanceNow(round = (state ? state.round||1 : 1)){
   pr2('carR', 'carRadiusBase', 'carRadiusPerRank'); pr2('bodyR', 'bodyCarRadiusBase', 'bodyCarRadiusPerRank');
   const pc = q.get('perCar'); if (pc){ const v = pc === 'lite' ? [0.15,1.5,0.015] : (pc === 'orig' ? [0.2,2,0.02] : pc.split(',').map(Number));
     if (v.length === 3 && v.every(x => isFinite(x) && x >= 0)){ const sh = CONFIG.difficulty.shipped; sh.dropTime.perCar = -v[0]; sh.defect.perCar = v[1]; sh.floorRise.perCar = v[2]; } }
+  const bg = num('binGrace'); if (bg != null) CONFIG.roundBinGrace = bg;
   const cd = num('mechcd'); if (cd != null) CONFIG.mechanicCooldownSec = cd;
   // v5p：?doorR=38（ドア・窓つきドアの半径）?glow=0 ?glowUntil=3 ?label=0 ?newpart=0
   const dr = num('doorR'); if (dr != null && dr > 0) (CONFIG.doorKinds||['screw']).forEach(id => { CONFIG.radius[id] = dr; if (K[id] != null) ITEMS[K[id]].r = dr; });
@@ -1648,7 +1656,7 @@ function startNextRound(){
   const floorWasUp = state.claimSteps > 0, floorAll = CONFIG.roundFloorReset !== 'claims';
   state.claimSteps = 0; state.goodStreak = 0;
   state.roundCars0 = shippedCount(); state.roundT0 = state.elapsed;   // v5l：床の式は ここから数える（'all'）
-  state.binT = 0; state.rankUp = null;
+  state.binT = 0; state.binGrace = +CONFIG.roundBinGrace || 0; state.rankUp = null;
   state.roundStartedAt.push({ round:state.round, level:state.level, t:state.elapsed });
   preloadTiers(state.level);
   state.roundBanner = { round:state.round, mult:roundVal('salesMult'), t:-0.6, dur:CONFIG.roundBannerSec, sfx:false };
@@ -1666,7 +1674,7 @@ function setStartRound(n){
   updateTitle();
 }
 // v5l：ページのタイトルに版と周（ゲーム中だけ「 - Round N」）
-const TITLE_BASE = 'Quality Rush Ver0.9.3';   // v0.7：2ライン＋マリッジ・演出段階・爆発
+const TITLE_BASE = 'Quality Rush Ver0.9.4';   // v0.7：2ライン＋マリッジ・演出段階・爆発
 function updateTitle(){
   const tb = QA_MODE ? TITLE_BASE + ' QA' : TITLE_BASE, t = (state && state.round) ? `${tb} - Round ${state.round}` : tb;
   if (document.title !== t) document.title = t;
@@ -1979,7 +1987,7 @@ function loop(now){
     if (n === PHYS_MAX_STEPS) physAcc = 0;
     state.elapsed += dt;
     if (binsMoving()){   // 動くごみ箱：実時間で動かす。指を止めていても箱の位置に合わせて判定し直す
-      state.binT += rdt;
+      if (state.binGrace > 0) state.binGrace -= rdt; else state.binT += rdt;   // v0.9.4：周のはじめは止める
       if (state.current) state.bin = binSideFor(state.rawX);
     }
     state.dropClock += rdt;   // 連続投下の間隔は実時間で数える（スロー中も0.6秒）
@@ -2467,6 +2475,7 @@ function renderPause(){
   document.getElementById('resumeBtn').textContent = L().resume;
   document.getElementById('introReplayBtn').textContent = L().introReplay;
   document.getElementById('howBtn2').textContent = L().howToPlay;
+  document.getElementById('howConfirmText').textContent = L().howConfirm; document.getElementById('howYes').textContent = L().yes; document.getElementById('howNo').textContent = L().back;
   document.getElementById('muteBtn2').textContent = muted ? L().soundOff : L().soundOn;
 }
 function pauseGame(){
@@ -2477,7 +2486,10 @@ function pauseGame(){
 function resumeGame(){ if (!state.paused) return; if (introActive() && state.intro && state.intro.replay) skipIntro(); state.paused = false; last = performance.now(); pauseOv.classList.add('hidden'); if (!state.canDrop) state.canDrop = true; }
 document.getElementById('resumeBtn').onclick = resumeGame;
 document.getElementById('introReplayBtn').onclick = ()=>replayIntro();
-document.getElementById('howBtn2').onclick = ()=>{ if (!window.confirm(L().howConfirm)) return; state.paused = false; pauseOv.classList.add('hidden'); tutForceNext = true; startGame(); };   // v0.9.3：一時停止の「遊び方」
+const howCf = document.getElementById('howConfirm');   // v0.9.4：confirm() のかわりにゲーム内の確認
+document.getElementById('howBtn2').onclick = ()=>{ howCf.classList.remove('hidden'); };
+document.getElementById('howNo').onclick = ()=>{ howCf.classList.add('hidden'); };
+document.getElementById('howYes').onclick = ()=>{ howCf.classList.add('hidden'); state.paused = false; pauseOv.classList.add('hidden'); tutForceNext = true; startGame(); };
 document.getElementById('muteBtn2').onclick = ()=>setMuted(!muted);
 document.addEventListener('visibilitychange', ()=>{ if (document.hidden) pauseGame(); else resumeAudio(); });
 // 称号：2周目以降は「自動車王 ×2」のように周の数をつける
