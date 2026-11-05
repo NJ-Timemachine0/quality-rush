@@ -564,10 +564,12 @@ function fmtYen(v){
   return v>=10000 ? `${(v/10000).toLocaleString()}万円` : `${v.toLocaleString()}円`;
 }
 const fmtTime = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
+// v0.9.1qa：?qa=trailer＝トレーラー爆発の確認用。QA中は保存（ランキング・自己ベスト・設定・既読）を一切しない
+const QA_MODE = (()=>{ try{ return new URLSearchParams(location.search).get('qa') === 'trailer' ? 'trailer' : null; }catch(e){ return null; } })();
 const Store = {
   backend(){ try{ const d = window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.data; if (d && d.getItem) return d; }catch(e){} try{ return window.localStorage; }catch(e){ return null; } },
   get(k, def){ try{ const b=this.backend(); const v=b && b.getItem('qr_'+k); return v==null ? def : JSON.parse(v); }catch(e){ return def; } },
-  set(k, v){ try{ const b=this.backend(); b && b.setItem('qr_'+k, JSON.stringify(v)); }catch(e){} }
+  set(k, v){ if (QA_MODE) return; try{ const b=this.backend(); b && b.setItem('qr_'+k, JSON.stringify(v)); }catch(e){} }
 };
 const rankForLevel = lv => Math.min(relLevel(lv), CAR_VALUES.length) - 1;
 function drawCar(x, y, size, rank){
@@ -1530,7 +1532,7 @@ function setStartRound(n){
 // v5l：ページのタイトルに版と周（ゲーム中だけ「 - Round N」）
 const TITLE_BASE = 'Quality Rush Ver0.9.1';   // v0.7：2ライン＋マリッジ・演出段階・爆発
 function updateTitle(){
-  const t = (state && state.round) ? `${TITLE_BASE} - Round ${state.round}` : TITLE_BASE;
+  const tb = QA_MODE ? TITLE_BASE + ' QA' : TITLE_BASE, t = (state && state.round) ? `${tb} - Round ${state.round}` : tb;
   if (document.title !== t) document.title = t;
 }
 // v5l：ドアの吸い寄せ（CONFIG.doorMagnet・仕様 E'）。物理の1ステップごとに呼ぶ
@@ -2104,6 +2106,7 @@ function draw(now){
   }
   drawPartnerGlow(now);   // v5p
   drawBin(-1, now); drawBin(1, now);
+  if (QA_MODE){ ctx.save(); ctx.font='bold 12px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillStyle='rgba(255,60,60,.85)'; ctx.fillRect(CONFIG.W/2-16, CONFIG.H-22, 32, 16); ctx.fillStyle='#fff'; ctx.fillText('QA', CONFIG.W/2, CONFIG.H-14); ctx.restore(); }
   { const hr = drawHoldLabel(); drawFallLabel(hr); drawNoMatch(hr); } drawNewPart();   // v5p / v0.8 noMatch
   if (state.running && state.overflowT>0 && overflowInGrace()){   // 最初の1分：あふれそうの文字（猶予中だけ・部品より手前）
     ctx.font=`bold ${CONFIG.warnFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -2339,6 +2342,21 @@ function startGame(){
   state.tut = tutNew(tutWanted(), tutForceNext || CONFIG.tutorialMode === 'always'); tutForceNext = false;
   preloadTiers(1); loadFx();
   startIntro(false);   // v0.8：初回（または always）は分解演出
+  if (QA_MODE === 'trailer') qaTrailerSetup();
+}
+// QA：Lv8（トレーラーの段）から始め、箱に部品と艤装ボディを置き、手に走れるシャシーを持たせる。
+// → 手の部品をボディの上で離す → 合体 → トレーラー出庫 → 最大の爆発（揺れ・光・箱の部品が全部飛ぶ）
+function qaTrailerSetup(){
+  if (state.intro){ state.intro.done = true; state.intro.t = state.intro.dur; }
+  state.tut = tutNew(false, false);
+  state.levelBase = 0; state.level = 8; state.carsThisLevel = 0; preloadTiers(8);
+  const yb = BOX.bottom - 30;
+  for (let i=0;i<7;i++) makePart('wheel', 50 + i*50, yb);
+  for (let i=0;i<4;i++) makePart('glass', 80 + i*80, yb - 45);
+  makePart('body_car', CONFIG.W/2, yb - 110);
+  state.current = piece(K.rolling_chassis); state.next = piece(K.rolling_chassis);
+  state.aimX = CONFIG.W/2; state.dropTimer = 0;
+  updateTitle();
 }
 function computeSettlement(){
   const gross = state.grossSales||0, discardLoss = state.discardLoss||0, claimCost = state.claimCost||0;
@@ -2466,7 +2484,7 @@ window.QR = { get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPE
   binSideFor, get gapLatch(){ return state.gapLatch; }, get gapGuarded(){ return state.gapGuarded||0; }, hingePityActive, hingeNearbyCount, hingeConditions, randPieceRaw, mechanicCooldownOk,
   get normalHist(){ return state.normalHist||[]; }, shipPos, carRadiusFor, carSpriteSize, isTrailerRank, CAR_RANKS, rankRadius, curRank, drawPart, get hingePity(){ return state.hingePity||0; },
   dropWeightsFor, tireWeightAt, tireDecayParams, mechanicChanceNow, bodyUnlocked, mergeTierOf, applyMergeFx, explodeGoodShip, explodeStrength,
-  isDoorK, isStackPair, glowActive, glowAllowed, noticeMade, noticeFreeze, get madeGlow(){ return state.madeGlow; }, get fall(){ return state.fall; }, glowPartners, glowSetOff, partName, holdLabelText, holdLabelRect, holdLabelParts, holdScale, heldDraw, newPartUpdate, PARTNERS,
+  isDoorK, isStackPair, glowActive, glowAllowed, noticeMade, noticeFreeze, get madeGlow(){ return state.madeGlow; }, get fall(){ return state.fall; }, glowPartners, glowSetOff, partName, holdLabelText, holdLabelRect, holdLabelParts, holdScale, heldDraw, QA_MODE, qaTrailerSetup, newPartUpdate, PARTNERS,
   glowRefresh, rimHex, pathMark, pathReset, pathDotPos, pathCurrentIds, PATH_LEFT, PATH_RIGHT, PATH_ALL, ART_GRAY, buildGrayBadges, drawPath, drawIntro, startIntro, skipIntro, introActive, replayIntro, introWanted,
   get pathMade(){ return state.pathMade; }, get glowCache(){ return state.glowCache; }, get noMatch(){ return state.noMatch; }, get intro(){ return state.intro; },
   get glow(){ return { off:state.glowOff, at:state.glowOffAt, why:state.glowOffWhy, active:glowActive(), list:(state.glowCache&&state.glowCache.list)||[] }; }, get newPart(){ return { seen:Object.keys(state.newSeen), queue:state.newQueue.slice(), cur:state.newCur, shown:state.newShown.slice() }; },
