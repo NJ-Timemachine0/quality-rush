@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Quality Rush Ver0.9.4</title>
+<title>パーツポン！工場 Ver0.9.5</title>
 <link rel="icon" href="data:,">
 <style>
   html,body{margin:0;height:100%;background:#1b2330;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
@@ -25,6 +25,12 @@
   #shareBtn{font-size:16px;padding:9px 20px;background:#2f7fe0;color:#fff}
   #shareBtn.hidden{display:none}
   #howConfirm.hidden{display:none!important}
+  #retryOv.hidden{display:none!important}
+  #retryOv button.hidden{display:none!important}
+  #retryOv button{min-height:44px;min-width:min(280px,86vw);font-size:16px;padding:12px 20px;background:#f5b700;color:#222}
+  #retryCount{font-size:28px;font-weight:bold;color:#ffd84a;margin:4px 0 8px}
+  #retrySub{font-size:14px;line-height:1.45;color:#cfe;margin:0 0 10px;max-width:320px}
+  #retryMsg{font-size:15px;color:#ffd84a;min-height:20px;margin:6px 0}
   .flowBig.wd{width:min(450px,96vw);}
 .flowBig{display:block;width:min(400px,96vw);margin:6px auto;border-radius:10px}   /* v5k: 8列・960px の図（以前は min(340px,92vw)） */
   .flowBig.fb{display:none}
@@ -42,7 +48,7 @@
 <div id="wrap">
   <canvas id="c"></canvas>
   <div id="overlay" class="ov">
-    <h1>Quality Rush Ver0.9.4</h1>
+    <h1 id="gameTitle">パーツポン！工場 Ver0.9.5</h1>
     <img id="flowTitle" class="flowBig" src="assets/ui/assembly_flow.webp" alt="" onerror="this.className='flowBig fb'">
     <div id="ovText"></div>
     <button id="startBtn" disabled>読み込み中…</button>
@@ -64,6 +70,15 @@
       <button id="howYes"></button>
       <button id="howNo" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
     </div>
+  </div>
+  <div id="retryOv" class="ov hidden">
+    <h1 id="retryTitle" style="font-size:20px;margin:0 0 6px"></h1>
+    <p id="retrySub"></p>
+    <div id="retryCount">8</div>
+    <button id="retryAdBtn"></button>
+    <button id="retryFreeBtn" class="hidden"></button>
+    <button id="retryNoBtn"></button>
+    <div id="retryMsg"></div>
   </div>
 </div>
 <script src="lib/matter.min.js"></script>
@@ -293,7 +308,11 @@ const CONFIG = {
   noMatchSec: 1.5,          // v0.8：表示秒数（仮）
   // --- v0.8：道すじ表示（画面上部・2列→合体）。URL ?path=0 で消す ---
   pathShow: true, pathH: 50, pathDotPx: 20, pathCurScale: 1.35, pathGray: 0.8,
-  pathBoxGap: 60,           // v0.9：帯の下端＝BOX.top − これ（持ち部品＋名前の帯ぶん）。pathY は BOX 定義のあとで計算（192−60−50＝82）
+  pathBoxGap: 61,           // v0.9.5：pathY＝192−61−50＝81
+  gameName: { ja:'パーツポン！工場', en:'Parts Pop Factory' }, versionLabel:'Ver0.9.5',
+  retryEnabled: true, retryRowsRemoved: 1, retryRowPx: 48, retryGraceSec: 3.0, retryDropFreezeSec: 2.0,
+  retryInputLockSec: 0.3, retryOfferSec: 8, retryAdFailSec: 2, retryFadeSec: 0.3,
+  retryOnAdblock: 'block', retryOnAdError: 'noReward',
   pathRowGap: 28,           // v0.9：2段（上＝ボディ側・下＝シャシー側）の中心どうしの間
   holdLabelSideMinR: 27,    // v0.9：この半径以上の部品は名前を部品の横に出す（それ未満は真上 y134 固定）
   holdLabelTopY: 134,       // v0.9：真上に出すときの名前の帯の上端（y134〜152）
@@ -633,7 +652,11 @@ const TEXT = {
     tut_bad:'×の付いた部品は端の不適合品箱へ', tut_scrap:'良い部品を捨てるとお金が減るよ', tut_mechanic:'整備士は不良品にぶつかると直してくれる',
     tut_wait:'相手がまだ箱にないよ。先に置いておこう', tut_lines:'上の丸＝ボディ、下の丸＝シャシーのライン', tut_marriage:'灰色どうしをくっつけるとマリッジ！', tut_claim:'×の部品が入ったまま出すとクレーム', howConfirm:'今のゲームを終えて、説明つきで始めますか？', yes:'はい', back:'もどる', introShort:'スライドして離すと落ちる。同じ色をくっつけて車を作ろう！',
     tut_skip:'説明をとばす', howToPlay:'遊び方', tut_merge_ok:'いいね！', tut_bad_ok:'OK！不良品はただで捨てられるよ',
-    shareText:r=>`Quality Rushで${r.cars}台を出庫、売上${fmtYen(r.sales)}！ 称号は「${r.title}」でした🚗 #QualityRush` },
+    retry_title:'ラインがいっぱい！ つづける？', retry_sub:'上の部品を1段かたづけて、1回だけつづけられるよ',
+    retry_ad:'📺 広告を見てつづける', retry_free:'つづける', retry_no:'結果を見る', retry_loading:'広告を読みこみ中…',
+    retry_ok:'つづけます！', retry_grace:'つづき！', retry_ad_fail:'広告を出せませんでした。またあとで試してね',
+    retry_adblock:'広告ブロック中は「つづける」が使えません', rank_retry_mark:'↻', retry_used_note:'↻つづけた',
+    shareText:r=>`${GAME_NAME.ja}で${r.cars}台を出庫、売上${fmtYen(r.sales)}！ 称号は「${r.title}」でした🚗 #パーツポン工場` },
   en:{ start:'Start', loading:'Loading…', retry:'Play again',
     intro:'Slide to aim, release to drop.<br>Same-color parts snap together and build the next stage! Finished cars roll out.<br>⚠️ Rusty parts marked × are defects. Drag them to the 🗑️ at either edge.',
     over:'The line overflowed! Game Over', almostFull:'Almost full!', cars:'Cars', sales:'Sales', drop:'Drop in', next:'Next', vroom:'VROOM!', levelUp:'LEVEL UP!',
@@ -667,7 +690,11 @@ const TEXT = {
     tut_bad:'Drag parts with × to the reject bin at either edge', tut_scrap:'Scrapping good parts costs you money', tut_mechanic:'The mechanic fixes a bad part it touches',
     tut_wait:'No match yet. Drop it, its pair will come', tut_lines:'Top row = body line, bottom = chassis', tut_marriage:'Join the two gray parts: Marriage!', tut_claim:'Ship a car with a × part: complaint!', howConfirm:'End this game and start with the tutorial?', yes:'Yes', back:'Back', introShort:'Slide, release to drop. Match colors to build a car!',
     tut_skip:'Skip tutorial', howToPlay:'How to play', tut_merge_ok:'Nice!', tut_bad_ok:'Good! Defects are free to scrap',
-    shareText:r=>`I shipped ${r.cars} cars and made ${fmtYen(r.sales)} in Quality Rush! Title: ${r.title} 🚗 #QualityRush` },
+    retry_title:'The line is full! Continue?', retry_sub:'Clear one row of parts and keep going (once per game)',
+    retry_ad:'📺 Watch an ad to continue', retry_free:'Continue', retry_no:'See results', retry_loading:'Loading ad…',
+    retry_ok:'Let\'s keep going!', retry_grace:'Back to work!', retry_ad_fail:'Couldn\'t show an ad. Please try again later',
+    retry_adblock:'Continue isn\'t available with an ad blocker', rank_retry_mark:'↻', retry_used_note:'↻ continued',
+    shareText:r=>`I shipped ${r.cars} cars and made ${fmtYen(r.sales)} in ${GAME_NAME.en}! Title: ${r.title} 🚗 #PartsPopFactory` },
 };
 let lang = 'ja';
 const L = () => TEXT[lang];
@@ -687,8 +714,10 @@ window.addEventListener('resize', resize); resize();
 const flowImg = () => { const hi = CONFIG.flowW*cssScale*devPx >= CONFIG.flowHiResMinPx;
   const a = hi ? UI.flowSlim : UI.flowSlim360, b = hi ? UI.flowSlim360 : UI.flowSlim; return a.ok ? a : (b.ok ? b : null); };
 
+const GAME_NAME = CONFIG.gameName;   // v0.9.5：言語ごとのゲーム名（戻しやすい）
+const gameName = () => (GAME_NAME && (GAME_NAME[lang] || GAME_NAME.ja)) || 'パーツポン！工場';
 const BOX = { left:20, right:380, top:192, bottom:610 };  // v0.9：top 192 は固定（難易度）。道すじ帯はここから計算：pathY＝top−pathBoxGap−pathH
-CONFIG.pathY = BOX.top - CONFIG.pathBoxGap - CONFIG.pathH - 1;   // v0.9.3：1px上げて81（下段の光る輪が名前の帯 y134 にかからない）   // 82（帯 y82〜132）
+CONFIG.pathY = BOX.top - CONFIG.pathBoxGap - CONFIG.pathH;   // v0.9.5：pathBoxGap 61 → pathY 81
 const BOX_H = BOX.bottom - BOX.top;
 const HOLD_Y = BOX.top - 12;
 const DANGER_Y = BOX.top + 30;
@@ -707,6 +736,7 @@ function newState(){
     shake:0, flash:null, banner:null, hint:0, hintArmed:false, defectPending:false, queuedDrop:false, floorY:BOX.bottom,
     claims:0, claimSteps:0, goodStreak:0, money:[], tagDrops:[], repairs:0, mechanicsSpawned:0, mechForced:0, mechRandom:0, lastForcedT:-1e9, forceClock:-1e9, minDropLimit:99, idleCount:0, manualSinceIdle:0, slowmo:0, lastFloorTarget:BOX.bottom,
     firstCarAt:null, lastDropAt:-1e9, dropClock:0, ignoredDrops:0, overflowSince:null,
+    retryUsed:false, adsOff:false, retryGrace:0, retryDropFreeze:0, retryInputLock:0, retryOffer:null, retryFade:[], muteHold:null,
     round:1, levelBase:0, roundBanner:null, roundStartedAt:[], binT:0, rawX:CONFIG.W/2,
     roundCars0:0, roundT0:0, magnet:new Map(), magnetPulls:0, magnetAttach:0, magnetGiveUp:0,
     glowOff:false, glowOffAt:null, glowOffWhy:null, newSeen:{}, newQueue:[], newCur:null, newShown:[], madeGlow:null, fall:null,
@@ -1005,6 +1035,7 @@ function mechanicChanceNow(round = (state ? state.round||1 : 1)){
   const gu = num('glowUntil'); if (gu != null) CONFIG.partnerGlowUntilRank = Math.floor(gu);
   if (off('path')) CONFIG.pathShow = false; else if (q.get('path') === '1') CONFIG.pathShow = true;
   if (off('intro')) CONFIG.introBreakShow = 'off'; else if (q.get('intro') === '1') CONFIG.introBreakShow = 'always';
+  if (off('retry')) CONFIG.retryEnabled = false; else if (q.get('retry') === '1') CONFIG.retryEnabled = true;
   if (q.get('wdoor') === '1' || q.get('wdoor') === 'on') CONFIG.windowDoor = true; else if (off('wdoor')) CONFIG.windowDoor = false;   // v0.8：流れ図の窓つきドア版
   if (off('label')) CONFIG.holdLabel = false;
   if (off('newpart')) CONFIG.newPartNotice = false;
@@ -1674,10 +1705,11 @@ function setStartRound(n){
   updateTitle();
 }
 // v5l：ページのタイトルに版と周（ゲーム中だけ「 - Round N」）
-const TITLE_BASE = 'Quality Rush Ver0.9.4';   // v0.7：2ライン＋マリッジ・演出段階・爆発
+const titleBase = () => `${gameName()} ${CONFIG.versionLabel||''}`.trim();   // v0.9.5
 function updateTitle(){
-  const tb = QA_MODE ? TITLE_BASE + ' QA' : TITLE_BASE, t = (state && state.round) ? `${tb} - Round ${state.round}` : tb;
+  const tb = QA_MODE ? titleBase() + ' QA' : titleBase(), t = (state && state.round) ? `${tb} - Round ${state.round}` : tb;
   if (document.title !== t) document.title = t;
+  const h = document.getElementById('gameTitle'); if (h) h.textContent = titleBase();
 }
 // v5l：ドアの吸い寄せ（CONFIG.doorMagnet・仕様 E'）。物理の1ステップごとに呼ぶ
 function doorMagnetStep(){
@@ -1838,7 +1870,7 @@ function hitButton(g){
 cv.addEventListener('pointerdown', e=>{
   if (!e.isPrimary) return;
   if (introActive()){ if (state.tut && state.tut.on && hitTutSkip(toGame(e))) tutSkip(); skipIntro(); return; }   // v0.8：演出中はどこをタップしてもスキップ（v0.9.3：とばすボタンなら説明も）
-  if (!state.running || state.paused || activePointer!==null) return;
+  if (!state.running || state.paused || activePointer!==null || state.retryInputLock > 0) return;
   const btn = hitButton(toGame(e));
   if (btn === 'pause'){ pauseGame(); return; }
   if (btn === 'mute'){ setMuted(!muted); return; }
@@ -1992,7 +2024,7 @@ function loop(now){
     }
     state.dropClock += rdt;   // 連続投下の間隔は実時間で数える（スロー中も0.6秒）
     if (state.canDrop){
-      const lim = dropLimit(); if (lim < state.minDropLimit) state.minDropLimit = lim; const before = lim-state.dropTimer; if (!tutFreeze() && !noticeFreeze()) state.dropTimer += dt; const left = lim-state.dropTimer;
+      const lim = dropLimit(); if (lim < state.minDropLimit) state.minDropLimit = lim; const before = lim-state.dropTimer; if (!tutFreeze() && !noticeFreeze() && !(state.retryDropFreeze > 0)) state.dropTimer += dt; const left = lim-state.dropTimer;
       if (left <= CONFIG.warnBelow && Math.ceil(left*4)!==Math.ceil(before*4)) beep(1500,0.03);
       if (state.dropTimer >= lim) drop(true);
     }
@@ -2006,13 +2038,31 @@ function loop(now){
       }
       if (state.elapsed - b.bornT > 1.2 && b.position.y - b.circleRadius < DANGER_Y && Math.abs(b.velocity.y)<1) over=true;
     }
-    state.overflowT = over ? state.overflowT+dt : 0;
-    if (over){ if (state.overflowSince == null) state.overflowSince = state.elapsed; } else state.overflowSince = null;   // あふれ始めた時刻
-    if (over){ state.warnT -= dt; if (state.warnT <= 0){ sfx('warning'); state.warnT = 0.8; } } else state.warnT = 0;
-    if (state.overflowT > overflowLimit()) startEnding();
+    if (state.retryGrace > 0){ state.retryGrace -= rdt; state.overflowT = 0; state.overflowSince = null; state.warnT = 0; }
+    else {
+      state.overflowT = over ? state.overflowT+dt : 0;
+      if (over){ if (state.overflowSince == null) state.overflowSince = state.elapsed; } else state.overflowSince = null;
+      if (over){ state.warnT -= dt; if (state.warnT <= 0){ sfx('warning'); state.warnT = 0.8; } } else state.warnT = 0;
+      if (state.overflowT > overflowLimit()) startEnding();
+    }
+    if (state.retryDropFreeze > 0) state.retryDropFreeze -= rdt;
+    if (state.retryInputLock > 0) state.retryInputLock -= rdt;
+    if (state.retryFade && state.retryFade.length){
+      for (const f of state.retryFade) f.t += rdt;
+      const gone = state.retryFade.filter(f => f.t >= (f.dur||CONFIG.retryFadeSec));
+      for (const f of gone){ if (Composite.get(world, f.b.id, 'body')) Composite.remove(world, f.b); }
+      state.retryFade = state.retryFade.filter(f => f.t < (f.dur||CONFIG.retryFadeSec));
+    }
     // Lv2の最初の不良品：不良品が出せるようになったらヒントを予約して「次」に出す
     if (state.defectPending && !state.hintArmed && defectsAllowed()){ state.hintArmed = true; state.hint = CONFIG.hintShow + (state.rankUp ? CONFIG.hintDelayRankUp : CONFIG.hintDelay); }
     if (state.defectPending && state.hintArmed && state.hint <= CONFIG.hintShow){ state.next = piece(pickWeighted(CONFIG.dropWeights, DEFECTABLE), true); state.defectPending = false; }
+  } else if (state.retryOffer){
+    if (!state.retryOffer.busy){
+      state.retryOffer.t += rdt;
+      const left = Math.max(0, Math.ceil(CONFIG.retryOfferSec - state.retryOffer.t));
+      const el = document.getElementById('retryCount'); if (el) el.textContent = String(left);
+      if (state.retryOffer.t >= CONFIG.retryOfferSec) retryDecline();
+    }
   } else if (state.ending > 0){
     state.ending -= rdt;
     if (state.ending <= 0) showResult();
@@ -2199,8 +2249,10 @@ function draw(now){
   if (state.shake>0.5) ctx.translate((Math.random()-.5)*state.shake,(Math.random()-.5)*state.shake);
   ctx.clearRect(-30,-30,W+60,H+60);
   ctx.fillStyle='#24303f'; ctx.fillRect(BOX.left, BOX.top-30, BOX.right-BOX.left, BOX.bottom-BOX.top+30);
-  ctx.strokeStyle = state.overflowT>0 ? `rgba(255,60,60,${0.5+0.5*Math.sin(now/80)})` : 'rgba(255,80,80,.5)';
-  ctx.setLineDash([8,6]); ctx.lineWidth = (state.overflowT>0 && overflowInGrace()) ? 4 : 2; ctx.beginPath(); ctx.moveTo(BOX.left,DANGER_Y); ctx.lineTo(BOX.right,DANGER_Y); ctx.stroke(); ctx.setLineDash([]);
+  const graceBlink = state.retryGrace > 0;
+  ctx.strokeStyle = graceBlink ? `rgba(80,220,255,${0.45+0.45*Math.sin(now/90)})` : (state.overflowT>0 ? `rgba(255,60,60,${0.5+0.5*Math.sin(now/80)})` : 'rgba(255,80,80,.5)');
+  ctx.setLineDash([8,6]); ctx.lineWidth = (graceBlink || (state.overflowT>0 && overflowInGrace())) ? 4 : 2; ctx.beginPath(); ctx.moveTo(BOX.left,DANGER_Y); ctx.lineTo(BOX.right,DANGER_Y); ctx.stroke(); ctx.setLineDash([]);
+  if (graceBlink){ ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle=`rgba(80,220,255,${0.7+0.3*Math.sin(now/90)})`; ctx.fillText(L().retry_grace, CONFIG.W/2, DANGER_Y+6); }
   // 手持ち部品（HUDより先に描く）
   if (state.running && state.canDrop && state.current){
     const hd = heldDraw(), hr = hd.r, hx = hd.hx, hy = hd.hy;
@@ -2247,6 +2299,8 @@ function draw(now){
   drawPath(now);   // v0.8：道すじ（HUDの下・箱の上）
   for (const b of gameBodies()){
     if (b.bhHide && state.bh) continue;
+    const rf = state.retryFade && state.retryFade.find(f => f.b === b);
+    if (rf){ const a = Math.max(0, 1 - rf.t/(rf.dur||CONFIG.retryFadeSec)); ctx.save(); ctx.globalAlpha = a; ctx.fillStyle=`rgba(255,255,255,${0.55+0.45*a})`; ctx.beginPath(); ctx.arc(b.position.x,b.position.y,b.circleRadius+2,0,Math.PI*2); ctx.fill(); ctx.restore(); continue; }
     if (b.mech){
       drawPart(b.k, false, b.position.x, b.position.y, 0, now, 'root', undefined, b.circleRadius);
     } else { let rr = b.circleRadius; const f = state.fall;   // v0.9.1：離した直後は縮めた絵から0.15秒で元へ（見た目だけ）
@@ -2427,6 +2481,7 @@ let overlayMode = 'title';
 function renderOverlay(){
   const T = L();
   copiedEl.textContent = '';
+  updateTitle();
   if (overlayMode==='title'){
     flowTitle.style.display = '';
     const pr = personalRanks(), best = pr[0];
@@ -2452,7 +2507,7 @@ function renderOverlay(){
     html += `${T.unitsShipped||T.shipped} <b>${r.carsGood||0}</b>${T.unitCars}（${T.unitsGood||'Good'}） / <b>${r.carsBad||0}</b>（${T.unitsBad||'Bad'}）`+(r.claims ? ` / ${T.complaints} ${r.claims}` : '')+`<br>`;
     html += `${T.thisSales} <b>${fmtYen(gross||0)}</b><br>`;
     html += `${T.profit||'Profit'} <b${profit<0 ? ' style="color:#ff4a3a"' : ''}>${fmtYen(profit||0)}</b> / ${T.margin||'Margin'} <b>${(marginPct).toFixed(1)}%</b><br>`;
-    if (r.score != null) html += `<b style="font-size:20px;color:#ffd84a">${T.totalScore||'Score'} ${r.score}/1000　${T.rankLabel||'Rank'} ${r.scoreRank||'C'}</b><br>`;
+    if (r.score != null) html += `<b style="font-size:20px;color:#ffd84a">${T.totalScore||'Score'} ${r.score}/1000　${T.rankLabel||'Rank'} ${r.scoreRank||'C'}</b>`+(r.retry?` <span style="color:#ffd84a">${T.retry_used_note||'↻'}</span>`:'')+`<br>`;
     html += `${T.best} ${fmtYen(r.bestSales||0)}`+( (r.bestRound||1) >= CONFIG.roundShowFrom ? (lang==='ja' ? `（${T.roundsReached(r.bestRound)}）` : ` (${T.roundsReached(r.bestRound)})`) : '' )+`<br>`;
     html += `Lv ${r.level||1} / ${T.time} ${fmtTime(r.seconds != null ? r.seconds : 0)}`;
     if ((r.round||1) >= CONFIG.roundShowFrom) html += `<br><b>${T.roundsReached(r.round)}</b>`;
@@ -2461,7 +2516,7 @@ function renderOverlay(){
     const pr = r.personalRanks || personalRanks();
     html += `<div class="res" style="margin-top:8px;font-size:14px"><b>${T.personalRank||'Ranking'}</b><br>`;
     if (!pr.length) html += (T.noRank||'—');
-    else pr.forEach((e,i)=>{ html += `${i+1}. ${e.score}（${e.rank||'?'}） ${fmtYen(e.sales||0)} / ${e.cars||0}${T.unitCars}<br>`; });
+    else pr.forEach((e,i)=>{ html += `${i+1}. ${e.score}（${e.rank||'?'}） ${fmtYen(e.sales||0)} / ${e.cars||0}${T.unitCars}`+(e.retry?` <span style="color:#ffd84a">${T.rank_retry_mark||'↻'}</span>`:'')+`<br>`; });
     html += `</div>`;
     ovText.innerHTML = html; startBtn.textContent=T.retry; startBtn.disabled = false;
     shareBtn.textContent = T.share; shareBtn.classList.remove('hidden');
@@ -2543,7 +2598,7 @@ function savePersonalRank(entry){
   const key = 'personalRanks', maxn = CONFIG.personalRankMax || 10;
   let list = Store.get(key, []);
   if (!Array.isArray(list)) list = [];
-  list.push({ score:entry.total, rank:entry.rank, sales:entry.gross, cars:entry.carsGood, claims:entry.claims, round:entry.round, cleared:!!entry.cleared, at:Date.now() });
+  list.push({ score:entry.total, rank:entry.rank, sales:entry.gross, cars:entry.carsGood, claims:entry.claims, round:entry.round, cleared:!!entry.cleared, retry:!!entry.retry, at:Date.now() });
   list.sort((a,b)=> (b.score - a.score) || (b.sales - a.sales) || (a.at - b.at));
   list = list.slice(0, maxn);
   Store.set(key, list);
@@ -2568,6 +2623,7 @@ function finalizeResult(cleared){
   if (state.topRank > prevRank) Store.set('bestRank', state.topRank);
   const prevRound = Store.get('bestRound', 1), round = state.round||1;
   if (round > prevRound) Store.set('bestRound', round);
+  settle.retry = !!state.retryUsed;
   const ranks = savePersonalRank(settle);
   // v0.7：プレイ時間はゲーム内 elapsed を優先。0 の誤表示防止に壁時計も参照
   const wallSec = state.wallStart ? (performance.now() - state.wallStart) / 1000 : 0;
@@ -2577,17 +2633,119 @@ function finalizeResult(cleared){
     score:settle.total, scoreRank:settle.rank, scoreBreak:{prod:settle.prod, quality:settle.quality, margin:settle.marginPts, round:settle.roundPts},
     seconds:playSec, level:state.level, discards:state.discards,
     topRank:state.topRank, bestSales:Math.max(prevBest, settle.gross), bestRank:Math.max(prevRank, state.topRank), newRecord,
-    round, bestRound:Math.max(prevRound, round), cleared:!!cleared, personalRanks:ranks };
+    round, bestRound:Math.max(prevRound, round), cleared:!!cleared, retry:!!state.retryUsed, personalRanks:ranks };
 }
 function startEnding(){
   if (state.cleared) return;   // クリア後のあふれば無視
   if (state.tut.on) state.tut.bad = null;
-  state.running=false; state.ending=0.9; state.shake=16;
+  state.running=false; state.shake=16;
   state.flash={ color:'255,40,40', t:0, dur:0.6 };
   sfx('game_over');
-  finalizeResult(false);
+  activePointer = null; state.armed = false; state.queuedDrop = false;
+  if (CONFIG.retryEnabled && !state.retryUsed){ retryOffer(); return; }   // v0.9.5：1回だけ「つづける？」
+  state.ending=0.9; finalizeResult(false);
 }
-function showResult(){ overlayMode='result'; renderOverlay(); ov.classList.remove('hidden'); }
+function showResult(){ overlayMode='result'; renderOverlay(); ov.classList.remove('hidden'); document.getElementById('retryOv').classList.add('hidden'); }
+// ===== v0.9.5 つづける（リトライ） =====
+const retryOv = document.getElementById('retryOv');
+let qaAdPending = null;   // でばぐ：qaAdResult で広告結果をまねる
+function adSdk(){ try{ return window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.ad; }catch(e){ return null; } }
+function gameSdk(){ try{ return window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.game; }catch(e){ return null; } }
+function gameplayStart(){ try{ const g=gameSdk(); if (g && g.gameplayStart) g.gameplayStart(); }catch(e){} }
+function gameplayStop(){ try{ const g=gameSdk(); if (g && g.gameplayStop) g.gameplayStop(); }catch(e){} }
+function retryHasAdblock(){
+  const ad = adSdk(); if (!ad || !ad.hasAdblock) return false;
+  try{ const v = ad.hasAdblock(); return !!(v && typeof v.then !== 'function' ? v : false); }catch(e){ return false; }
+}
+function retryCanFree(){ return !adSdk() || !!state.adsOff; }
+function retrySetButtons(busy){
+  const adB = document.getElementById('retryAdBtn'), freeB = document.getElementById('retryFreeBtn'), noB = document.getElementById('retryNoBtn');
+  const free = retryCanFree();
+  adB.classList.toggle('hidden', free); freeB.classList.toggle('hidden', !free);
+  const block = CONFIG.retryOnAdblock === 'block' && retryHasAdblock() && !free;
+  adB.disabled = !!busy || block; freeB.disabled = !!busy; noB.disabled = !!busy;
+  if (block){ adB.textContent = L().retry_adblock; adB.style.opacity = '.55'; }
+  else { adB.style.opacity = ''; adB.textContent = L().retry_ad; }
+  freeB.textContent = L().retry_free; noB.textContent = L().retry_no;
+}
+function retryOffer(){
+  overlayMode = 'retry';
+  state.retryOffer = { t:0, busy:false };
+  state.ending = 0;
+  document.getElementById('retryTitle').textContent = L().retry_title;
+  document.getElementById('retrySub').textContent = L().retry_sub;
+  document.getElementById('retryCount').textContent = String(CONFIG.retryOfferSec);
+  document.getElementById('retryMsg').textContent = '';
+  retrySetButtons(false);
+  ov.classList.add('hidden'); retryOv.classList.remove('hidden');
+  gameplayStop();
+}
+function retryDecline(){
+  if (!state.retryOffer || state.retryOffer.busy) return;
+  state.retryOffer = null; retryOv.classList.add('hidden');
+  state.ending = 0.01; finalizeResult(false); showResult();
+}
+function retryClearRow(){
+  if (merging.size){ setTimeout(retryClearRow, 16); return; }   // 合体中は1フレーム待つ
+  const clearY = DANGER_Y + (CONFIG.retryRowsRemoved||1) * (CONFIG.retryRowPx||48);
+  const kill = [];
+  for (const b of gameBodies()){
+    if (state.fall && state.fall.b === b) continue;
+    if (b.position.y - b.circleRadius < clearY) kill.push(b);
+  }
+  state.retryFade = kill.map(b => ({ b, t:0, dur:CONFIG.retryFadeSec }));
+}
+function retryResume(){
+  state.retryOffer = null; retryOv.classList.add('hidden'); ov.classList.add('hidden');
+  document.getElementById('retryMsg').textContent = L().retry_ok;
+  retryClearRow();
+  state.retryUsed = true;
+  state.overflowT = 0; state.overflowSince = null; state.warnT = 0;
+  state.dropTimer = 0;
+  activePointer = null; state.armed = false; state.queuedDrop = false;
+  state.retryGrace = CONFIG.retryGraceSec;
+  state.retryDropFreeze = CONFIG.retryDropFreezeSec;
+  state.retryInputLock = CONFIG.retryInputLockSec;
+  state.ending = 0; state.running = true; last = performance.now();
+  gameplayStart();
+  // 「つづけます！」を短く出す
+  toast(L().retry_ok, '#ffd84a', 1.0);
+}
+function retryMuteTemp(on){
+  if (on){ if (state.muteHold == null) state.muteHold = muted; muted = true; }
+  else { if (state.muteHold != null){ muted = state.muteHold; state.muteHold = null; } }
+}
+function retryStartAd(){
+  if (!state.retryOffer || state.retryOffer.busy) return;
+  if (retryCanFree()){ retryResume(); return; }
+  if (CONFIG.retryOnAdblock === 'block' && retryHasAdblock()){ document.getElementById('retryMsg').textContent = L().retry_adblock; return; }
+  state.retryOffer.busy = true; retrySetButtons(true);
+  document.getElementById('retryMsg').textContent = L().retry_loading;
+  const finish = (ok, code) => {
+    retryMuteTemp(false);
+    if (!state.retryOffer) return;
+    state.retryOffer.busy = false;
+    if (ok){ retryResume(); return; }
+    if (code === 'adsDisabled'){ state.adsOff = true; retryResume(); return; }
+    // adError → no reward（決定どおり）
+    document.getElementById('retryMsg').textContent = L().retry_ad_fail;
+    setTimeout(()=>{ if (state.retryOffer){ state.retryOffer = null; retryOv.classList.add('hidden'); state.ending = 0.01; finalizeResult(false); showResult(); } }, (CONFIG.retryAdFailSec||2)*1000);
+  };
+  if (qaAdPending){ const r = qaAdPending; qaAdPending = null; if (r === 'finished'){ retryMuteTemp(true); gameplayStop(); finish(true); } else finish(false, r); return; }
+  const ad = adSdk();
+  if (!ad || !ad.requestAd){ finish(true); return; }
+  try{
+    ad.requestAd('rewarded', {
+      adStarted(){ retryMuteTemp(true); gameplayStop(); },
+      adFinished(){ finish(true); },
+      adError(err){ const code = (err && (err.code || err)) || 'other'; finish(false, String(code)); }
+    });
+  }catch(e){ finish(false, 'other'); }
+}
+function qaAdResult(code){ qaAdPending = code; }   // 'finished'|'adsDisabled'|'unfilled'|'adblock'|…
+document.getElementById('retryAdBtn').onclick = ()=>retryStartAd();
+document.getElementById('retryFreeBtn').onclick = ()=>retryStartAd();
+document.getElementById('retryNoBtn').onclick = ()=>retryDecline();
 startBtn.onclick = ()=>{ if (overlayMode==='title' && !assetsReady) return; startGame(); };
 howBtn.onclick = ()=>{ if (!assetsReady) return; tutForceNext = true; startGame(); };   // タイトルの「遊び方」：説明つきで始める
 // シェア：プレイヤーがボタンを押したときだけ（端末の共有メニュー、なければ文をコピー）
@@ -2601,8 +2759,8 @@ shareBtn.onclick = ()=>{
 function setAssetsReady(){ if (assetsReady) return; assetsReady = true; buildGrayBadges(); renderOverlay(); setTimeout(()=>{ loadFx(); preloadTiers(1); buildGrayBadges(); }, 0); }
 Promise.all(IMG_WAIT).then(setAssetsReady);
 setTimeout(setAssetsReady, CONFIG.loadTimeout*1000);
-document.getElementById('langJa').onclick = ()=>{ lang='ja'; renderOverlay(); };
-document.getElementById('langEn').onclick = ()=>{ lang='en'; renderOverlay(); };
+document.getElementById('langJa').onclick = ()=>{ lang='ja'; updateTitle(); renderOverlay(); };
+document.getElementById('langEn').onclick = ()=>{ lang='en'; updateTitle(); renderOverlay(); };
 function detectLang(){
   const q = new URLSearchParams(location.search).get('lang');
   if (q === 'ja' || q === 'en') return q;
@@ -2620,7 +2778,7 @@ if (CONFIG.windowDoor) document.querySelectorAll('img.flowBig').forEach(im => {
 lang = detectLang();
 setupWorld(); newState(); renderOverlay(); renderPause(); requestAnimationFrame(loop);
 // テスト用：window.QR でゲーム状態を確認できます
-window.QR = { bhStart, seqShipTexts, fitText, holdLabelRect, pathDotPos, TUT_EXTRA, get activePointer(){return activePointer;}, get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPES, COLORS, recipeResult, makePart, shipCar, levelUp, fmtYen, clampAim, BOX, HOLD_Y,
+window.QR = { bhStart, seqShipTexts, fitText, holdLabelRect, pathDotPos, TUT_EXTRA, get activePointer(){return activePointer;}, get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPES, COLORS, recipeResult, makePart, shipCar, levelUp, fmtYen, clampAim, BOX, HOLD_Y, DANGER_Y, GAME_NAME, gameName, titleBase, retryOffer, retryClearRow, retryResume, retryDecline, qaAdResult, get retryUsed(){return !!(state&&state.retryUsed);},
   get assetsReady(){return assetsReady;}, binHitZones, hingeBoostActive, dropWeightsNow, defectsAllowed, mechanicAllowed, mechanicCount, randPiece, piece, dropLimit, dropLimitAt, defectChance, floorTarget, riseFrac, diffCars, neededParts, mechanicForced, disposalCostOf, disposalPartCost, currentCarPrice, CAR_VALUES, CAR_NAMES, timeRiseFrac, claimCap, carsToLevelUp, moneyY, toast, defectAge,
   tierFor, artFor, ART, FX, UI, binLiftFor, pauseGame, resumeGame, setMuted, get muted(){return muted;}, sfx, TITLES, TEXT, gameBodies, startGame, startEnding, flowImg,
   get audioUnlocked(){return audioUnlocked;}, sfxBuf, sfxEl,
