@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Quality Rush Ver0.9.1</title>
+<title>Quality Rush Ver0.9.2</title>
 <style>
   html,body{margin:0;height:100%;background:#1b2330;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center}
@@ -40,7 +40,7 @@
 <div id="wrap">
   <canvas id="c"></canvas>
   <div id="overlay" class="ov">
-    <h1>Quality Rush Ver0.9.1</h1>
+    <h1>Quality Rush Ver0.9.2</h1>
     <img id="flowTitle" class="flowBig" src="assets/ui/assembly_flow.webp" alt="" onerror="this.className='flowBig fb'">
     <div id="ovText"></div>
     <button id="startBtn" disabled>読み込み中…</button>
@@ -159,6 +159,10 @@ const CONFIG = {
     weakN:3, midFrac:0.5, flashDur:0.45 },
   countUpTime: 0.8,         // 売上のカウントアップの秒数
   complaintShake: 16,       // クレームの画面の揺れ
+  blackHoleFx: true,        // v0.9.2：トレーラー（最大）の爆発の前にブラックホール演出。?bh=0 で無効
+  bhImplodeSec: 1.0, bhFreezeSec: 0.1, bhMaxFx: 150, bhShake: 28,
+  textSeq: true,            // v0.9.2：出庫＋レベルアップで マリッジ→お金→LEVEL UP を順番に出す（重ねない）
+  textSeqMarriageSec: 0.6,
   maxParticles: 60,         // 煙・破片・コインなどの最大数（重くならないように）
   smokeInterval: 0.12,      // 不良車の煙を出す間隔（秒）
   smokeGrow: 1.3,           // 煙が広がる大きさ（車の大きさに対して）
@@ -566,6 +570,7 @@ function fmtYen(v){
 const fmtTime = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
 // v0.9.1qa：?qa=trailer＝トレーラー爆発の確認用。QA中は保存（ランキング・自己ベスト・設定・既読）を一切しない
 const QA_MODE = (()=>{ try{ return new URLSearchParams(location.search).get('qa') === 'trailer' ? 'trailer' : null; }catch(e){ return null; } })();
+try{ if (new URLSearchParams(location.search).get('bh') === '0') CONFIG.blackHoleFx = false; }catch(e){}
 const Store = {
   backend(){ try{ const d = window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.data; if (d && d.getItem) return d; }catch(e){} try{ return window.localStorage; }catch(e){ return null; } },
   get(k, def){ try{ const b=this.backend(); const v=b && b.getItem('qr_'+k); return v==null ? def : JSON.parse(v); }catch(e){ return def; } },
@@ -1438,9 +1443,10 @@ function explodeStrength(rank){
   if (rank <= (eg.midRankMax != null ? eg.midRankMax : 5)) return 'mid';
   return 'max';
 }
-function explodeGoodShip(x, y, rank){
+function explodeGoodShip(x, y, rank, fromBH){
   const eg = CONFIG.explodeGood; if (!eg || !eg.enabled) return;
   const mode = explodeStrength(rank);
+  if (mode === 'max' && CONFIG.blackHoleFx && !fromBH){ bhStart(x, y, rank); return; }   // v0.9.2：先に吸い込み → 爆発は bhExplode から
   state.shake = Math.max(state.shake, mode==='max' ? 18 : mode==='mid' ? 12 : 6);
   state.flash = { color:'255,230,160', t:0, dur: eg.flashDur || 0.45 };
   debris(x, y, mode==='max' ? 16 : mode==='mid' ? 10 : 5);
@@ -1458,6 +1464,9 @@ function explodeGoodShip(x, y, rank){
   }
   for (const b of targets){
     const art = artFor(b.k, b.bad, b.art || 'root');
+    if (fromBH){ const a2 = Math.random()*Math.PI*2, sp2 = 380 + Math.random()*260;   // 中心から外へ飛び散る
+      addParticle({ art, fb:'debris', x:x+Math.cos(a2)*8, y:y+Math.sin(a2)*8, vx:Math.cos(a2)*sp2, vy:Math.sin(a2)*sp2 - 140, g:700, s0:b.circleRadius*2, s1:b.circleRadius*1.2, life:1.0+Math.random()*0.4, rot:b.angle||0, vr:(Math.random()-.5)*10, fade:true, bhp:true });
+      Composite.remove(world, b); continue; }
     const ang = Math.atan2(b.position.y - y, b.position.x - x) + (Math.random()-.5)*0.8;
     const sp = (mode==='max' ? 280 : mode==='mid' ? 200 : 140) + Math.random()*160;
     addParticle({ art, fb:'debris', x:b.position.x, y:b.position.y, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp - 120 - Math.random()*80, g:900,
@@ -1465,8 +1474,81 @@ function explodeGoodShip(x, y, rank){
     Composite.remove(world, b);
   }
 }
+
+// ===== v0.9.2：ブラックホール → 大爆発（見た目だけ。吸い込み中はゲーム全体を止める＝時間・投下は進まない） =====
+function bhStart(x, y, rank){
+  const bs = gameBodies().filter(b => !b.mech);
+  const spr = bs.slice(0, CONFIG.bhMaxFx).map(b => { b.bhHide = true; const dx = b.position.x - x, dy = b.position.y - y;
+    return { k:b.k, bad:b.bad, art:b.art, r:b.circleRadius, ang:b.angle||0, a0:Math.atan2(dy, dx), d0:Math.hypot(dx, dy) }; });
+  for (const b of bs) b.bhHide = true;
+  state.bh = { x, y, rank, t:0, spr, rumbled:false };
+  state.shake = 0;
+  bhRumble();
+}
+function bhRumble(){   // 既存の音（floor_rise）を低く・ゆっくり鳴らす
+  if (muted || !audioUnlocked) return;
+  try{ const buf = sfxBuf.floor_rise || sfxBuf.game_over; if (!buf || !actx || actx.state !== 'running') return;
+    const s = actx.createBufferSource(), g = actx.createGain(); s.buffer = buf; s.playbackRate.value = 0.45;
+    g.gain.setValueAtTime(0.0001, actx.currentTime); g.gain.exponentialRampToValueAtTime(CONFIG.sfxVolume, actx.currentTime + 0.6);
+    g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + CONFIG.bhImplodeSec + CONFIG.bhFreezeSec);
+    s.connect(g).connect(actx.destination); s.start(); s.stop(actx.currentTime + CONFIG.bhImplodeSec + CONFIG.bhFreezeSec + 0.05);
+  }catch(e){} }
+function bhTick(rdt){
+  const bh = state.bh; bh.t += rdt;
+  if (bh.t >= CONFIG.bhImplodeSec + CONFIG.bhFreezeSec) bhExplode();
+}
+function bhExplode(){
+  const bh = state.bh; state.bh = null; last = performance.now();
+  explodeGoodShip(bh.x, bh.y, bh.rank, true);   // もとの最大の爆発（箱を空にする）
+  state.shake = CONFIG.bhShake;
+  state.flash = { color:'255,255,255', t:0, dur:0.7 };
+  state.bhRings = [ { t:0, dur:0.75, max:560, w:22, c:'255,255,255' }, { t:-0.14, dur:0.85, max:460, w:12, c:'200,140,255' } ].map(r => Object.assign(r, { x:bh.x, y:bh.y }));
+  for (let i=0;i<34;i++){ const a = Math.random()*Math.PI*2, sp = 200 + Math.random()*420;
+    addParticle({ frames:FX.sparkle, frameDur:CONFIG.sparkleFrame, x:bh.x, y:bh.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, g:120, s0:46, s1:8, life:0.6+Math.random()*0.4, fb:'sparkle', fade:true, bhp:true }); }
+  for (let i=0;i<24;i++){ const usePart = Math.random() < 0.4, list = usePart ? FX.partsBad : FX.debris, a = Math.random()*Math.PI*2, sp = 260 + Math.random()*380;
+    addParticle({ art: list && list[Math.floor(Math.random()*list.length)], fb:'debris', x:bh.x, y:bh.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp - 100, g:800, s0:26, s1:18, life:1.1, rot:Math.random()*6, vr:(Math.random()-.5)*14, fade:true, bhp:true }); }
+  sfx('merge_big');
+}
+function drawBH(now){
+  const W = CONFIG.W, H = CONFIG.H;
+  if (state.bhRings) for (const r of state.bhRings){ if (r.t < 0) continue; const k = r.t / r.dur, e = 1 - Math.pow(1-k, 3);
+    ctx.strokeStyle = `rgba(${r.c},${Math.max(0, 1-k)})`; ctx.lineWidth = Math.max(1, r.w*(1-k)); ctx.beginPath(); ctx.arc(r.x, r.y, 10 + e*r.max, 0, Math.PI*2); ctx.stroke(); }
+  const bh = state.bh; if (!bh) return;
+  const IM = CONFIG.bhImplodeSec, p = Math.min(1, bh.t / IM), ep = p*p*(3-2*p), frz = bh.t > IM ? Math.min(1, (bh.t-IM)/CONFIG.bhFreezeSec) : 0;
+  ctx.fillStyle = `rgba(6,0,18,${0.72*ep})`; ctx.fillRect(-20, -20, W+40, H+40);   // まわりを暗く
+  ctx.strokeStyle = `rgba(220,200,255,${0.5*ep})`; ctx.lineWidth = 2; ctx.beginPath();   // 内向きの集中線
+  for (let i=0;i<28;i++){ const a = Math.random()*Math.PI*2, r0 = 180 + Math.random()*260, r1 = r0*(0.35+Math.random()*0.3);
+    ctx.moveTo(bh.x + Math.cos(a)*r0, bh.y + Math.sin(a)*r0); ctx.lineTo(bh.x + Math.cos(a)*r1, bh.y + Math.sin(a)*r1); }
+  ctx.stroke();
+  for (const sp of bh.spr){   // 渦を巻いて吸い込まれる部品（物理は止めて絵だけ動かす）
+    const q = Math.min(1, ep*1.15), d = sp.d0*(1-q), a = sp.a0 + q*4.5, sc = Math.max(0.05, 1-q*0.95);
+    if (q >= 1) continue; ctx.globalAlpha = Math.max(0, 1-q*q);
+    drawPart(sp.k, sp.bad, bh.x + Math.cos(a)*d, bh.y + Math.sin(a)*d, sp.ang + q*8, now, sp.art, undefined, sp.r*sc);
+    ctx.globalAlpha = 1; }
+  const R = (12 + 62*ep) * (1 - frz*0.97);
+  const g = ctx.createRadialGradient(bh.x, bh.y, R*0.8, bh.x, bh.y, R*2.1);   // 紫と白のふち
+  g.addColorStop(0, 'rgba(255,255,255,.9)'); g.addColorStop(0.25, 'rgba(190,120,255,.7)'); g.addColorStop(1, 'rgba(120,40,200,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(bh.x, bh.y, R*2.1, 0, Math.PI*2); ctx.fill();
+  ctx.lineWidth = 3; for (let i=0;i<4;i++){ const a0 = bh.t*(7+i) + i*1.6;   // 回る降着円盤
+    ctx.strokeStyle = i%2 ? 'rgba(255,240,255,.85)' : 'rgba(180,110,255,.85)'; ctx.beginPath(); ctx.ellipse(bh.x, bh.y, R*(1.25+i*0.12), R*(0.45+i*0.05), a0*0.15, a0, a0+2.2); ctx.stroke(); }
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(bh.x, bh.y, R, 0, Math.PI*2); ctx.fill();
+  if (frz > 0){ const pr = 3 + frz*16; const g2 = ctx.createRadialGradient(bh.x, bh.y, 0, bh.x, bh.y, pr*3);   // 光る点
+    g2.addColorStop(0, 'rgba(255,255,255,1)'); g2.addColorStop(0.3, 'rgba(255,255,255,.8)'); g2.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(bh.x, bh.y, pr*3, 0, Math.PI*2); ctx.fill(); }
+}
+// v0.9.2：出庫でレベルが上がったとき、マリッジ → お金 → LEVEL UP（→ 周の帯）を順番に（重ねない）
+function seqShipTexts(){
+  const ms = CONFIG.textSeqMarriageSec, mar = state.popups.find(p => p.text === L().marriage && p.t === 0);
+  let at = 0;
+  if (mar){ mar.dur = ms; at = ms; }
+  const mn = state.money.filter(m => m.t >= -1e-6 && m.t <= 0); for (const m of mn) m.t = -at;
+  if (mn.length) at += CONFIG.moneyTime;
+  for (const t of state.toasts) if (t.t === 0) t.wait = (t.wait||0) + at;
+  if (state.rankUp && state.rankUp.t < 0) state.rankUp.t -= at;
+  if (state.roundBanner && state.roundBanner.t < 0) state.roundBanner.t -= at + CONFIG.bannerTime;
+}
 function shipCar(x, y, bad){
-  const rank = rankForLevel(state.level), fullValue = carValue(rank);
+  const rank = rankForLevel(state.level), fullValue = carValue(rank), lv0 = state.level;
   const value = (!bad || CONFIG.badCarPays) ? fullValue : 0;
   if (state.firstCarAt == null) state.firstCarAt = state.elapsed;   // 1台目の完成の時刻（時間で床が上がるのはここから）
   state.cars++; state.topRank = Math.max(state.topRank, rank);
@@ -1502,6 +1584,7 @@ function shipCar(x, y, bad){
     if ((state.round||1) >= (CONFIG.maxRound||3)) finishClear();   // DR3：3周目クリア → 決算
     else startNextRound();
   }
+  if (!bad && CONFIG.textSeq && state.level > lv0) seqShipTexts();
 }
 // 次の周：車は軽トラから（レベルの数字・売上・出庫台数・箱の中はそのまま）。クレームで上がった床だけ戻す
 function startNextRound(){
@@ -1530,7 +1613,7 @@ function setStartRound(n){
   updateTitle();
 }
 // v5l：ページのタイトルに版と周（ゲーム中だけ「 - Round N」）
-const TITLE_BASE = 'Quality Rush Ver0.9.1';   // v0.7：2ライン＋マリッジ・演出段階・爆発
+const TITLE_BASE = 'Quality Rush Ver0.9.2';   // v0.7：2ライン＋マリッジ・演出段階・爆発
 function updateTitle(){
   const tb = QA_MODE ? TITLE_BASE + ' QA' : TITLE_BASE, t = (state && state.round) ? `${tb} - Round ${state.round}` : tb;
   if (document.title !== t) document.title = t;
@@ -1723,7 +1806,7 @@ cv.addEventListener('pointercancel', e=>{ if (e.pointerId===activePointer){ acti
 
 const dropIntervalOk = () => state.dropClock - state.lastDropAt >= CONFIG.minDropInterval - 1e-6;
 function drop(auto){
-  if (!state.canDrop || !state.running || introActive()) return;
+  if (!state.canDrop || !state.running || introActive() || state.bh) return;
   if (noticeFreeze() && (auto || CONFIG.newPartBlockDrop)){ if (!auto) state.queuedDrop = true; return; }   // v5p：お知らせのあいだは時間切れで落ちない（newPartBlockDrop＝指で離した分もお知らせのあとに落とす）
   if (!auto && !dropIntervalOk()){ state.ignoredDrops++; return; }   // 連続投下の最短間隔（自動投下は制限時間≧1.5秒なので影響なし）
   state.lastDropAt = state.dropClock;
@@ -1828,6 +1911,7 @@ function loop(now){
   const rdt = Math.min(0.05, (now-last)/1000); last = now;
   frameAvg = frameAvg*0.9 + rdt*1000*0.1;   // 重いときは煙などを間引く
   if (state.paused){ introTick(rdt); draw(now); requestAnimationFrame(loop); return; }
+  if (state.bh){ bhTick(rdt); draw(now); requestAnimationFrame(loop); return; }   // v0.9.2：ブラックホール中は全部止める
   if (introActive()){   // v0.8：分解演出中は物理・投下停止
     introTick(rdt); draw(now); requestAnimationFrame(loop); return;
   }
@@ -1875,7 +1959,7 @@ function loop(now){
   if (state.countDelay > 0) state.countDelay -= rdt;
   else if (state.salesShown < state.sales) state.salesShown = Math.min(state.sales, state.salesShown + Math.max(1000, state.countRate*rdt));
   if (state.salesShown > state.sales) state.salesShown = state.sales;
-  for (const s of state.shipping){
+  for (const s of (state.bh ? [] : state.shipping)){
     s.phase += dt;
     if (s.bad && s.phase > 0.3){  // 不良車：黒煙・白煙と部品のかけらを落としながら走る
       s.smokeT -= rdt;
@@ -1891,7 +1975,7 @@ function loop(now){
   for (const e of state.effects) e.t += rdt;
   state.effects = state.effects.filter(e=>e.t<0.35);
   for (const p of state.popups) p.t += rdt;
-  state.popups = state.popups.filter(p=>p.t<1.2);
+  state.popups = state.popups.filter(p=>p.t<(p.dur||1.2));
   for (const t of state.toasts) if (t.wait > 0) t.wait -= rdt;
   { const head = state.toasts.find(t => !(t.wait > 0)); if (head) head.t += rdt; }   // 1つずつ順番に
   state.toasts = state.toasts.filter(t=>t.t<t.dur);
@@ -1908,6 +1992,7 @@ function loop(now){
   if (state.banner){ state.banner.t += rdt; if (state.banner.t > state.banner.dur) state.banner = null; }
   if (state.roundBanner){ const rb = state.roundBanner; rb.t += rdt; if (rb.t >= 0 && !rb.sfx){ rb.sfx = true; sfx('round_start'); } if (rb.t > rb.dur) state.roundBanner = null; }
   if (CONFIG.purpleHint && !state.purpleHinted && state.running && state.current && ITEMS[state.current.k].color === 'purple'){ state.purpleHinted = true; }   // v0.9.1：お知らせではなく名前の帯の説明に出す（holdLabelParts）
+  if (state.bhRings){ for (const r of state.bhRings) r.t += rdt; state.bhRings = state.bhRings.filter(r => r.t < r.dur); if (!state.bhRings.length) state.bhRings = null; }
   if (state.flash){ state.flash.t += rdt; if (state.flash.t > state.flash.dur) state.flash = null; }
   newPartUpdate(rdt);   // v5p
   if (state.fall) state.fall.t += rdt;
@@ -2098,6 +2183,7 @@ function draw(now){
     ctx.save(); ctx.translate(CONFIG.nextX, CONFIG.nextY); ctx.scale(sc, sc); drawPart(state.next.k, state.next.bad, 0, 0, 0, now); ctx.restore(); }
   drawPath(now);   // v0.8：道すじ（HUDの下・箱の上）
   for (const b of gameBodies()){
+    if (b.bhHide && state.bh) continue;
     if (b.mech){
       drawPart(b.k, false, b.position.x, b.position.y, 0, now, 'root', undefined, b.circleRadius);
     } else { let rr = b.circleRadius; const f = state.fall;   // v0.9.1：離した直後は縮めた絵から0.15秒で元へ（見た目だけ）
@@ -2165,7 +2251,7 @@ function draw(now){
     }
   }
   drawButtons();
-  for (const s of state.shipping){
+  for (const s of (state.bh ? [] : state.shipping)){
     let {x,y,size} = shipPos(s);
     if (s.bad){ x += (Math.random()-.5)*5; y += (Math.random()-.5)*4; }   // 不良車はガタガタ揺れる
     if (!s.bad && s.phase<0.45){   // 良品：光る
@@ -2179,8 +2265,8 @@ function draw(now){
     if (s.phase>0.8 && !s.bad){ ctx.fillStyle='rgba(255,255,255,.75)'; ctx.font=`bold ${CONFIG.vroomFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(L().vroom, x-60, y-34); }
   }
   for (const p of state.parts) drawParticle(p);
-  for (const p of state.popups){
-    ctx.globalAlpha = Math.max(0, 1-p.t/1.2); ctx.fillStyle=p.color; ctx.font=`bold ${p.size||CONFIG.popupFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for (const p of (state.bh ? [] : state.popups)){
+    ctx.globalAlpha = Math.max(0, 1-p.t/(p.dur||1.2)); ctx.fillStyle=p.color; ctx.font=`bold ${p.size||CONFIG.popupFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
     const px = Math.max(70, Math.min(W-70, p.x)), py = p.y - p.t*30;
     if (p.outline){ ctx.strokeStyle = CONFIG.discardOutline; ctx.lineWidth = CONFIG.discardOutlineW; ctx.lineJoin = 'round'; ctx.strokeText(p.text, px, py); }   // 黒いふちどり（文字の前に）
     ctx.fillText(p.text, px, py); ctx.globalAlpha = 1;
@@ -2255,9 +2341,10 @@ function draw(now){
     const ar = UI.binArrows;
     if (ar && ar.ok) [-1,1].forEach(side => { const w = 48, h = 24, x = Math.max(w/2+2, Math.min(CONFIG.W-w/2-2, binX(side))); ctx.drawImage(ar, x-w/2, binY(side) - CONFIG.binArrowsDy - h/2, w, h); });
   }
+  drawBH(now);   // v0.9.2
   drawIntro(now);   // v0.8：分解演出（最前面）
   ctx.restore();
-  if (state.flash){ ctx.fillStyle=`rgba(${state.flash.color},${0.6*(1-state.flash.t/state.flash.dur)})`; ctx.fillRect(0,0,W,H); }
+  if (state.flash && !state.bh){ ctx.fillStyle=`rgba(${state.flash.color},${0.6*(1-state.flash.t/state.flash.dur)})`; ctx.fillRect(0,0,W,H); }
   if (state.ending > 0){ ctx.fillStyle=`rgba(0,0,0,${0.5*(1-state.ending/0.9)})`; ctx.fillRect(0,0,W,H); }
 }
 
@@ -2457,7 +2544,7 @@ if (CONFIG.windowDoor) document.querySelectorAll('img.flowBig').forEach(im => {
 lang = detectLang();
 setupWorld(); newState(); renderOverlay(); renderPause(); requestAnimationFrame(loop);
 // テスト用：window.QR でゲーム状態を確認できます
-window.QR = { get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPES, COLORS, recipeResult, makePart, shipCar, levelUp, fmtYen, clampAim, BOX, HOLD_Y,
+window.QR = { bhStart, seqShipTexts, get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPES, COLORS, recipeResult, makePart, shipCar, levelUp, fmtYen, clampAim, BOX, HOLD_Y,
   get assetsReady(){return assetsReady;}, binHitZones, hingeBoostActive, dropWeightsNow, defectsAllowed, mechanicAllowed, mechanicCount, randPiece, piece, dropLimit, dropLimitAt, defectChance, floorTarget, riseFrac, diffCars, neededParts, mechanicForced, disposalCostOf, disposalPartCost, currentCarPrice, CAR_VALUES, CAR_NAMES, timeRiseFrac, claimCap, carsToLevelUp, moneyY, toast, defectAge,
   tierFor, artFor, ART, FX, UI, binLiftFor, pauseGame, resumeGame, setMuted, get muted(){return muted;}, sfx, TITLES, TEXT, gameBodies, startGame, startEnding, flowImg,
   get audioUnlocked(){return audioUnlocked;}, sfxBuf, sfxEl,
