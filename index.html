@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Quality Rush Ver0.9.2</title>
+<title>Quality Rush Ver0.9.3</title>
+<link rel="icon" href="data:,">
 <style>
   html,body{margin:0;height:100%;background:#1b2330;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center}
@@ -40,7 +41,7 @@
 <div id="wrap">
   <canvas id="c"></canvas>
   <div id="overlay" class="ov">
-    <h1>Quality Rush Ver0.9.2</h1>
+    <h1>Quality Rush Ver0.9.3</h1>
     <img id="flowTitle" class="flowBig" src="assets/ui/assembly_flow.webp" alt="" onerror="this.className='flowBig fb'">
     <div id="ovText"></div>
     <button id="startBtn" disabled>読み込み中…</button>
@@ -55,6 +56,7 @@
     <img class="flowBig" src="assets/ui/assembly_flow.webp" alt="" onerror="this.className='flowBig fb'">
     <button id="resumeBtn"></button>
     <button id="introReplayBtn" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
+    <button id="howBtn2" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
     <button id="muteBtn2" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
   </div>
 </div>
@@ -161,6 +163,12 @@ const CONFIG = {
   complaintShake: 16,       // クレームの画面の揺れ
   blackHoleFx: true,        // v0.9.2：トレーラー（最大）の爆発の前にブラックホール演出。?bh=0 で無効
   bhImplodeSec: 1.0, bhFreezeSec: 0.1, bhMaxFx: 150, bhShake: 28,
+  celebQuietSec: 1.5, notifGap: 6, celebOutline: 3, celebFade: 0.2,   // v0.9.3（1）：トレーラーのお祝い中は小さい文字・新入荷を止める
+  roundBinGrace: false,     // v0.9.3（2）：周のはじめに動く箱の上でも捨てない…はまだ入れない（設定だけ）
+  holdLabelBinPad: 4,       // v0.9.3（3a）：横の名前の帯は x32〜368（不適合品箱の端＋4）
+  fitMaxW: 330, fitMinPx: 13,   // v0.9.3（3c）：長い文は小さく→2行（横につぶさない）
+  tutDefectAt: 4, tutDefectKind: 'wheel', tutSampleDefect: true, tutLinesSec: 2.5, tutLinesBlinkSec: 1.2,
+  tutWaitSec: 2, tutMarriageSec: 2, tutClaimSec: 2.5, tutDoneOnFirstCar: true, tutLineMax: 16, tutH2: 56,
   textSeq: true,            // v0.9.2：出庫＋レベルアップで マリッジ→お金→LEVEL UP を順番に出す（重ねない）
   textSeqMarriageSec: 0.6,
   maxParticles: 60,         // 煙・破片・コインなどの最大数（重くならないように）
@@ -280,7 +288,7 @@ const CONFIG = {
   // --- v0.8：道すじ表示（画面上部・2列→合体）。URL ?path=0 で消す ---
   pathShow: true, pathH: 50, pathDotPx: 20, pathCurScale: 1.35, pathGray: 0.8,
   pathBoxGap: 60,           // v0.9：帯の下端＝BOX.top − これ（持ち部品＋名前の帯ぶん）。pathY は BOX 定義のあとで計算（192−60−50＝82）
-  pathRowGap: 26,           // v0.9：2段（上＝ボディ側・下＝シャシー側）の中心どうしの間
+  pathRowGap: 28,           // v0.9：2段（上＝ボディ側・下＝シャシー側）の中心どうしの間
   holdLabelSideMinR: 27,    // v0.9：この半径以上の部品は名前を部品の横に出す（それ未満は真上 y134 固定）
   holdLabelTopY: 134,       // v0.9：真上に出すときの名前の帯の上端（y134〜152）
   holdLabelSideGap: 6,
@@ -356,7 +364,7 @@ const CONFIG = {
   tutBadMaxSec: 8,          // 4（×はごみ箱へ）でスロー・投下の時間を止める上限（実時間秒）。過ぎたら元の速さへ
   tutSlowScale: 0.3,        // 4 のあいだの部品の落ちる速さ（1＝ふつう）
   tutY: 300,                // 説明の帯の上の位置（ヒントの帯と同じ。高さ hintH・文字 hintFontPx も同じ）
-  tutSkipY: 94, tutSkipH: 22, tutSkipFontPx: 12, tutSkipRight: 394,   // 「説明をとばす」ボタン（右上、「次」の下）
+  tutSkipY: 344, tutSkipH: 28, tutSkipFontPx: 12, tutSkipRight: 394,   // 「説明をとばす」ボタン（右上、「次」の下）
   tutFlowHiX: 21.9, tutFlowHiY: 736.5, tutFlowHiR: 15,   // 2 で光らせる、下の流れ帯の最初の色（青）の丸の中心と半径
 };
 // 周の中のレベル（2周目以降は、周が始まったレベルを1として数える。車の格・部品の仕様・レベルアップの台数はこれで決める）
@@ -617,6 +625,7 @@ const TEXT = {
     // 最初の説明（release/tutorial_text_draft.md のキー名・文のまま）。tut_merge_ok・tut_bad_ok もりりーさん確定の文
     tut_move:'指で左右に動かして、はなすと落ちるよ', tut_merge:'同じ色の部品どうしをくっつけると組み上がる', tut_car:'部品が全部そろうと車が1台できる！',
     tut_bad:'×の付いた部品は端の不適合品箱へ', tut_scrap:'良い部品を捨てるとお金が減るよ', tut_mechanic:'整備士は不良品にぶつかると直してくれる',
+    tut_wait:'相手がまだ箱にないよ。先に置いておこう', tut_lines:'上の丸＝ボディ、下の丸＝シャシーのライン', tut_marriage:'灰色どうしをくっつけるとマリッジ！', tut_claim:'×の部品が入ったまま出すとクレーム', howConfirm:'今のゲームを終えて、説明つきで始めますか？', introShort:'スライドして離すと落ちる。同じ色をくっつけて車を作ろう！',
     tut_skip:'説明をとばす', howToPlay:'遊び方', tut_merge_ok:'いいね！', tut_bad_ok:'OK！不良品はただで捨てられるよ',
     shareText:r=>`Quality Rushで${r.cars}台を出庫、売上${fmtYen(r.sales)}！ 称号は「${r.title}」でした🚗 #QualityRush` },
   en:{ start:'Start', loading:'Loading…', retry:'Play again',
@@ -650,6 +659,7 @@ const TEXT = {
     binName:'Reject bin', noMatch:'No match yet ⌛', noMatchTag:' (no match yet)', introReplay:'Watch assembly',
     tut_move:'Slide left or right, then let go to drop', tut_merge:'Match same-color parts to build them up', tut_car:'All parts in place makes a car!',
     tut_bad:'Drag parts with × to the reject bin at either edge', tut_scrap:'Scrapping good parts costs you money', tut_mechanic:'The mechanic fixes a bad part it touches',
+    tut_wait:'No match yet. Drop it, its pair will come', tut_lines:'Top row = body line, bottom = chassis', tut_marriage:'Join the two gray parts: Marriage!', tut_claim:'Ship a car with a × part: complaint!', howConfirm:'End this game and start with the tutorial?', introShort:'Slide, release to drop. Match colors to build a car!',
     tut_skip:'Skip tutorial', howToPlay:'How to play', tut_merge_ok:'Nice!', tut_bad_ok:'Good! Defects are free to scrap',
     shareText:r=>`I shipped ${r.cars} cars and made ${fmtYen(r.sales)} in Quality Rush! Title: ${r.title} 🚗 #QualityRush` },
 };
@@ -672,7 +682,7 @@ const flowImg = () => { const hi = CONFIG.flowW*cssScale*devPx >= CONFIG.flowHiR
   const a = hi ? UI.flowSlim : UI.flowSlim360, b = hi ? UI.flowSlim360 : UI.flowSlim; return a.ok ? a : (b.ok ? b : null); };
 
 const BOX = { left:20, right:380, top:192, bottom:610 };  // v0.9：top 192 は固定（難易度）。道すじ帯はここから計算：pathY＝top−pathBoxGap−pathH
-CONFIG.pathY = BOX.top - CONFIG.pathBoxGap - CONFIG.pathH;   // 82（帯 y82〜132）
+CONFIG.pathY = BOX.top - CONFIG.pathBoxGap - CONFIG.pathH - 1;   // v0.9.3：1px上げて81（下段の光る輪が名前の帯 y134 にかからない）   // 82（帯 y82〜132）
 const BOX_H = BOX.bottom - BOX.top;
 const HOLD_Y = BOX.top - 12;
 const DANGER_Y = BOX.top + 30;
@@ -704,7 +714,8 @@ function newState(){
 // 1つの帯に1つの文。出す順：4（×はごみ箱へ）→ 短く出す文（順番に）→ 1 → 2
 // 見た説明は1つずつ覚える（qr_tutorial_seen = 見たキーの一覧）。まだ見ていない説明は次のゲームでも出る
 // 前の版の qr_tutorial_done が true なら、ぜんぶ見たことにする
-const TUT_STEPS = ['tut_move','tut_merge','tut_car','tut_bad','tut_scrap','tut_mechanic'];
+const TUT_STEPS = ['tut_move','tut_merge','tut_wait','tut_lines','tut_bad','tut_marriage','tut_car','tut_claim','tut_scrap','tut_mechanic'];
+const TUT_EXTRA = ['tut_scrap','tut_mechanic'];   // v0.9.3：軽トラで完了したあとも初回に出す「おまけ」
 function tutLoadSeen(){
   const o = {}; if (Store.get('tutorial_done', false) === true){ TUT_STEPS.forEach(k=>o[k]=true); return o; }
   const a = Store.get('tutorial_seen', []); if (Array.isArray(a)) a.forEach(k=>{ if (TUT_STEPS.includes(k)) o[k]=true; });
@@ -712,23 +723,25 @@ function tutLoadSeen(){
 }
 let tutSeenStore = tutLoadSeen(), tutForceNext = false;
 const tutAllSeen = () => TUT_STEPS.every(k=>tutSeenStore[k]);
-let tutDone = tutAllSeen();
+let tutDone = Store.get('tutorial_done', false) === true || tutAllSeen();
 function tutSaveSeen(key){   // 1つの説明を「見た」と保存する
   if (!TUT_STEPS.includes(key) || tutSeenStore[key]) return;
   tutSeenStore[key] = true; Store.set('tutorial_seen', TUT_STEPS.filter(k=>tutSeenStore[k]));
-  if (tutAllSeen()){ tutDone = true; Store.set('tutorial_done', true); }
+  if (tutAllSeen() && !tutDone){ tutDone = true; Store.set('tutorial_done', true); }
+  if (key === 'tut_claim' && CONFIG.tutDoneOnFirstCar){ if (!tutDone){ tutDone = true; Store.set('tutorial_done', true); } if (state && state.tut) state.tut.extraOnly = true; }   // v0.9.3：軽トラ出庫（tut_car→tut_claim）で完了
 }
 function tutSaveAll(){ TUT_STEPS.forEach(tutSaveSeen); }   // 「説明をとばす」：ぜんぶ見たことにする
 const tutWanted = () => CONFIG.tutorialMode === 'always' || (CONFIG.tutorialMode !== 'off' && (!tutDone || tutForceNext));
+const tutExtraWanted = () => CONFIG.tutorialMode !== 'off' && tutDone && TUT_EXTRA.some(k=>!tutSeenStore[k]);
 // replay（遊び方・always）は全部出す。ふつうはまだ見ていない説明だけ出す
-function tutNew(on, replay){
+function tutNew(on, replay, extraOnly){
   const prev = on && !replay ? Object.assign({}, tutSeenStore) : {};
-  return { on, replay:!!(on && replay), seen:Object.assign({}, prev), prev, log:[], cur:null, curT:0, queue:[], bad:null, merged:false, drops:0 };
+  return { on, replay:!!(on && replay), extraOnly:!!(on && extraOnly), seen:Object.assign({}, prev), prev, log:[], cur:null, curT:0, queue:[], bad:null, merged:false, drops:0, sampleDone:false, linesT:-1 };
 }
 function tutMark(t, key){ t.seen[key] = true; t.log.push({ key, t: +state.elapsed.toFixed(2) }); }
 function tutFlash(key, sec){ const t = state.tut; if (!t.on) return; t.queue.push({ key, t:0, dur:sec }); }
 function tutStep(key, sec){   // 3・5・6：最初の1回だけ短く出す
-  const t = state.tut; if (!t.on || t.seen[key]) return; tutMark(t, key); tutFlash(key, sec);
+  const t = state && state.tut; if (!t || !t.on || t.seen[key]) return; if (t.extraOnly && !TUT_EXTRA.includes(key)) return; tutMark(t, key); tutFlash(key, sec);
 }
 function tutSkip(){ const t = state.tut; if (!t.on) return; t.on = false; t.bad = null; t.cur = null; t.queue = []; tutSaveAll(); }
 // 投下までの時間を止めるか（1 のあいだ・4 のあいだ。どちらも上限あり）
@@ -736,6 +749,10 @@ const tutFreeze = () => { const t = state.tut; return !!(t.on && ((t.cur === 'tu
 const tutSlow = () => { const t = state.tut; return t.on && t.bad && t.bad.t < CONFIG.tutBadMaxSec ? CONFIG.tutSlowScale : 1; };
 function tutUpdate(rdt){
   const t = state.tut; if (!t.on || !state.running) return;
+  if (t.extraOnly){ const held0 = state.canDrop && state.current; if (held0 && state.current.k === K.mechanic) tutStep('tut_mechanic', CONFIG.tutMsgSec);
+    if (t.queue.length){ tutSaveSeen(t.queue[0].key); t.queue[0].t += rdt; if (t.queue[0].t >= t.queue[0].dur) t.queue.shift(); } return; }
+  if (CONFIG.tutSampleDefect && !t.sampleDone && !t.seen.tut_bad && t.drops >= CONFIG.tutDefectAt - 2 && state.next && K[CONFIG.tutDefectKind] != null){   // v0.9.3 手順5：見本の不良品を「次」に1つだけ
+    t.sampleDone = true; state.next = piece(K[CONFIG.tutDefectKind], true); }
   if (!t.seen.tut_move){ tutMark(t, 'tut_move'); t.cur = 'tut_move'; t.curT = 0; tutSaveSeen('tut_move'); }
   const held = state.canDrop && state.current;
   // 2：2つ目の部品を持ったら（まだ合体していなければ）
@@ -745,9 +762,9 @@ function tutUpdate(rdt){
   if (held && state.current.bad && !t.seen.tut_bad){ tutMark(t, 'tut_bad'); t.bad = { p: state.current, t:0 }; tutSaveSeen('tut_bad'); }
   // 6：最初の整備士を持ったとき
   if (held && state.current.k === K.mechanic) tutStep('tut_mechanic', CONFIG.tutMsgSec);
-  t.curT += rdt;
+  t.curT += rdt; if (t.linesT >= 0) t.linesT += rdt;
   if (t.bad) t.bad.t += rdt;
-  else if (t.queue.length){ tutSaveSeen(t.queue[0].key); t.queue[0].t += rdt;   // 3・5・6：帯に出たときに保存
+  else if (t.queue.length){ tutSaveSeen(t.queue[0].key); if (t.queue[0].key === 'tut_lines' && t.linesT < 0) t.linesT = 0; t.queue[0].t += rdt;   // 3・5・6：帯に出たときに保存
     if (t.queue[0].t >= t.queue[0].dur) t.queue.shift(); }
 }
 function tutOnDrop(p, auto){
@@ -776,18 +793,39 @@ function tutText(){
   if (t.queue.length) return t.queue[0].key;
   return t.cur;
 }
+// v0.9.3（3c）：長い文は横につぶさず、1pxずつ小さく（下限 fitMinPx）→それでも入らなければ2行
+function fitText(text, maxW, fontPx, minPx){
+  let px = fontPx; const f = p => `bold ${p}px sans-serif`;
+  ctx.font = f(px);
+  while (px > minPx && ctx.measureText(text).width > maxW){ px--; ctx.font = f(px); }
+  if (ctx.measureText(text).width <= maxW) return { px, lines:[text] };
+  px = fontPx; ctx.font = f(px);
+  let cut = Math.ceil(text.length/2);
+  const sp = text.lastIndexOf(' ', cut), sp2 = text.indexOf(' ', cut), jp = Math.max(text.lastIndexOf('、', cut), text.lastIndexOf('。', cut));
+  if (sp > 0 || sp2 > 0) cut = (sp > 0 && (sp2 < 0 || cut - sp <= sp2 - cut)) ? sp : sp2; else if (jp > text.length*0.3) cut = jp + 1;
+  const lines = [text.slice(0, cut).trim(), text.slice(cut).trim()];
+  while (px > minPx && Math.max(...lines.map(l => ctx.measureText(l).width)) > maxW){ px--; ctx.font = f(px); }
+  return { px, lines };
+}
+function drawFitText(text, cx, cy, maxW, fontPx, minPx){
+  const r = fitText(text, maxW, fontPx, minPx), lh = r.px + 4;
+  r.lines.forEach((l, i) => ctx.fillText(l, cx, cy + (i - (r.lines.length-1)/2) * lh));
+  return r;
+}
+const tutBandH = key => { if (!key) return CONFIG.hintH; const r = fitText(L()[key] || '', CONFIG.fitMaxW, CONFIG.hintFontPx, CONFIG.fitMinPx); return r.lines.length > 1 ? CONFIG.tutH2 : CONFIG.hintH; };
 function tutSkipRect(){
   ctx.font = `bold ${CONFIG.tutSkipFontPx}px sans-serif`;
   const w = Math.ceil(ctx.measureText(L().tut_skip).width) + 18;
-  return { x: CONFIG.tutSkipRight - w, y: CONFIG.tutSkipY, w, h: CONFIG.tutSkipH };
+  const y = Math.max(CONFIG.tutSkipY, CONFIG.tutY + tutBandH(state && state.tut && state.tut.on ? tutText() : null) + 4);   // 2行の帯のときは帯の下へ
+  return { x: CONFIG.tutSkipRight - w, y, w, h: CONFIG.tutSkipH };
 }
 function drawTutorial(now){
   const t = state.tut; if (!t.on || !state.running) return;
   const W = CONFIG.W, key = tutText();
   if (key){
-    const y = CONFIG.tutY, h = CONFIG.hintH;
-    ctx.fillStyle='rgba(0,0,0,.75)'; ctx.fillRect(30, y, W-60, h);
-    ctx.fillStyle='#ffd84a'; ctx.font=`bold ${CONFIG.hintFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(L()[key], W/2, y+h/2, W-70);
+    const y = CONFIG.tutY, h = tutBandH(key);
+    ctx.fillStyle='rgba(0,0,0,.75)'; ctx.fillRect(W/2 - CONFIG.fitMaxW/2 - 5, y, CONFIG.fitMaxW + 10, h);
+    ctx.fillStyle='#ffd84a'; ctx.textAlign='center'; ctx.textBaseline='middle'; drawFitText(L()[key], W/2, y+h/2, CONFIG.fitMaxW, CONFIG.hintFontPx, CONFIG.fitMinPx);
     if (key === 'tut_move') drawEmoji('👆', W/2 + Math.sin(now/450)*90, y+h+34, 20);   // 指のマーク（左右に動く）
     if (key === 'tut_bad'){   // 両端のごみ箱を指す矢印
       const bob = Math.sin(now/160)*5, by = binY(-1);
@@ -802,12 +840,15 @@ function drawTutorial(now){
     ctx.save(); ctx.strokeStyle=`rgba(255,216,74,${a})`; ctx.lineWidth=3; ctx.shadowColor='#ffd84a'; ctx.shadowBlur=10;
     ctx.beginPath(); ctx.arc(CONFIG.tutFlowHiX, CONFIG.tutFlowHiY, CONFIG.tutFlowHiR, 0, Math.PI*2); ctx.stroke(); ctx.restore();
   }
+  if (t.linesT >= 0 && t.linesT < CONFIG.tutLinesBlinkSec && Math.floor(t.linesT/0.2) % 2 === 0){   // 手順4：道すじ帯の外わくを点滅
+    ctx.strokeStyle='rgba(255,216,74,.9)'; ctx.lineWidth=2; ctx.strokeRect(3, CONFIG.pathY - 1, W - 6, CONFIG.pathH + 2); }
+  if (t.extraOnly) return;   // 完了後（おまけだけ）は「とばす」を出さない
   const r = tutSkipRect();   // 「説明をとばす」
   ctx.fillStyle='rgba(0,0,0,.6)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(r.x, r.y, r.w, r.h, r.h/2) : ctx.rect(r.x, r.y, r.w, r.h); ctx.fill();
   ctx.strokeStyle='rgba(255,255,255,.7)'; ctx.lineWidth=1; ctx.stroke();
   ctx.fillStyle='#fff'; ctx.font=`bold ${CONFIG.tutSkipFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(L().tut_skip, r.x + r.w/2, r.y + r.h/2 + 0.5);
 }
-function hitTutSkip(g){ if (!state.tut.on) return false; const r = tutSkipRect(), m = 6; return g.x >= r.x-m && g.x <= r.x+r.w+m && g.y >= r.y-m && g.y <= r.y+r.h+m; }
+function hitTutSkip(g){ if (!state.tut.on || state.tut.extraOnly) return false; const r = tutSkipRect(), m = 6; return g.x >= r.x-m && g.x <= r.x+r.w+m && g.y >= r.y-m && g.y <= r.y+r.h+m; }
 const piece = (k, bad) => ({ k, bad: !!bad });
 const gameBodies = () => world ? Composite.allBodies(world).filter(b => b.k !== undefined) : [];
 const defectsAllowed = () => state.cars >= 1 && state.elapsed >= CONFIG.noDefectSec;
@@ -1133,7 +1174,7 @@ function glowRefresh(force){
   const max = CONFIG.partnerGlowMax|0;
   state.glowCache.list = max > 0 ? list.slice(0, max) : list;
   if (glowActive() && CONFIG.noMatchShow && state.glowCache.list.length === 0){
-    if (!state.noMatch.show){ state.noMatch.show = true; state.noMatch.t = 0; }
+    if (!state.noMatch.show){ state.noMatch.show = true; state.noMatch.t = 0; if (state.tut && state.tut.seen.tut_move) tutStep('tut_wait', CONFIG.tutWaitSec); }
   } else { state.noMatch.show = false; state.noMatch.t = 0; }
 }
 function drawPartnerGlow(now){
@@ -1187,7 +1228,7 @@ function buildGrayBadges(){
     }catch(e){}
   }
 }
-function pathMark(id){ if (state && state.pathMade && id) state.pathMade[id] = true; }
+function pathMark(id){ if (state && state.pathMade && id){ if (!state.pathAny){ state.pathAny = true; tutStep('tut_lines', CONFIG.tutLinesSec); } state.pathMade[id] = true; } }
 function pathReset(){ if (state) state.pathMade = {}; }
 function pathCurrentIds(){
   const m = state.pathMade || {}, cur = [];
@@ -1356,10 +1397,13 @@ function holdLabelRect(text, hx, hy, hr, origR){
   let cy, x, f;
   if ((origR != null ? origR : hr) >= CONFIG.holdLabelSideMinR){   // 大きい部品：横（中心の高さ、端から6px、空いているほう）
     cy = hy; const off = hr*1.03 + CONFIG.holdLabelSideGap;
-    const rightSpace = W - 4 - (hx + off), leftSpace = (hx - off) - 4, right = hx < W/2;
-    f = fitLabel(parts, Math.min(maxW, Math.max(40, right ? rightSpace : leftSpace)));
-    x = right ? hx + off : hx - off - f.w;
-    x = Math.max(4, Math.min(W - 4 - f.w, x));
+    const lo = 28 + CONFIG.holdLabelBinPad, hi = W - 28 - CONFIG.holdLabelBinPad;   // v0.9.3（3a）：不適合品箱（x0〜28・372〜400）にかけない
+    const space = s => s > 0 ? hi - (hx + off) : (hx - off) - lo, full = fitLabel(parts, 1e4);
+    const first = hx < W/2 ? 1 : -1; let side;
+    if (full.w <= space(first)) side = first; else if (full.w <= space(-first)) side = -first; else side = space(first) >= space(-first) ? first : -first;
+    f = full.w <= space(side) ? full : fitLabel(parts, Math.max(40, space(side)));
+    x = side > 0 ? hx + off : hx - off - f.w;
+    x = Math.max(lo, Math.min(hi - f.w, x));
   } else {
     f = fitLabel(parts, maxW);
     cy = CONFIG.holdLabelTopY + h/2 - lift;
@@ -1396,8 +1440,9 @@ function newPartUpdate(rdt){
     if (T[id] && !state.newSeen[id]){ state.newSeen[id] = true; state.newQueue.push({ id, type:'part' }); }
   }
   if (state.madeGlow){ state.madeGlow.t += rdt; if (state.madeGlow.t >= CONFIG.madeGlowSec) state.madeGlow = null; }
-  if (state.newCur){ state.newCur.t += rdt; if (state.newCur.t >= CONFIG.newPartSec){ state.newCur = null; if (state.queuedDrop && state.canDrop && !state.paused && !state.newQueue.length) drop(); } }
-  if (!state.newCur && state.newQueue.length && !state.money.length){
+  if (state.newCur){ state.newCur.t += rdt; if (state.newCur.t >= CONFIG.newPartSec){ const was = state.newCur; state.newCur = null; if (was.type === 'made' && (was.id === 'rolling_chassis' || was.id === 'body_car')) tutStep('tut_marriage', CONFIG.tutMarriageSec); if (state.queuedDrop && state.canDrop && !state.paused && !state.newQueue.length) drop(); } }
+  if (state.celebHoldNew && !(state.celebT > 0) && !state.roundBanner) state.celebHoldNew = false;   // v0.9.3：お祝い＋周の帯が終わるまで新入荷を待たせる
+  if (!state.newCur && state.newQueue.length && !state.money.length && !state.celebHoldNew){
     const q = state.newQueue.shift(); state.newCur = { id:q.id, type:q.type, t:0 }; state.newShown.push({ id:q.id, type:q.type, t:+state.elapsed.toFixed(2) });
     if (q.type === 'made') state.madeGlow = { k:K[q.id], id:q.bid, t:0 };
   }
@@ -1482,6 +1527,7 @@ function bhStart(x, y, rank){
     return { k:b.k, bad:b.bad, art:b.art, r:b.circleRadius, ang:b.angle||0, a0:Math.atan2(dy, dx), d0:Math.hypot(dx, dy) }; });
   for (const b of bs) b.bhHide = true;
   state.bh = { x, y, rank, t:0, spr, rumbled:false };
+  state.popups = state.popups.filter(p => p.celeb || p.text === L().marriage); state.celebHoldNew = true; state.newCur = null;   // v0.9.3（1）：小さい文字は捨てる・新入荷は待たせる
   state.shake = 0;
   bhRumble();
 }
@@ -1499,6 +1545,7 @@ function bhTick(rdt){
 }
 function bhExplode(){
   const bh = state.bh; state.bh = null; last = performance.now();
+  state.celebT = CONFIG.celebQuietSec; activePointer = null; state.armed = false; state.queuedDrop = false;   // v0.9.3（2）
   explodeGoodShip(bh.x, bh.y, bh.rank, true);   // もとの最大の爆発（箱を空にする）
   state.shake = CONFIG.bhShake;
   state.flash = { color:'255,255,255', t:0, dur:0.7 };
@@ -1557,6 +1604,7 @@ function shipCar(x, y, bad){
   if (value){ state.sales += value; state.grossSales = (state.grossSales||0) + value; state.countRate = (state.sales - state.salesShown)/CONFIG.countUpTime; state.countDelay = 0.35; }
   state.shipping.push({x, y, phase:0, rank, value, bad, smokeT:0});
   tutStep('tut_car', CONFIG.tutMsgSec);   // 3：最初の車
+  tutStep('tut_claim', CONFIG.tutClaimSec);   // v0.9.3 手順7：クレームは一言だけ（本物は起こさない）→出たら完了
   let seq = 0;   // お金 → 札 → お知らせ の順に少しずつずらす
   if (value){ moneyPop(x, y - carRadiusFor(rank) - 10, `+${fmtYen(value)}`); seq += CONFIG.seqGap; }
   if (bad){
@@ -1585,9 +1633,14 @@ function shipCar(x, y, bad){
     else startNextRound();
   }
   if (!bad && CONFIG.textSeq && state.level > lv0) seqShipTexts();
+  if (!bad && explodeStrength(rank) === 'max' && CONFIG.blackHoleFx){   // v0.9.3（1）：トレーラーのお祝いの文字は帯の位置に固定・ふちどり・不透明
+    const mar = state.popups.find(p => p.text === L().marriage); if (mar){ mar.celeb = true; mar.fixY = CONFIG.bannerY; }
+    for (const m of state.money) if (m.t <= 0) m.celeb = true;
+  }
 }
 // 次の周：車は軽トラから（レベルの数字・売上・出庫台数・箱の中はそのまま）。クレームで上がった床だけ戻す
 function startNextRound(){
+  activePointer = null; state.armed = false; state.queuedDrop = false;   // v0.9.3（2）
   if (state.carsThisLevel > 0) levelUp();   // このレベルの途中なら、レベルを1つ上げて新しい周を始める
   state.round = (state.round||1) + 1;
   glowSetOff('round');   // v5p：2周目からは光らせない（もどらない）
@@ -1613,7 +1666,7 @@ function setStartRound(n){
   updateTitle();
 }
 // v5l：ページのタイトルに版と周（ゲーム中だけ「 - Round N」）
-const TITLE_BASE = 'Quality Rush Ver0.9.2';   // v0.7：2ライン＋マリッジ・演出段階・爆発
+const TITLE_BASE = 'Quality Rush Ver0.9.3';   // v0.7：2ライン＋マリッジ・演出段階・爆発
 function updateTitle(){
   const tb = QA_MODE ? TITLE_BASE + ' QA' : TITLE_BASE, t = (state && state.round) ? `${tb} - Round ${state.round}` : tb;
   if (document.title !== t) document.title = t;
@@ -1776,13 +1829,14 @@ function hitButton(g){
 }
 cv.addEventListener('pointerdown', e=>{
   if (!e.isPrimary) return;
-  if (introActive()){ skipIntro(); return; }   // v0.8：演出中はどこをタップしてもスキップ
+  if (introActive()){ if (state.tut && state.tut.on && hitTutSkip(toGame(e))) tutSkip(); skipIntro(); return; }   // v0.8：演出中はどこをタップしてもスキップ（v0.9.3：とばすボタンなら説明も）
   if (!state.running || state.paused || activePointer!==null) return;
   const btn = hitButton(toGame(e));
   if (btn === 'pause'){ pauseGame(); return; }
   if (btn === 'mute'){ setMuted(!muted); return; }
   if (hitTutSkip(toGame(e))){ tutSkip(); return; }
   activePointer = e.pointerId; state.armed = true; state.queuedDrop = false; setAim(toGameX(e.clientX));
+  try{ cv.setPointerCapture(e.pointerId); }catch(err){}   // v0.9.3（2）：画面の外で離しても pointerup が届く
 });
 cv.addEventListener('pointermove', e=>{
   if (!state.running || state.paused) return;
@@ -1806,7 +1860,7 @@ cv.addEventListener('pointercancel', e=>{ if (e.pointerId===activePointer){ acti
 
 const dropIntervalOk = () => state.dropClock - state.lastDropAt >= CONFIG.minDropInterval - 1e-6;
 function drop(auto){
-  if (!state.canDrop || !state.running || introActive() || state.bh) return;
+  if (!state.canDrop || !state.running || introActive() || state.bh){ if (!auto) state.ignoredDrops++; return; }   // v0.9.3：落とさなかったタップも数える
   if (noticeFreeze() && (auto || CONFIG.newPartBlockDrop)){ if (!auto) state.queuedDrop = true; return; }   // v5p：お知らせのあいだは時間切れで落ちない（newPartBlockDrop＝指で離した分もお知らせのあとに落とす）
   if (!auto && !dropIntervalOk()){ state.ignoredDrops++; return; }   // 連続投下の最短間隔（自動投下は制限時間≧1.5秒なので影響なし）
   state.lastDropAt = state.dropClock;
@@ -1976,6 +2030,7 @@ function loop(now){
   state.effects = state.effects.filter(e=>e.t<0.35);
   for (const p of state.popups) p.t += rdt;
   state.popups = state.popups.filter(p=>p.t<(p.dur||1.2));
+  if (state.celebT > 0){ state.celebT -= rdt; state.popups = state.popups.filter(p => p.celeb); }
   for (const t of state.toasts) if (t.wait > 0) t.wait -= rdt;
   { const head = state.toasts.find(t => !(t.wait > 0)); if (head) head.t += rdt; }   // 1つずつ順番に
   state.toasts = state.toasts.filter(t=>t.t<t.dur);
@@ -2266,15 +2321,20 @@ function draw(now){
   }
   for (const p of state.parts) drawParticle(p);
   for (const p of (state.bh ? [] : state.popups)){
-    ctx.globalAlpha = Math.max(0, 1-p.t/(p.dur||1.2)); ctx.fillStyle=p.color; ctx.font=`bold ${p.size||CONFIG.popupFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-    const px = Math.max(70, Math.min(W-70, p.x)), py = p.y - p.t*30;
+    if (p.t < 0) continue; const pd = p.dur||1.2, isMar = p.text === L().marriage;
+    ctx.globalAlpha = p.celeb ? Math.max(0, Math.min(1, (pd - p.t)/CONFIG.celebFade)) : Math.max(0, 1-p.t/pd); ctx.fillStyle=p.color; ctx.font=`bold ${p.size||CONFIG.popupFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    const px = Math.max(70, Math.min(W-70, p.x)), fs = p.size||CONFIG.popupFontPx;
+    let py = p.fixY != null ? p.fixY : p.y - p.t*30;
+    if (isMar && p.fixY == null) py = Math.max(py, CONFIG.newPartY + CONFIG.newPartH/2 + CONFIG.notifGap + fs/2);   // v0.9.3：新入荷帯の下から6px以上
+    if (p.celeb){ ctx.strokeStyle = '#000'; ctx.lineWidth = CONFIG.celebOutline*2; ctx.lineJoin = 'round'; ctx.strokeText(p.text, px, py); }
     if (p.outline){ ctx.strokeStyle = CONFIG.discardOutline; ctx.lineWidth = CONFIG.discardOutlineW; ctx.lineJoin = 'round'; ctx.strokeText(p.text, px, py); }   // 黒いふちどり（文字の前に）
     ctx.fillText(p.text, px, py); ctx.globalAlpha = 1;
   }
   for (const m of state.money){   // 「+N万円」
     if (m.t < 0) continue;
     const k = m.t/CONFIG.moneyTime;
-    ctx.globalAlpha = k < 0.5 ? 1 : Math.max(0, (1-k)/0.5); ctx.fillStyle='#ffd84a'; ctx.font=`bold ${CONFIG.moneyFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.globalAlpha = m.celeb ? Math.max(0, Math.min(1, (CONFIG.moneyTime - m.t)/CONFIG.celebFade)) : (k < 0.5 ? 1 : Math.max(0, (1-k)/0.5)); ctx.fillStyle='#ffd84a'; ctx.font=`bold ${CONFIG.moneyFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    if (m.celeb){ ctx.strokeStyle='#000'; ctx.lineWidth=CONFIG.celebOutline*2; ctx.lineJoin='round'; ctx.strokeText(m.text, Math.max(70, Math.min(W-70, m.x)), moneyY(m, k)); ctx.fillStyle='#ffd84a'; }
     ctx.fillText(m.text, Math.max(70, Math.min(W-70, m.x)), moneyY(m, k)); ctx.globalAlpha = 1;
   }
   state.toasts.filter(t => !(t.wait > 0)).slice(0,1).forEach((t) => {   // 大事なお知らせ：1つだけ、決まった場所に
@@ -2285,14 +2345,16 @@ function draw(now){
       ctx.fillStyle=t.color; ctx.font=`bold ${CONFIG.bannerLevelFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(t.text, W/2 + (k<0.12 ? (1-k/0.12)*-W : 0), y); ctx.globalAlpha = 1; return;
     }
-    ctx.font=`bold ${CONFIG.bannerFontPx}px sans-serif`; const tw = Math.min(W-24, ctx.measureText(t.text).width + 24);
-    ctx.fillStyle='rgba(0,0,0,.72)'; ctx.fillRect(W/2-tw/2, y-CONFIG.bannerH/2, tw, CONFIG.bannerH);
-    ctx.fillStyle=t.color; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(t.text, W/2, y, W-30);
+    const ft = fitText(t.text, CONFIG.fitMaxW, CONFIG.bannerFontPx, CONFIG.fitMinPx), bh2 = ft.lines.length > 1 ? CONFIG.bannerH + ft.px + 4 : CONFIG.bannerH;
+    const tw = Math.min(CONFIG.fitMaxW + 24, Math.max(...ft.lines.map(l => ctx.measureText(l).width)) + 24);
+    ctx.fillStyle='rgba(0,0,0,.72)'; ctx.fillRect(W/2-tw/2, y-bh2/2, tw, bh2);
+    ctx.fillStyle=t.color; ctx.textAlign='center'; ctx.textBaseline='middle'; drawFitText(t.text, W/2, y, CONFIG.fitMaxW, CONFIG.bannerFontPx, CONFIG.fitMinPx);
     ctx.globalAlpha = 1;
   });
   if (state.hint > 0 && state.hint <= CONFIG.hintShow && state.running && !tutHidesHint()){   // 説明4を見たことがあれば出さない（遊び方のやり直し中は、帯が出ているとき・説明4のあとだけ出さない）
-    ctx.fillStyle='rgba(0,0,0,.75)'; ctx.fillRect(30, 300, W-60, CONFIG.hintH);
-    ctx.fillStyle='#ffd84a'; ctx.font=`bold ${CONFIG.hintFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(L().hint, W/2, 300+CONFIG.hintH/2, W-70);
+    const hh = fitText(L().hint, CONFIG.fitMaxW, CONFIG.hintFontPx, CONFIG.fitMinPx).lines.length > 1 ? CONFIG.tutH2 : CONFIG.hintH;
+    ctx.fillStyle='rgba(0,0,0,.75)'; ctx.fillRect(W/2 - CONFIG.fitMaxW/2 - 5, 300, CONFIG.fitMaxW + 10, hh);
+    ctx.fillStyle='#ffd84a'; ctx.textAlign='center'; ctx.textBaseline='middle'; drawFitText(L().hint, W/2, 300+hh/2, CONFIG.fitMaxW, CONFIG.hintFontPx, CONFIG.fitMinPx);
   }
   drawTutorial(now);
   if (state.banner){
@@ -2360,7 +2422,7 @@ function renderOverlay(){
   if (overlayMode==='title'){
     flowTitle.style.display = '';
     const pr = personalRanks(), best = pr[0];
-    let intro = T.intro;
+    let intro = tutWanted() && T.introShort ? T.introShort : T.intro;   // v0.9.3：説明を見る人には1行
     if (best) intro += `<div class="res" style="margin-top:8px">${T.personalRank} Best: <b>${best.score}</b>（${best.rank}）</div>`;
     ovText.innerHTML=intro; startBtn.textContent = assetsReady ? T.start : T.loading; startBtn.disabled = !assetsReady;
     shareBtn.classList.add('hidden');
@@ -2404,6 +2466,7 @@ function renderPause(){
   document.getElementById('pauseTitle').textContent = L().pause;
   document.getElementById('resumeBtn').textContent = L().resume;
   document.getElementById('introReplayBtn').textContent = L().introReplay;
+  document.getElementById('howBtn2').textContent = L().howToPlay;
   document.getElementById('muteBtn2').textContent = muted ? L().soundOff : L().soundOn;
 }
 function pauseGame(){
@@ -2414,6 +2477,7 @@ function pauseGame(){
 function resumeGame(){ if (!state.paused) return; if (introActive() && state.intro && state.intro.replay) skipIntro(); state.paused = false; last = performance.now(); pauseOv.classList.add('hidden'); if (!state.canDrop) state.canDrop = true; }
 document.getElementById('resumeBtn').onclick = resumeGame;
 document.getElementById('introReplayBtn').onclick = ()=>replayIntro();
+document.getElementById('howBtn2').onclick = ()=>{ if (!window.confirm(L().howConfirm)) return; state.paused = false; pauseOv.classList.add('hidden'); tutForceNext = true; startGame(); };   // v0.9.3：一時停止の「遊び方」
 document.getElementById('muteBtn2').onclick = ()=>setMuted(!muted);
 document.addEventListener('visibilitychange', ()=>{ if (document.hidden) pauseGame(); else resumeAudio(); });
 // 称号：2周目以降は「自動車王 ×2」のように周の数をつける
@@ -2426,7 +2490,7 @@ function startGame(){
     if (binsMoving()) toast(L().binMoving, '#ffd84a', 0, 0.6 + CONFIG.roundBannerSec);
   }
   updateTitle();
-  state.tut = tutNew(tutWanted(), tutForceNext || CONFIG.tutorialMode === 'always'); tutForceNext = false;
+  { const w = tutWanted(); state.tut = w ? tutNew(true, tutForceNext || CONFIG.tutorialMode === 'always') : tutNew(tutExtraWanted(), false, true); } tutForceNext = false;
   preloadTiers(1); loadFx();
   startIntro(false);   // v0.8：初回（または always）は分解演出
   if (QA_MODE === 'trailer') qaTrailerSetup();
@@ -2544,7 +2608,7 @@ if (CONFIG.windowDoor) document.querySelectorAll('img.flowBig').forEach(im => {
 lang = detectLang();
 setupWorld(); newState(); renderOverlay(); renderPause(); requestAnimationFrame(loop);
 // テスト用：window.QR でゲーム状態を確認できます
-window.QR = { bhStart, seqShipTexts, get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPES, COLORS, recipeResult, makePart, shipCar, levelUp, fmtYen, clampAim, BOX, HOLD_Y,
+window.QR = { bhStart, seqShipTexts, fitText, holdLabelRect, pathDotPos, TUT_EXTRA, get activePointer(){return activePointer;}, get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPES, COLORS, recipeResult, makePart, shipCar, levelUp, fmtYen, clampAim, BOX, HOLD_Y,
   get assetsReady(){return assetsReady;}, binHitZones, hingeBoostActive, dropWeightsNow, defectsAllowed, mechanicAllowed, mechanicCount, randPiece, piece, dropLimit, dropLimitAt, defectChance, floorTarget, riseFrac, diffCars, neededParts, mechanicForced, disposalCostOf, disposalPartCost, currentCarPrice, CAR_VALUES, CAR_NAMES, timeRiseFrac, claimCap, carsToLevelUp, moneyY, toast, defectAge,
   tierFor, artFor, ART, FX, UI, binLiftFor, pauseGame, resumeGame, setMuted, get muted(){return muted;}, sfx, TITLES, TEXT, gameBodies, startGame, startEnding, flowImg,
   get audioUnlocked(){return audioUnlocked;}, sfxBuf, sfxEl,
