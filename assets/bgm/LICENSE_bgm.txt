@@ -1,0 +1,30 @@
+BGM license record / BGMライセンス記録
+=====================================
+
+bgm_main.ogg / bgm_main.mp3
+- Title / 曲名 : Happy Vibes
+- Author / 作者: Ruskerdax
+- Source URL  : https://opengameart.org/content/happy-vibes
+- Original file: ruskerdax_-_happy_vibes.mp3 (1.8 MB, 45.46 s, 48 kHz stereo)
+- License     : CC0 1.0 Universal (Public Domain Dedication)
+                http://creativecommons.org/publicdomain/zero/1.0/
+- Author note on the page (quoted): "As with everything I create, music and otherwise,
+  this track is released to the public domain under the Creative Commons Zero Attribution
+  License (CC0), meaning you are free to use, modify, or do anything you want with it with
+  no restriction, including for commercial purposes."
+- Checked on / 確認日: 2026-11-09 (JST) — page opened and License(s) field = "CC0"
+  (link to creativecommons.org/publicdomain/zero/1.0/). Saved copy of the page:
+  /workspace/art/v100_staging/license_evidence/opengameart_happy-vibes_20261109.html
+- Credit: not required (CC0). Courtesy credit for the in-game Credits screen:
+  Music: "Happy Vibes" by Ruskerdax (CC0)
+- Modifications / 改変: trimmed to an exact 112-beat (7 x 16-beat) loop of 45.405938 s
+  (2,179,485 samples @48 kHz); last 140 ms replaced by the matching bar end from the
+  previous repetition (the source tail drops out ~100 ms before the loop point);
+  20 ms equal-power crossfade at the loop head; gain -6.2 dB (ogg) / -5.9 dB (mp3) to
+  -16 LUFS integrated, true peak <= -1 dBTP; encoded Vorbis 96 kbps / MP3 96 kbps.
+
+Reserve (not used) / 予備（不採用）
+- Title: Happy Clappy Loop / Author: OwlishMedia
+- URL: https://opengameart.org/content/happy-clappy-loop
+- License: CC0 (License(s) field = "CC0", checked 2026-11-09 JST; page saved:
+  /workspace/art/v100_staging/license_evidence/opengameart_happy-clappy-loop_20261109.html)

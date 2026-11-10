@@ -3,53 +3,158 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>パーツポン！工場 Ver0.9.5</title>
-<link rel="icon" href="data:,">
+<title>パーツポン！工場</title>
+<!-- v0.9.6 C1：CrazyGames SDK v3（ゲームのコードより前）。読めない・disabled のときはSDKなしで動く -->
+<script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+<link rel="icon" type="image/png" href="assets/ui/favicon.png">
 <style>
-  html,body{margin:0;height:100%;background:#1b2330;overflow:hidden;touch-action:none;font-family:system-ui,sans-serif;color:#fff;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
-  #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center}
-  canvas{background:#2c3a4f;border-radius:8px;touch-action:none}
-  .ov{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;background:rgba(0,0,0,.74);text-align:center;padding:0 14px;overflow-y:auto}
+  /* v0.9.7 A4：フォント MPR1c（M PLUS Rounded 1c ExtraBold のサブセット・OFL）。絵文字と ↻⌛⚠ は入っていないので、うしろのフォントで出す */
+  @font-face{font-family:'MPR1c';src:url('assets/font/mplusr1c_xb_subset.woff2') format('woff2');font-weight:800;font-display:swap}
+  /* v0.9.7 C3：明るい配色（あーと palette_v100.json） */
+  :root{--ink:#2B2F4A;--plate:rgba(255,255,255,.92);--plateShadow:#D9C9F0;--accent:#FFC93C;--accentEdge:#E0A100;--sky:#92C4FF;--pink:#FF8FB8;--lav:#D9C9F0;--track:#EEE6F5;--warnText:#C62828;
+    --font:'MPR1c','Hiragino Maru Gothic ProN','Arial Rounded MT Bold',system-ui,'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
+  html{height:100%;background:linear-gradient(#BFD8FF,#FFE3F1)}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:none;font-family:var(--font);font-weight:800;color:var(--ink);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+  /* A1：背景。スマホ縦は bg_portrait、PC横は bg_pc（どちらも cover・中央）。黒い帯は出さない */
+  body{background:url('assets/bg/bg_portrait_800x1520.webp') center/cover no-repeat,linear-gradient(#BFD8FF,#FFE3F1)}
+  body.pc{background:url('assets/bg/bg_pc_1920x1080.webp') center/cover no-repeat,linear-gradient(#BFD8FF,#FFE3F1)}
+  #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  #col{display:flex;line-height:0}
+  /* C4：PC横のまんなかの列は frame_pc_column の 9-slice（角48px）。絵の中は透明 */
+  body.pc #col{border:16px solid transparent;border-image:url('assets/ui/frame_pc_column.webp') 48 fill / 16px stretch}
+  canvas{background:transparent;touch-action:none}
+  .ov{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#FFF7EA;text-align:center;padding:0 14px;overflow-y:auto;color:var(--ink)}
+  .ov{justify-content:safe center}   /* v0.9.6：横長で中身が高さを超えても上が切れない（スクロールできる） */
   .ov.hidden{display:none}
-  button{font-size:20px;padding:12px 28px;margin:8px;border:none;border-radius:10px;background:#f5b700;color:#222;font-weight:bold}
+  /* v0.9.8 C2：読み込み画面（明るい背景＋ロゴ＋進み具合のバー）。読み込みが終わったら自動で始まる（タイトル画面は出さない） */
+  #loadBox{display:none;width:min(280px,70vw);margin:14px auto 0}
+  #loadBar{height:16px;border-radius:8px;background:var(--track);border:2px solid var(--lav);overflow:hidden}
+  #loadFill{height:100%;width:0;background:var(--accent);transition:width .15s}
+  #loadPct{font-size:16px;margin-top:6px}
+  .ov.loading > *{display:none!important}
+  .ov.loading > h1, .ov.loading > #loadBox{display:block!important}
+  #pauseBest{font-size:16px;margin:2px 0 4px}
+  /* ボタン：主（黄）と副（白）は あーとの 9-slice（角44px・下に6pxの厚み）。押すと沈む */
+  button{font-family:var(--font);font-weight:800;font-size:20px;padding:4px 18px;margin:8px;min-height:44px;color:var(--ink);background:transparent;border-style:solid;border-width:18px;border-color:transparent;border-image:url('assets/ui/btn_primary_9s.webp') 44 fill / 18px stretch;border-radius:0;line-height:1.2}
+  button:active{transform:translateY(3px)}
+  button.sec,#howBtn,#introReplayBtn,#howBtn2,#muteBtn2,#howNo,#shareBtn,#retryNoBtn,#langRow button{border-image-source:url('assets/ui/btn_secondary_9s.webp')}
   #langRow{margin-top:10px}
-  #langRow button{font-size:15px;padding:8px 16px;background:#445;color:#fff}
-  #langRow button.on{background:#fff;color:#222}
-  h1{margin:0 0 6px}
+  #langRow button{font-size:15px;padding:0 10px;border-width:14px;border-image-width:14px;opacity:.75}
+  #langRow button.on{opacity:1;border-image-source:url('assets/ui/btn_primary_9s.webp')}
+  h1{margin:0 0 6px;color:var(--ink);text-shadow:0 2px 0 #fff,0 0 8px rgba(255,255,255,.9)}
   #ovText{margin:6px 0;font-size:15px;line-height:1.5}
-  #startBtn{font-size:26px;padding:14px 44px}
-  #howBtn{font-size:16px;padding:8px 20px;background:#445;color:#fff}
+  #startBtn{font-size:26px;padding:4px 36px;border-width:22px;border-image-width:22px}
+  #howBtn,#introReplayBtn,#howBtn2,#muteBtn2,#howNo,#shareBtn{font-size:16px;padding:0 14px;border-width:16px;border-image-width:16px}
   #howBtn.hidden{display:none}
   #howBtn:disabled{opacity:.5}
-  #startBtn:disabled{background:#8a7a40;color:#444;opacity:.8}
-  #shareBtn{font-size:16px;padding:9px 20px;background:#2f7fe0;color:#fff}
+  #startBtn:disabled{opacity:.6;filter:grayscale(.6)}
   #shareBtn.hidden{display:none}
   #howConfirm.hidden{display:none!important}
   #retryOv.hidden{display:none!important}
   #retryOv button.hidden{display:none!important}
-  #retryOv button{min-height:44px;min-width:min(280px,86vw);font-size:16px;padding:12px 20px;background:#f5b700;color:#222}
-  #retryCount{font-size:28px;font-weight:bold;color:#ffd84a;margin:4px 0 8px}
-  #retrySub{font-size:14px;line-height:1.45;color:#cfe;margin:0 0 10px;max-width:320px}
-  #retryMsg{font-size:15px;color:#ffd84a;min-height:20px;margin:6px 0}
+  #retryOv button{min-width:min(280px,86vw);font-size:16px;padding:0 14px;border-width:16px;border-image-width:16px}
+  #retryCount{font-size:28px;font-weight:800;color:var(--ink);margin:4px 0 8px}
+  #retrySub{font-size:14px;line-height:1.45;color:var(--ink);margin:0 0 10px;max-width:320px}
+  #retryMsg{font-size:15px;color:var(--ink);min-height:20px;margin:6px 0}
   .flowBig.wd{width:min(450px,96vw);}
-.flowBig{display:block;width:min(400px,96vw);margin:6px auto;border-radius:10px}   /* v5k: 8列・960px の図（以前は min(340px,92vw)） */
+  .flowBig{display:block;width:min(400px,96vw);margin:6px auto;border-radius:10px}
   .flowBig.fb{display:none}
   .res{font-size:17px;line-height:1.55}
-  .title{font-size:22px;color:#ffd84a;font-weight:bold}
-  .newRec{display:inline-block;color:#ffd84a;font-size:28px;font-weight:bold;animation:glow .6s ease-in-out infinite alternate}
-  @keyframes glow{from{text-shadow:0 0 4px #ffd84a;transform:scale(1)}to{text-shadow:0 0 18px #fff3a0;transform:scale(1.08)}}
-  .goal{margin-top:8px;font-size:15px;color:#cfe}
+  .title{font-size:22px;color:var(--ink);font-weight:800}
+  .newRec{display:inline-block;color:var(--ink);background:var(--accent);border-radius:10px;padding:0 10px;font-size:26px;font-weight:800;animation:glow .6s ease-in-out infinite alternate}
+  @keyframes glow{from{box-shadow:0 0 4px var(--accent);transform:scale(1)}to{box-shadow:0 0 18px #fff3a0;transform:scale(1.06)}}
+  .goal{margin-top:8px;font-size:15px;color:var(--ink)}
   .goal img{display:block;margin:6px auto 0;width:160px;filter:drop-shadow(0 0 6px rgba(255,255,255,.6))}
   .goal img.fb{filter:brightness(0) drop-shadow(0 0 6px rgba(255,255,255,.6))}
-  #copied{font-size:14px;color:#9fe;min-height:18px}
+  #copied{font-size:14px;color:var(--ink);min-height:18px}
+  b.neg{color:var(--warnText)}
+  /* C3：結果は明るいカード（ランク・総合点を一番上に大きく） */
+  .rCard{background:var(--plate);border-radius:14px;box-shadow:0 3px 0 var(--plateShadow);padding:10px 16px;margin:4px auto;max-width:360px;line-height:1.5}
+  .rHead{font-size:20px}
+  .rTop{display:flex;align-items:center;justify-content:center;gap:14px;margin:4px 0}
+  .rRank{width:64px;height:64px;line-height:64px;border-radius:50%;background:var(--accent);box-shadow:inset 0 -5px 0 var(--accentEdge);font-size:38px;color:var(--ink)}
+  .rScore{font-size:34px}
+  .rScore small{font-size:16px}
+  .rStats{font-size:15px;text-align:left;display:inline-block}
+  .rRanks{font-size:14px;text-align:left}
+  .rRetry{font-size:14px;color:var(--ink);background:var(--track);border-radius:6px;padding:0 4px}
+  @media (min-aspect-ratio: 6/5){ .flowBig{width:auto;max-width:min(400px,96vw);max-height:32vh} h1{font-size:24px} #startBtn{font-size:24px} #ovText{font-size:15px;margin:4px 0} .ov button{margin:5px} #langRow{margin-top:4px} }
+  /* C4：PC横の左右の板（白い板・あーとのアイコン48px・文字16px以上） */
+  .pcPanel{box-sizing:border-box;display:flex;flex-direction:column;gap:12px;padding:14px;margin:0 12px;background:var(--plate);border-radius:14px;box-shadow:0 3px 0 var(--plateShadow);font-size:16px;line-height:1.35;color:var(--ink);max-height:96vh;overflow:hidden}
+  .pcPanel.hidden{display:none}
+  .pcPanel .ico{width:48px;height:48px;flex:none}
+  .pcPanel .lbl{font-size:16px;color:var(--ink);opacity:.85}
+  .pcPanel .val{font-size:24px;font-weight:800}
+  .pcPanel .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .pcPanel .row.nw{flex-wrap:nowrap}
+  #pNextCv{width:72px;height:72px}
+  #pCarImg{height:30px}
+  #pPips span{display:inline-block;width:20px;height:12px;margin-right:4px;background:var(--track);border:1px solid var(--lav);border-radius:3px}
+  #pPips span.on{background:var(--accent);border-color:var(--accentEdge)}
+  #pGauge{height:14px;background:var(--track);border-radius:7px;overflow:hidden;margin-top:4px}
+  #pGaugeBar{height:100%;width:100%;background:var(--accent)}
+  .pcPanel button.pbtn{width:56px;height:56px;min-width:56px;min-height:56px;padding:0;margin:0;border:0;border-image:none;background:transparent;line-height:0}
+  .pcPanel button.pbtn img{width:48px;height:48px}
+  #pKeys{font-size:16px;color:var(--ink);line-height:1.6}
+  #pKeys b{display:inline-block;min-width:22px;padding:0 5px;margin-right:2px;border-radius:6px;background:var(--track);border:1px solid var(--lav);color:var(--ink);font-size:16px;text-align:center}
+  @media (min-height: 860px) and (min-aspect-ratio: 6/5){ .pcPanel{font-size:20px;gap:16px;padding:18px} .pcPanel .lbl{font-size:20px} .pcPanel .val{font-size:32px} .pcPanel .ico{width:64px;height:64px} #pKeys,#pKeys b{font-size:19px} #pNextCv{width:96px;height:96px} #pCarImg{height:40px} }
+  @media (max-height: 560px){ .pcPanel{gap:8px;padding:10px} .pcPanel .val{font-size:20px} #pKeys{line-height:1.45} }
+  /* v0.9.8 監査1：3ステップの絵（落とす → くっつける → 出荷） */
+  .steps3{display:flex;align-items:center;justify-content:center;gap:6px;margin:8px auto;padding:8px 10px;background:#fff;border:2px solid var(--lav);border-radius:14px;max-width:min(420px,96vw);box-sizing:border-box}
+  .steps3 .st{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0;flex:1 1 0}
+  .steps3 .stT{font-size:16px;line-height:1.2;color:var(--ink);white-space:nowrap}
+  .steps3 .stA{font-size:22px;font-weight:800;color:var(--ink);opacity:.7;flex:none}
+  .steps3 .stHand{width:56px;height:56px;background:url(assets/ui/hand_drag.webp) 0 0/200% 100% no-repeat}
+  .steps3 .stPair{display:flex;height:56px;align-items:center}.steps3 .stPair img{width:34px;height:34px}.steps3 .stPair img+img{width:42px;height:42px;margin-left:-6px}
+  .steps3 .stCar{height:56px;width:auto;max-width:100%}
+  @media (max-height: 560px){ .steps3{margin:4px auto;padding:4px 8px} .steps3 .stHand,.steps3 .stPair,.steps3 .stCar{height:44px} .steps3 .stHand{width:44px} }
+  .steps3[hidden]{display:none}
+  img.howto3{display:block;width:min(480px,92vw);height:auto;margin:6px auto}
+  @media (max-height: 560px){ img.howto3{width:min(330px,92vw);margin:2px auto} }
+  #howConfirm{overflow-y:auto;justify-content:safe center!important}
+  /* v0.9.9 C6：設定画面 */
+  #setOv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:8px;background:#FFF7EA;padding:14px;text-align:center;overflow-y:auto}
+  #setOv.hidden{display:none!important}
+  #setOv h2{margin:0 0 4px;font-size:22px;color:var(--ink)}
+  #setOv button.tg{min-width:230px;font-size:17px;border-image-source:url('assets/ui/btn_secondary_9s.webp');padding:0 14px;border-width:16px;border-image-width:16px}
+  #setOv button.tg.off{opacity:.8}
+  #setOv button.tg b{color:#2F7D4F}#setOv button.tg.off b{color:#8A6A00}
+  #credits{font-size:14px;line-height:1.55;color:var(--ink);background:#fff;border:2px solid var(--lav);border-radius:12px;padding:8px 14px;max-width:min(360px,92vw)}
+  #setBack,#setBtn{font-size:16px;padding:0 14px;border-width:16px;border-image-width:16px;border-image-source:url('assets/ui/btn_secondary_9s.webp')}
+  @media (max-height: 560px){ #setOv{gap:4px;padding:6px} #setOv h2{font-size:18px} #credits{font-size:14px;line-height:1.35;padding:4px 10px} }
+  #howImg.h{width:min(480px,92vw);height:auto}
+  #howImg.v{width:min(72vw,340px);height:auto}
+  /* v0.9.8 監査2：横長の左の板に道すじ */
+  #pPath .prow{display:flex;align-items:center;gap:4px;margin-top:4px;flex-wrap:nowrap}
+  #pPath .pn{font-size:14px;min-width:4.2em;color:var(--ink);font-weight:800}
+  #pPath img{width:28px;height:28px;border-radius:50%;filter:grayscale(1) brightness(.85);opacity:.6}
+  #pPath img.made{filter:none;opacity:1}
+  #pPath img.cur,#pPath .pj.cur{outline:3px solid #FFD84A;outline-offset:1px}
+  #pPath .pj{font-size:14px;font-weight:800;padding:2px 8px;border-radius:12px;background:#D5D8E4;color:var(--ink)}
+  #pPath .pj.made{background:var(--accent)}
+  #pPath .pcar{width:44px;height:auto;border-radius:0}
+  #pCarImg{height:44px}
 </style>
 </head>
 <body>
 <div id="wrap">
-  <canvas id="c"></canvas>
+  <div id="pcL" class="pcPanel hidden">
+    <div class="row nw"><img class="ico" src="assets/ui/icon_sales.webp" alt=""><div><div class="lbl" id="pSalesL"></div><div class="val" id="pSales"></div></div></div>
+    <div class="row nw"><img class="ico" src="assets/ui/icon_car.webp" alt=""><div><div class="lbl" id="pCarsL"></div><div class="val" id="pCars"></div></div><div style="margin-left:10px"><div class="lbl">Lv</div><div class="val" id="pLv"></div></div></div>
+    <div><div class="lbl" id="pCarL"></div><div class="row"><img id="pCarImg" alt=""><span id="pToNext"></span></div><div id="pPips" style="margin-top:6px"></div></div>
+    <div id="pPath"></div>
+  </div>
+  <div id="col"><canvas id="c"></canvas></div>
+  <div id="pcR" class="pcPanel hidden">
+    <div class="row nw"><img class="ico" src="assets/ui/icon_next.webp" alt=""><div class="lbl" id="pNextL"></div><canvas id="pNextCv" width="144" height="144"></canvas></div>
+    <div><div class="row nw"><img class="ico" src="assets/ui/icon_timer.webp" alt=""><div><div class="lbl" id="pDropL"></div><div class="val" id="pDrop"></div></div></div><div id="pGauge"><div id="pGaugeBar"></div></div></div>
+    <div class="row"><button class="pbtn" id="pPause" aria-label="pause"><img src="assets/ui/icon_pause.webp" alt=""></button><button class="pbtn" id="pMute" aria-label="sound"><img id="pMuteImg" src="assets/ui/icon_sound_on.webp" alt=""></button></div>
+    <div id="pKeys"></div>
+  </div>
   <div id="overlay" class="ov">
-    <h1 id="gameTitle">パーツポン！工場 Ver0.9.5</h1>
-    <img id="flowTitle" class="flowBig" src="assets/ui/assembly_flow.webp" alt="" onerror="this.className='flowBig fb'">
+    <h1 id="gameTitle">パーツポン！工場</h1>
+    <div id="loadBox"><div id="loadBar"><div id="loadFill"></div></div><div id="loadPct">0%</div></div>
+    <img id="flowTitle" class="howto3" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><div class="steps3" hidden role="img"><div class="st"><div class="stHand"></div><b class="stT" data-k="step_drop"></b></div><span class="stA">→</span><div class="st"><div class="stPair"><img src="assets/parts_v3/badge_wheel.webp" alt=""><img src="assets/parts_v3/badge_tire.webp" alt=""></div><b class="stT" data-k="step_match"></b></div><span class="stA">→</span><div class="st"><img class="stCar" src="assets/cars/car_lv1_kei.webp" alt=""><b class="stT" data-k="step_ship"></b></div></div>
     <div id="ovText"></div>
     <button id="startBtn" disabled>読み込み中…</button>
     <button id="howBtn" disabled>遊び方</button>
@@ -60,22 +165,32 @@
   </div>
   <div id="pauseOv" class="ov hidden">
     <h1 id="pauseTitle"></h1>
-    <img class="flowBig" src="assets/ui/assembly_flow.webp" alt="" onerror="this.className='flowBig fb'">
+    <img class="howto3" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><div class="steps3" hidden role="img"><div class="st"><div class="stHand"></div><b class="stT" data-k="step_drop"></b></div><span class="stA">→</span><div class="st"><div class="stPair"><img src="assets/parts_v3/badge_wheel.webp" alt=""><img src="assets/parts_v3/badge_tire.webp" alt=""></div><b class="stT" data-k="step_match"></b></div><span class="stA">→</span><div class="st"><img class="stCar" src="assets/cars/car_lv1_kei.webp" alt=""><b class="stT" data-k="step_ship"></b></div></div>
     <button id="resumeBtn"></button>
-    <button id="introReplayBtn" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
-    <button id="howBtn2" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
-    <button id="muteBtn2" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
-    <div id="howConfirm" class="hidden" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:rgba(10,14,24,.94);padding:24px;text-align:center">
-      <p id="howConfirmText" style="color:#fff;font-weight:bold;font-size:17px;line-height:1.5;margin:0 0 6px"></p>
+    <button id="introReplayBtn"></button>
+    <button id="howBtn2"></button>
+    <button id="setBtn"></button>
+    <div id="pauseBest"></div>
+    <div id="setOv" class="hidden">
+      <h2 id="setTitle"></h2>
+      <button id="muteBtn2" class="tg"></button>
+      <button id="bgmBtn" class="tg"></button>
+      <button id="motionBtn" class="tg"></button>
+      <div id="langRow2" style="margin-top:4px"><button id="langJa2" class="sec" style="font-size:15px;padding:0 10px;border-width:14px;border-image-width:14px">日本語</button><button id="langEn2" class="sec" style="font-size:15px;padding:0 10px;border-width:14px;border-image-width:14px">English</button></div>
+      <div id="credits"><b id="credL"></b><br>Music: "Happy Vibes" by Ruskerdax (CC0)<br>Font: M PLUS Rounded 1c (SIL OFL 1.1)<br>Physics: Matter.js (MIT)<br>Game: Timemachine0</div>
+      <button id="setBack"></button>
+    </div>
+    <div id="howConfirm" class="hidden" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#FFF7EA;padding:24px;text-align:center">
+      <img id="howImg" alt="">
+      <p id="howConfirmText" style="color:#2B2F4A;font-weight:800;font-size:17px;line-height:1.5;margin:0 0 6px"></p>
       <button id="howYes"></button>
-      <button id="howNo" style="font-size:16px;padding:9px 20px;background:#445;color:#fff"></button>
+      <button id="howNo"></button>
     </div>
   </div>
   <div id="retryOv" class="ov hidden">
     <h1 id="retryTitle" style="font-size:20px;margin:0 0 6px"></h1>
     <p id="retrySub"></p>
     <div id="retryCount">8</div>
-    <button id="retryAdBtn"></button>
     <button id="retryFreeBtn" class="hidden"></button>
     <button id="retryNoBtn"></button>
     <div id="retryMsg"></div>
@@ -173,10 +288,12 @@ const CONFIG = {
   slowmoScale: 0.35,        // 良品の完成車：スローの速さ（1＝通常）
   slowmoTime: 0.5,          // スローの長さ（実時間の秒）
   // v0.7：合体段階演出（小／中／大）と不良なし完成の爆発
+  // v0.9.9 C5：合体の気持ちよさ（v100_plan A6 の表）。ring＝光の輪（r0→r1倍、秒、色）、sparks＝粒の数、stars＝星、confetti＝紙吹雪、hitstop＝物理だけ止める秒
   mergeFx: {
-    small: { shake:2, sfx:'merge', slowmo:0, sparks:1 },
-    mid:   { shake:5, sfx:'merge_big', slowmo:0.15, sparks:5 },
-    big:   { shake:10, sfx:'merge_big', slowmo:0.35, sparks:14 }
+    small: { shake:2, sfx:'merge', slowmo:0, hitstop:0, sparks:6, sparkLife:0.35, ring:{ from:1, to:1.6, dur:0.20, color:'#FFFFFF' } },
+    mid:   { shake:5, sfx:'merge_big', slowmo:0.15, hitstop:0.05, sparks:12, stars:3, sparkLife:0.5, ring:{ from:1, to:2.0, dur:0.28, color:'#FFE27A' } },
+    big:   { shake:8, sfx:'marriage', slowmo:0.35, hitstop:0.08, sparks:24, confetti:16, sparkLife:0.8, ring:{ from:1, to:2.6, dur:0.35, color:'#FFE27A', double:true },
+             flash:{ color:'255,255,255', alpha:0.35, dur:0.15 }, cutin:true, bgmDuck:{ db:-6, sec:0.6 } }
   },
   explodeGood: { enabled:true, weakRankMax:0, midRankMax:5,  // rank 0=軽トラ弱、1〜5=中、6〜7=強（トレーラー最大）
     weakN:3, midFrac:0.5, flashDur:0.45 },
@@ -188,11 +305,11 @@ const CONFIG = {
   roundBinGrace: 2,         // v0.9.4：周のはじめ、動く不適合品箱をこの秒数だけ止める（0＝なし）。?binGrace=秒
   holdLabelBinPad: 4,       // v0.9.3（3a）：横の名前の帯は x32〜368（不適合品箱の端＋4）
   fitMaxW: 330, fitMinPx: 13,   // v0.9.3（3c）：長い文は小さく→2行（横につぶさない）
-  tutDefectAt: 4, tutDefectKind: 'wheel', tutSampleDefect: true, tutLinesSec: 2.5, tutLinesBlinkSec: 1.2,
+  tutDefectAt: 4, tutDefectKind: 'wheel', tutSampleDefect: false,   /* v0.9.8 監査3（弘司さん）：初回も部品はランダムのまま。見本の不良品は出さない */ tutLinesSec: 2.5, tutLinesBlinkSec: 1.2,
   tutWaitSec: 2, tutMarriageSec: 2, tutClaimSec: 2.5, tutDoneOnFirstCar: true, tutLineMax: 16, tutH2: 56,
   textSeq: true,            // v0.9.2：出庫＋レベルアップで マリッジ→お金→LEVEL UP を順番に出す（重ねない）
   textSeqMarriageSec: 0.6,
-  maxParticles: 60,         // 煙・破片・コインなどの最大数（重くならないように）
+  maxParticles: 90,         // v0.9.9 C5：60→90         // 煙・破片・コインなどの最大数（重くならないように）
   smokeInterval: 0.12,      // 不良車の煙を出す間隔（秒）
   smokeGrow: 1.3,           // 煙が広がる大きさ（車の大きさに対して）
   lowFpsMs: 24,             // 1フレームの平均がこれ(ms)を超えたら演出を間引く
@@ -295,7 +412,7 @@ const CONFIG = {
   stackAs: [],              // DR3：組みかけドア同士は同種合体、ドアとキットは色が違うので不要
   mergeSameBig: ['engine_chassis','rolling_chassis','body_car','door_window','screw','car'],  // v0.7
   holdLabel: true,          // 持っている部品の上に名前（紫は「名前：ヒント」）を1行で出す。URL ?label=0 で消す
-  holdLabelFontPx: 12, holdLabelH: 18, holdLabelGap: 5, holdLabelMinY: 100,   // MinY：帯の中心の一番上（ゲージ・「次」と重ならない）
+  holdLabelFontPx: 14, holdLabelH: 20, holdLabelGap: 5, holdLabelMinY: 100,   // MinY：帯の中心の一番上（ゲージ・「次」と重ならない）
   holdLabelDefectTag: true, // 不良品は名前のあとに（不良品）
   partnerGlow: true,        // 持っている部品とくっつく箱の中の部品をゆっくり光らせる。URL ?glow=0 で消す
   partnerGlowUntilRank: 2,  // この車ランク（1＝軽トラ、2＝コンパクトカー、3＝セダン）を1台出庫したら、そのゲームではもう光らせない（2周目以降も光らない）。0＝ランクでは止めない。URL ?glowUntil=3
@@ -307,9 +424,10 @@ const CONFIG = {
   noMatchShow: true,        // v0.8：相手が箱にいないとき「相手まだ」。URL は glow と連動
   noMatchSec: 1.5,          // v0.8：表示秒数（仮）
   // --- v0.8：道すじ表示（画面上部・2列→合体）。URL ?path=0 で消す ---
+  pcPathInPanel: true,      // v0.9.8 監査2：横長では道すじを左の板に（キャンバスには描かない）
   pathShow: true, pathH: 50, pathDotPx: 20, pathCurScale: 1.35, pathGray: 0.8,
   pathBoxGap: 61,           // v0.9.5：pathY＝192−61−50＝81
-  gameName: { ja:'パーツポン！工場', en:'Parts Pop Factory' }, versionLabel:'Ver0.9.5',
+  gameName: { ja:'パーツポン！工場', en:'Parts Pop Factory' }, versionLabel:'Ver0.9.9', usdPerYen: 0.01,
   retryEnabled: true, retryRowsRemoved: 1, retryRowPx: 48, retryGraceSec: 3.0, retryDropFreezeSec: 2.0,
   retryInputLockSec: 0.3, retryOfferSec: 8, retryAdFailSec: 2, retryFadeSec: 0.3,
   retryOnAdblock: 'block', retryOnAdError: 'noReward',
@@ -323,8 +441,8 @@ const CONFIG = {
   noMatchColor: '#ffa53a',  // v0.9.1：帯の中の「（相手まだ）」の色      // v0.9：横に出すとき部品の端からの間
   pathPulseMs: 1200,        // 今の段の丸がゆっくり光る周期（仮）
   // --- v0.8：開始時の分解演出。URL ?intro=0 で消す ---
-  introBreakSec: 2.0, introBreakShow: 'first', // 'first'＝初回だけ／'always'／'off'
-  fallLabel: true, fallLabelSec: 1.2, fallLabelFontPx: 11,   // 落ちている部品（離したあと）にも名前。URL ?label=0 で両方消す
+  introBreakSec: 2.0, introBreakShow: 'off',   // v0.9.8 C2：開始時には出さない（一時停止の「組み立てを見る」だけ）。 // 'first'＝初回だけ／'always'／'off'
+  fallLabel: true, fallLabelSec: 1.2, fallLabelFontPx: 13,   // 落ちている部品（離したあと）にも名前。URL ?label=0 で両方消す
   madeGlowSec: 2,           // 「○○ができた！」のとき、その相手（箱の中）を光らせる秒数（光らせる条件は partnerGlow と同じ）
   newPartNotice: true,      // その部品がはじめて「次」に出たとき（1ゲーム1回ずつ）「新入荷！…」を出す。URL ?newpart=0 で消す
   newPartBlockDrop: false, // true＝お知らせのあいだは指で離しても落とさない（あとで落とす）。false＝止めるのは時間（自動で落ちる）だけ
@@ -337,19 +455,19 @@ const CONFIG = {
   badgeImgScale: 1.03,
   // --- 文字の大きさ（px） ---
   // ── ゲーム中の文字の大きさ（px・すべて太字のまま。タイトル/結果画面は別） ──
-  hudSalesFontPx: 14,       // 左上の「売上」の文字（もとは16）
-  hudFontPx: 14,            // 左上の「出庫」「Lv」と右上の「投下まで」の文字（あーと指定で14）
-  nextLabelFontPx: 11,      // 「次」の文字（もとは13・太字ではない）
-  levelCountFontPx: 12,     // 「次の車まで あと N台」の文字（もとは13）
+  hudSalesFontPx: 16,       // 左上の「売上」の文字（もとは16）
+  hudFontPx: 16,            // 左上の「出庫」「Lv」と右上の「投下まで」の文字（あーと指定で14）
+  nextLabelFontPx: 14,      // 「次」の文字（もとは13・太字ではない）
+  levelCountFontPx: 14,     // 「次の車まで あと N台」の文字（もとは13）
   goodStreakFontPx: 11,     // コンベアの上の良品カウント（もとは12）
-  bannerFontPx: 13,         // お知らせの帯の文字（もとは16）
+  bannerFontPx: 16,         // お知らせの帯の文字（もとは16）
   bannerH: 22,              // お知らせの帯の高さ（もとは28）
   bannerLevelFontPx: 20,    // LEVEL UP の帯の文字（もとは28）
   bannerLevelH: 34,         // LEVEL UP の帯の高さ（もとは44）
   moneyFontPx: 17,          // 浮かぶお金の文字（+N万円）（もとは22）
   vroomFontPx: 13,          // 出庫のときの音の文字（ブーン など）（もとは16）
   warnFontPx: 18,           // 「あふれそう！」の文字（変更なし）
-  popupFontPx: 14,          // 浮かぶ小さい文字（廃棄 −N万円 など）のふつうの大きさ（もとは18）
+  popupFontPx: 18,          // 浮かぶ小さい文字（廃棄 −N万円 など）のふつうの大きさ（もとは18）
   hintFontPx: 15,           // はじめのヒントの文字（もとは18）
   hintH: 40,                // ヒントの箱の高さ（もとは50）
   centerBannerFontPx: 24,   // まん中の大きい帯の文字（もとは34）
@@ -358,13 +476,38 @@ const CONFIG = {
   rankUpSubFontPx: 14,      // 車ランクアップの「1台 N万円」（もとは17）      // 部品画像の幅＝直径×この倍率
   // --- 下の流れバー・ボタン ---
   flowX: 6, flowY: 720, flowW: 312,         // 高さは画像の比率（9:1）から
-  btnY: 737, btnR: 16, pauseX: 342, muteX: 380,
+  btnY: 737, btnR: 22, pauseX: 342, muteX: 380,   // v0.9.6：btnR 16→22。実際の位置と大きさは btnGeom()（画面の大きさで直径44CSSpx以上になるよう広げる）
+  btnMinCssPx: 48, btnMaxR: 30, btnHitPad: 10,     // v0.9.6：ボタンの見た目の直径の下限（CSS px）・半径の上限（論理px）・当たり判定の上乗せ
+  minTextCssPx: 14,         // v0.9.8 監査2：12→14         // v0.9.6：キャンバスの文字の最低サイズ（CSS px）。小さい画面でもこれより小さく描かない
+  pcLayoutAspect: 1.2, pcSideMinPx: 150, pcViewTop: 88,   /* v0.9.8 監査2：道すじを板へ移したので 70→88（持ち部品の名前の帯 y≥90 は見える） */ pcViewBottom: 712,   // v0.9.6：横長（幅÷高さ≧1.2）は左右の板＋キャンバスを y 70〜712 だけ表示（HUDとボタンは板へ）
+  shakeMax: 12,             // v0.9.6 C5：画面の揺れの上限（論理px）
+  shakeDecayPerFrame60: 0.85, // v0.9.6 C5：揺れの減り方＝60Hzの1フレームあたり0.85倍（実時間基準：×0.85^(秒×60)）
+  keyAimSpeed: 300,         // v0.9.6 C8：キーボードの←→で狙いを動かす速さ（論理px/秒）
+  sdkGameplayMinGapMs: 1000, // v0.9.6 C1：gameplayStart/Stop を SDK に送る最短の間隔（SDK の throttle 対策）
+  sdkInitTimeoutMs: 4000,   // v0.9.6 C1：SDK.init() をこの時間待っても終わらなければSDKなしで始める
   flowHiResMinPx: 600,      // 画面上のバーの幅（端末ピクセル）がこれ以上なら 1080 の画像、未満なら 360 の画像
   // --- 効果音 ---
   sfxVolume: 0.6, sfxVolumeSoft: 0.4,
+  // v0.9.9 C5/C6：音
+  landVol: 0.3,             // 着地の「コトッ」（A8 のとおり 0.3）
+  chainSec: 1.2, chainMax: 6,   // 前の合体から1.2秒以内なら merge の音程を半音ずつ上げる（最大6）
+  sfxComp: { threshold:-6, knee:0, ratio:12, attack:0.003, release:0.1 },   // 効果音の出口に1つだけ
+  bgm: { ogg:'assets/bgm/bgm_main.ogg', mp3:'assets/bgm/bgm_main.mp3', loopEnd:45.405938, vol:0.45, volSoft:0.15, fadeIn:0.5 },
+  flashMinGap: 0.34,        // 画面全体の光は0.34秒以上あける（1秒に3回まで）。近いときは1回にまとめる
+  reduceFlashMax: 0.15,     // 「動きを減らす」のとき光の不透明度の上限
+  cutin: { inSec:0.12, holdSec:0.3, outSec:0.18, w:300, y:336 },   // y：新入荷の帯（276）より下
+  // --- v0.9.7 C3：明るい配色（あーと palette_v100.json）。赤 danger と緑 good は「塗り」専用（文字の色には使わない） ---
+  pal: { ink:'#2B2F4A', plate:'rgba(255,255,255,.92)', plateShadow:'#D9C9F0', bench:'#FFF7EA', benchGrid:'#F1E3C8', frame:'#3B5FC4', accent:'#FFC93C', accentEdge:'#E0A100',
+         danger:'#FF5A5F', good:'#2FBF71', track:'#EEE6F5', sky:'#92C4FF', pink:'#FF8FB8', lav:'#D9C9F0', warnText:'#C62828', inkPlate:'rgba(43,47,74,.92)', belt:'#CBD5F0', beltLine:'#AEBBE0' },
+  partOutline: 'rgba(43,47,74,.85)',   // 部品のふち（太さ max(2, r*0.06)）
+  partOutlineW: 0,          // v0.9.8：あーとの pop 版は絵に紺の輪郭があるので、コードのふちは描かない（palette_v100.json part_outline.width_v100 = 0）。0 より大きいと max(その値, r*0.06) で描く
+  partGloss: true, partShadow: true,   // A5：つや・影（assets/fx/part_gloss.webp / part_shadow.webp）
+  squishSec: 0.12, squishAmp: 0.08,    // C3：押した瞬間に持っている部品が 1.0→1.08→1.0（0.12秒）
+  pcFramePx: 16,                       // C4：PC横の列のわく（frame_pc_column 9-slice）の太さ（CSS px）
+  pcPanelMaxPx: 340,                   // C4：左右の板の幅＝min(26vw, 340px)
   // --- 部品の絵の仕様（レベルで変わる）。dir が null なら parts_v3 の直下をそのまま使う ---
   artTiers: [
-    { name:'mass',   from:1, dir:'assets/parts_v3/mass/',   files:['engine','wheel','wheel_bad','tire_wheel','screw','screw_bad','panel','glass','glass_bad','hinge','hinge_bad','door_window','door_window_bad'] },
+    { name:'mass',   from:1, dir:'assets/parts_v3/mass/',  /* v0.9.7：ファイルの一覧と大きさは ART_MANIFEST */   files:['engine','wheel','wheel_bad','tire_wheel','screw','screw_bad','panel','glass','glass_bad','hinge','hinge_bad','door_window','door_window_bad'] },
     { name:'luxury', from:5, dir:'assets/parts_v3/luxury/', files:['engine','wheel','wheel_bad','tire_wheel','screw','screw_bad','panel','glass','glass_bad','hinge','hinge_bad','door_window','door_window_bad'] },
     { name:'sport',  from:7, dir:null, files:[] },
   ],
@@ -380,6 +523,15 @@ const CONFIG = {
   // 不良品としては落ちてこないが、不良の絵（_bad）を使う部品。v5k：ドア・ボンネット（screw）は不良の窓ガラス・ちょうつがいから作ると不良になるので door_bad を使う
   badArtAlso: ['screw','door_window'],   // DR3：ドア／組みかけドアは不良材料から作ると不良絵
   // --- 最初の1回だけの説明（docs/tutorial_spec.md） ---
+  // --- v0.9.8 C2：最初の30秒 ---
+  autoStart: true,          // 読み込みが終わったら自動で始める（タイトル画面なし・0タップ）。URL ?autostart=0 で前のタイトル画面（確認用）
+  firstWaitMaxSec: 10,      // 自動で始まったゲームの最初の部品は、最初の操作（触る・キー・マウスを動かす）まで投下の時間を止める（上限・実時間秒）
+  onboardPictures: true,    // 説明は絵の3つだけ（指マーク／光る相手＋点線／×→箱の矢印）。ほかの文の説明は出さない
+  onbHandSize: 84, onbHandDy: 96, onbHandSwing: 70, onbHandPeriod: 1.2,   // 指マーク（hand_drag.webp 2コマ）：大きさ・持つ位置からの下の距離・左右のふれ幅・周期（秒）
+  onbLinkBlinkSec: 0.6,     // くっつける：手の部品と相手を結ぶ点線の点滅周期（秒）
+  onbOkSec: 0.8, onbCardCss: 160, onbCardMax: 999, onbCardY: 318, onbCardAlpha: 0.93, onbShipSec: 2.5, onbCardShiftX: 24,   // v0.9.8：遊び方の絵の1マス（画面で約150 CSS px）
+  onbBinTextY: 404,   // 「×→🗑️」の板の中心の高さ（新入荷の帯 bannerY と重ならない）
+             // 最初の合体の「いいね！」・×を箱に入れたときの「OK！」の秒数
   tutorialMode: 'auto',     // 'auto'＝まだ終えていない人だけ／'always'＝毎回出す（確認用）／'off'＝出さない
   tutMsgSec: 2,             // 3・5・6（車ができた・良品を捨てた・整備士）の一言を出す秒数（実時間）
   tutMergeOkSec: 1,         // 最初の合体のときの「いいね！」の秒数
@@ -389,7 +541,7 @@ const CONFIG = {
   tutBadMaxSec: 8,          // 4（×はごみ箱へ）でスロー・投下の時間を止める上限（実時間秒）。過ぎたら元の速さへ
   tutSlowScale: 0.3,        // 4 のあいだの部品の落ちる速さ（1＝ふつう）
   tutY: 300,                // 説明の帯の上の位置（ヒントの帯と同じ。高さ hintH・文字 hintFontPx も同じ）
-  tutSkipY: 344, tutSkipH: 28, tutSkipFontPx: 12, tutSkipRight: 394,   // 「説明をとばす」ボタン（右上、「次」の下）
+  tutSkipY: 344, tutSkipH: 30, tutSkipFontPx: 13, tutSkipRight: 394,   // 「説明をとばす」ボタン（右上、「次」の下）
   tutFlowHiX: 21.9, tutFlowHiY: 736.5, tutFlowHiR: 15,   // 2 で光らせる、下の流れ帯の最初の色（青）の丸の中心と半径
 };
 // 周の中のレベル（2周目以降は、周が始まったレベルを1として数える。車の格・部品の仕様・レベルアップの台数はこれで決める）
@@ -512,19 +664,49 @@ function disposalCostOf(id, lv = state.level){
   const c = disposalPartCost(id, lv); if (c != null) return c;
   return OUT_OF[id] ? OUT_OF[id].reduce((t, k) => t + disposalCostOf(k, lv), 0) : 0;
 }
+// ===== v0.9.7：部品と車の絵の一覧（ART_MANIFEST）＝絵を差し替えるときはここだけ見る =====
+// 差し替え方：下のファイルを「同じ名前・同じ大きさ」で上書きするだけ（コードは変えない）。くわしくは assets/ART_MANIFEST.md
+//   部品 → assets/parts_v3/ の中だけ（直下＝スポーツ仕様と予備、mass/＝量産仕様 Lv1〜、luxury/＝高級仕様 Lv5〜）。すべて 256×256・透明
+//   車   → assets/cars/ の中だけ（car_lv1_kei 〜 car_lv8_trailer）。シルエット（図鑑・未発見用）は assets/cars/silhouette/ に同じ名前・同じ大きさ
+// 大きさがちがう絵が入ると、読み込んだときに console に警告を出し、テスト（tests/run_all.js「ART_MANIFEST」）が失敗する
+const ART_MANIFEST = {
+  partDir: 'assets/parts_v3/', partSize: [256, 256],
+  parts: ['badge_body','badge_door','badge_door_bad','badge_door_window','badge_door_window_bad','badge_engine','badge_engine_body','badge_engine_chassis','badge_frame',
+          'badge_glass','badge_glass_bad','badge_hinge','badge_hinge_bad','badge_mechanic','badge_mechanic_bye','badge_outfitted_body','badge_panel','badge_rolling_chassis',
+          'badge_suspension','badge_suspension_bad','badge_suspension_frame','badge_tire','badge_tire_bad','badge_tire_wheel','badge_wheel','badge_wheel_bad',
+          'part_door_bad','part_suspension_bad','part_tire_bad','part_wheel_bad'],
+  tiers: { mass: 'mass/', luxury: 'luxury/' },
+  tierParts: ['badge_door','badge_door_bad','badge_door_window','badge_door_window_bad','badge_engine','badge_glass','badge_glass_bad','badge_hinge','badge_hinge_bad',
+              'badge_panel','badge_tire_wheel','badge_wheel','badge_wheel_bad'],
+  // v0.9.8：遊び方の絵（あーと 2026-11-09 納品・README_handoff 6章）。横 960x320＝320x320 のマス×3、縦 480x720＝480x240 のマス×3
+  uiDir: 'assets/ui/', howto: [ {file:'howto3_ja', w:960, h:320}, {file:'howto3_en', w:960, h:320}, {file:'howto3_ja_v', w:480, h:720}, {file:'howto3_en_v', w:480, h:720} ],
+  howtoCell: { h:{ w:320, h:320, dx:320, dy:0 }, v:{ w:480, h:240, dx:0, dy:240 } },
+  carDir: 'assets/cars/', silhouetteDir: 'assets/cars/silhouette/',
+  cars: [ {file:'car_lv1_kei',     w:1024, h:573, scale:1.0 },
+          {file:'car_lv2_compact', w:768,  h:332, scale:1.0 },
+          {file:'car_lv3_sedan',   w:768,  h:271, scale:1.05},
+          {file:'car_lv4_wagon',   w:768,  h:276, scale:1.05},
+          {file:'car_lv5_suv',     w:768,  h:287, scale:1.05},
+          {file:'car_lv6_offroad', w:768,  h:395, scale:1.05},
+          {file:'car_lv7_super',   w:768,  h:211, scale:1.05},
+          {file:'car_lv8_trailer', w:768,  h:228, scale:0.85} ],
+};
+// 一覧から「パス → 大きさ」の表を作る（loadImg が読み込んだときに大きさを確かめる）
+const ART_SIZE = {};
+function artManifestList(){
+  const M = ART_MANIFEST, out = [];
+  M.parts.forEach(n => out.push({ src: `${M.partDir}${n}.webp`, w: M.partSize[0], h: M.partSize[1], kind:'part' }));
+  Object.values(M.tiers).forEach(d => M.tierParts.forEach(n => out.push({ src: `${M.partDir}${d}${n}.webp`, w: M.partSize[0], h: M.partSize[1], kind:'part' })));
+  (M.howto||[]).forEach(c => out.push({ src: `${M.uiDir}${c.file}.webp`, w: c.w, h: c.h, kind:'howto' }));
+  M.cars.forEach(c => { out.push({ src: `${M.carDir}${c.file}.webp`, w: c.w, h: c.h, kind:'car' }); out.push({ src: `${M.silhouetteDir}${c.file}.webp`, w: c.w, h: c.h, kind:'silhouette' }); });
+  return out;
+}
+artManifestList().forEach(e => ART_SIZE[e.src] = [e.w, e.h]);
+const artMismatch = [];   // 大きさがちがった絵（テスト・確認用）
 // 車
-const CAR_RANKS = [
-  {src: 'assets/kei_truck_v01.webp',        scale: 1.0},
-  {src: 'assets/cars/car_lv2_compact.webp', scale: 1.0},
-  {src: 'assets/cars/car_lv3_sedan.webp',   scale: 1.05},
-  {src: 'assets/cars/car_lv4_wagon.webp',   scale: 1.05},
-  {src: 'assets/cars/car_lv5_suv.webp',     scale: 1.05},
-  {src: 'assets/cars/car_lv6_offroad.webp', scale: 1.05},
-  {src: 'assets/cars/car_lv7_super.webp',   scale: 1.05},
-  {src: 'assets/cars/car_lv8_trailer.webp', scale: 0.85},
-];
+const CAR_RANKS = ART_MANIFEST.cars.map(c => ({ src: `${ART_MANIFEST.carDir}${c.file}.webp`, scale: c.scale }));
 const CAR_VALUES = [1000000, 2000000, 3500000, 4000000, 5000000, 8000000, 20000000, 30000000];
-const SILHOUETTES = ['kei','compact','sedan','wagon','suv','offroad','super','trailer'].map((n,i)=>`assets/cars/silhouette/car_lv${i+1}_${n}.webp`);
+const SILHOUETTES = ART_MANIFEST.cars.map(c => `${ART_MANIFEST.silhouetteDir}${c.file}.webp`);
 const CAR_NAMES = {
   ja:['軽トラ','コンパクトカー','セダン','ステーションワゴン','SUV','高級オフロード','ハイエンドスポーツ','トレーラー'],
   en:['Kei Truck','Compact Car','Sedan','Station Wagon','SUV','Luxury Off-Roader','Supercar','Semi Truck'] };
@@ -536,7 +718,9 @@ const TITLES = {
 const IMG_WAIT = [];   // スタート前に待つ画像
 function loadImg(src, wait){
   const im = new Image(); im.ok = false;
-  const p = new Promise(res => { im.onload = ()=>{ im.ok = true; res(); }; im.onerror = ()=>res(); });
+  const p = new Promise(res => { im.onload = ()=>{ im.ok = true;
+    const ex = ART_SIZE[src]; if (ex && (im.naturalWidth !== ex[0] || im.naturalHeight !== ex[1])){ artMismatch.push({ src, w: im.naturalWidth, h: im.naturalHeight, want: ex }); console.warn('[ART_MANIFEST] size mismatch', src, im.naturalWidth+'x'+im.naturalHeight, 'want', ex.join('x')); }
+    res(); }; im.onerror = ()=>{ if (ART_SIZE[src]) artMismatch.push({ src, missing:true }); res(); }; });
   if (wait) IMG_WAIT.push(p);
   im.src = src; return im;
 }
@@ -550,7 +734,7 @@ artKeys.push('mechanic_bye');
 // 絵のファイル名：CONFIG.artFile で名前を変える（screw → door、screw_bad → door_bad）
 function artFile(key){ const bad = key.endsWith('_bad'), id = bad ? key.slice(0,-4) : key; return (CONFIG.artFile[id] || id) + (bad ? '_bad' : ''); }
 const artPending = key => (CONFIG.artPending||[]).includes(key.endsWith('_bad') ? key.slice(0,-4) : key);   // 絵がまだ（仮の絵を描く）
-artKeys.forEach(k => { if (!artPending(k)) ART.root[k] = loadImg(`assets/parts_v3/badge_${artFile(k)}.webp`, true); });
+artKeys.forEach(k => { if (!artPending(k)) ART.root[k] = loadImg(`${ART_MANIFEST.partDir}badge_${artFile(k)}.webp`, true); });
 const tierLoaded = {};
 function ensureTier(name, wait){
   const t = CONFIG.artTiers.find(a=>a.name===name);
@@ -579,21 +763,31 @@ const FX = {}; let fxLoaded = false;
 function loadFx(){
   if (fxLoaded) return; fxLoaded = true;
   const f = n => loadImg(`assets/fx/${n}.webp`, false);
+  FX.ring = f('ring_soft'); FX.star = f('star_pop'); FX.confetti = [1,2,3,4].map(i=>f('confetti_'+i));   // v0.9.9 A6
   FX.coin = f('coin'); FX.tag = f('complaint_tag'); FX.crack = f('crack_overlay'); FX.flash = f('flash');
   FX.sparkle = [1,2,3,4].map(i=>f('sparkle_'+i)); FX.smokeB = [1,2,3,4].map(i=>f('smoke_black_'+i)); FX.smokeW = [1,2,3,4].map(i=>f('smoke_white_'+i));
   FX.debris = ['debris_1','debris_2','debris_3','debris_nut'].map(f);
-  FX.partsBad = ['screw','wheel','tire','suspension'].map(n => loadImg(`assets/parts_v3/part_${artFile(n)}_bad.webp`, false));   // screw はドア・ボンネット
+  FX.partsBad = ['screw','wheel','tire','suspension'].map(n => loadImg(`${ART_MANIFEST.partDir}part_${artFile(n)}_bad.webp`, false));   // screw はドア・ボンネット
 }
 const UI = {};
-UI.flowSlim = loadImg('assets/ui/assembly_flow_slim.webp', true);
-UI.flowSlim360 = loadImg('assets/ui/assembly_flow_slim_360.webp', true);
+UI.cutin = loadImg('assets/ui/marriage_cutin.webp', false);   // v0.9.9 A6：「MARRIAGE!」（日本語のとき）
+UI.howto = { ja: loadImg('assets/ui/howto3_ja.webp', false), en: loadImg('assets/ui/howto3_en.webp', false) };   // v0.9.8：遊びながらの説明は1マスずつ切り出す
+const howtoSrc = (vert) => `${ART_MANIFEST.uiDir}howto3_${lang==='ja'?'ja':'en'}${vert?'_v':''}.webp`;
+UI.flowSlim = { ok:false }; UI.flowSlim360 = { ok:false };   // v0.9.8：道すじ表示が本体。下の帯の流れ図画像は使わない（公開ビルドに入れない）
 UI.roundBanner = loadImg('assets/ui/round_banner.webp', false);   // 周のはじめの帯（文字なし）
 UI.roundGlow = loadImg('assets/ui/round_glow.webp', false);       // 帯のうしろの金色の光
 UI.binArrows = loadImg('assets/ui/bin_move_arrows.webp', false);  // ゴミ箱の上の ←→
+// v0.9.7 A5：部品のつや・影／A3：アイコン（スマホのボタンにも使う）
+UI.gloss = loadImg('assets/fx/part_gloss.webp', true);
+UI.hand = loadImg('assets/ui/hand_drag.webp', true);   // v0.9.8 C2：指マーク（128×128 の2コマ：左＝左へ、右＝右へ）
+UI.shadow = loadImg('assets/fx/part_shadow.webp', true);
+UI.iconPause = loadImg('assets/ui/icon_pause.webp', true);
+UI.iconSoundOn = loadImg('assets/ui/icon_sound_on.webp', true);
+UI.iconSoundOff = loadImg('assets/ui/icon_sound_off.webp', true);
 
 function fmtYen(v){
   if (v < 0) return '−' + fmtYen(-v);   // マイナスは先頭に「−」
-  if (lang!=='ja') return `¥${v.toLocaleString()}`;
+  if (lang!=='ja') return `$${Math.round(v*(CONFIG.usdPerYen||0.01)).toLocaleString('en-US')}`;   // v0.9.8 監査4：英語は $（表示だけ ¥100＝$1。点数・保存は円のまま）
   if (v >= 100000000){
     const oku = Math.floor(v/100000000), man = (v - oku*100000000)/10000;
     return man > 0 ? `${oku}億${man.toLocaleString()}万円` : `${oku}億円`;
@@ -602,13 +796,67 @@ function fmtYen(v){
 }
 const fmtTime = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
 // v0.9.1qa：?qa=trailer＝トレーラー爆発の確認用。QA中は保存（ランキング・自己ベスト・設定・既読）を一切しない
-const QA_MODE = (()=>{ try{ return new URLSearchParams(location.search).get('qa') === 'trailer' ? 'trailer' : null; }catch(e){ return null; } })();
+const QA_MODE = null;
 try{ if (new URLSearchParams(location.search).get('bh') === '0') CONFIG.blackHoleFx = false; }catch(e){}
+// ===== v0.9.6 C1：CrazyGames SDK v3 =====
+// SDK.init() が成功し、environment が 'crazygames' か 'local' のときだけ使う（GitHub Pages など他のドメインは 'disabled'＝呼ぶとエラーになるので使わない）
+const SDKS = { ok:false, env:'none', calls:[], intent:[], muteAudio:false, device:null, locale:null, dataOk:false, gameplay:false, loading:false, migrated:false };
+function cgSdk(){ try{ return (SDKS.ok && window.CrazyGames && window.CrazyGames.SDK) || null; }catch(e){ return null; } }
+function sdkCall(mod, fn, ...args){
+  const s = cgSdk(); if (!s) return;
+  try{ const m = s[mod]; if (m && typeof m[fn] === 'function'){ SDKS.calls.push(fn); const r = m[fn](...args); if (r && typeof r.catch === 'function') r.catch(()=>{}); return r; } }catch(e){}
+}
+function sdkReadSettings(st){ try{ const g = st || (cgSdk() && cgSdk().game.settings); SDKS.muteAudio = !!(g && g.muteAudio); }catch(e){ SDKS.muteAudio = false; } }
+async function sdkInit(){
+  let raw = null; try{ raw = window.CrazyGames && window.CrazyGames.SDK; }catch(e){}
+  if (!raw || typeof raw.init !== 'function'){ SDKS.env = 'none'; return false; }   // スクリプトが読めなかった（広告ブロック・オフライン・file://）
+  try{
+    let to; await Promise.race([ Promise.resolve().then(()=>raw.init()), new Promise((_, rej) => { to = setTimeout(()=>rej(new Error('sdk init timeout')), CONFIG.sdkInitTimeoutMs); }) ]); clearTimeout(to);
+  }catch(e){ SDKS.env = 'error'; return false; }
+  let env = ''; try{ env = raw.environment; }catch(e){}
+  SDKS.env = env || 'unknown';
+  if (env !== 'crazygames' && env !== 'local') return false;
+  SDKS.ok = true;
+  sdkReadSettings();
+  try{ raw.game.addSettingsChangeListener(st => { sdkReadSettings(st); try{ renderPause(); updatePanels(true); }catch(e){} }); }catch(e){}
+  try{ const si = raw.user && raw.user.systemInfo; if (si){ SDKS.locale = si.locale || null; SDKS.device = (si.device && si.device.type) || null; } }catch(e){}
+  try{ const d = raw.data; if (d && typeof d.getItem === 'function' && typeof d.setItem === 'function'){ d.getItem('qr_migrated_v1'); SDKS.dataOk = true; } }catch(e){ SDKS.dataOk = false; }
+  return true;
+}
+// 保存：SDK の data（Progress Save）が使えるときはそちら、使えないときは localStorage（今まで通り）
 const Store = {
-  backend(){ try{ const d = window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.data; if (d && d.getItem) return d; }catch(e){} try{ return window.localStorage; }catch(e){ return null; } },
+  backend(){ if (SDKS.dataOk){ try{ const d = window.CrazyGames.SDK.data; if (d && d.getItem) return d; }catch(e){} } try{ return window.localStorage; }catch(e){ return null; } },
   get(k, def){ try{ const b=this.backend(); const v=b && b.getItem('qr_'+k); return v==null ? def : JSON.parse(v); }catch(e){ return def; } },
-  set(k, v){ if (QA_MODE) return; try{ const b=this.backend(); b && b.setItem('qr_'+k, JSON.stringify(v)); }catch(e){} }
+  set(k, v){ if (QA_MODE) return; try{ const b=this.backend(); b && b.setItem('qr_'+k, JSON.stringify(v)); }catch(e){} },
+  remove(k){ if (QA_MODE) return; try{ const b=this.backend(); b && b.removeItem && b.removeItem('qr_'+k); }catch(e){} }
 };
+// 初回だけ：localStorage の qr_ キーを SDK.data に写す（SDK 側にすでにある値は上書きしない）。qr_migrated_v1=true を付けて1回だけ
+function sdkMigrate(){
+  if (!SDKS.dataOk || QA_MODE) return 0;
+  let n = 0;
+  try{
+    const d = window.CrazyGames.SDK.data, ls = window.localStorage;
+    if (d.getItem('qr_migrated_v1') != null) return 0;
+    const keys = []; for (let i = 0; i < ls.length; i++){ const k = ls.key(i); if (k && k.indexOf('qr_') === 0 && k !== 'qr_migrated_v1') keys.push(k); }
+    for (const k of keys){ if (d.getItem(k) == null){ const v = ls.getItem(k); if (v != null){ d.setItem(k, v); n++; } } }
+    d.setItem('qr_migrated_v1', 'true'); SDKS.migrated = true;
+  }catch(e){}
+  return n;
+}
+// v0.9.6 C6：設定の保存キー（音は今の qr_muted のまま）。qr_bgm（初期 true）・qr_reduceMotion（初期は OS の prefers-reduced-motion）・qr_lang（初期は SDK の locale）
+const prefersReducedMotion = () => { try{ return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }catch(e){ return false; } };
+const Settings = {
+  get bgm(){ return Store.get('bgm', true) !== false; },
+  get reduceMotion(){ const v = Store.get('reduceMotion', null); return v == null ? prefersReducedMotion() : !!v; },
+  get lang(){ const v = Store.get('lang', null); return (v === 'ja' || v === 'en') ? v : null; },
+  set(k, v){ if (k === 'bgm') Store.set('bgm', !!v); else if (k === 'reduceMotion') Store.set('reduceMotion', !!v); else if (k === 'lang' && (v === 'ja' || v === 'en')) Store.set('lang', v); }
+};
+// v0.9.6 C1：happytime は「生涯で初めて」のときだけ（トレーラーの良品出荷／ランクS）
+function happyOnce(key){
+  if (QA_MODE) return false;
+  const h = Store.get('happy_v1', {}) || {}; if (h[key]) return false;
+  h[key] = Date.now(); Store.set('happy_v1', h); SDKS.intent.push('happytime:'+key); sdkCall('game', 'happytime'); return true;
+}
 const rankForLevel = lv => Math.min(relLevel(lv), CAR_VALUES.length) - 1;
 function drawCar(x, y, size, rank){
   const r = (CAR_RANKS[rank] && CAR_RANKS[rank].img.ok) ? CAR_RANKS[rank] : CAR_RANKS[0];
@@ -628,7 +876,7 @@ const TEXT = {
     tierLuxury:'部品が高級仕様に！（V6・アルミホイール）', tierSport:'部品がスポーツ仕様に！（V8・鍛造ホイール）',
     complaints:'クレーム', goodStreak:'連続良品', complaintTag:'クレーム！',
     titleLine:t=>`称号：${t}`, topCarLine:c=>`最高到達：${c}`, shipped:'出庫', unitCars:'台', time:'プレイ時間', none:'—',
-    share:'結果をシェア', copied:'コピーしました', pause:'一時停止', resume:'つづける', soundOn:'🔊 音あり', soundOff:'🔇 音なし',
+    share:'結果をシェア', copied:'コピーしました', pause:'一時停止', resume:'つづける', soundOn:'🔊 音あり', soundOff:'🔇 音なし', settings:'設定', setSfx:'効果音', setBgm:'BGM', setMotion:'動きを減らす', on:'オン', off:'オフ', credits:'クレジット', back2:'もどる',
     // v5p：部品の名前（release/hint_text_v5p.md の表・持っている部品の上に出す）
     partNames:{ wheel:'ホイール', tire:'タイヤ', frame:'サブフレーム', suspension:'サスペンション', engine:'エンジン', panel:'ドアパネル', glass:'ドアガラス', hinge:'ちょうつがい', tire_wheel:'タイヤ付きホイール', suspension_frame:'足回り', engine_chassis:'エンジン付き足回り', engine_body:'エンジン付きボディ', rolling_chassis:'走れるシャシー', body:'塗装済みボディ', body_car:'艤装ボディ', screw:'ドア', door_window:'組みかけドア', mechanic:'整備士', car:'完成車' },
     defectTag:'（不良品）',
@@ -642,7 +890,7 @@ const TEXT = {
     newPart:{ wheel:'新入荷！ホイール＋タイヤ＝タイヤ付きホイール', tire:'新入荷！タイヤ＋ホイール＝タイヤ付きホイール', frame:'新入荷！サブフレーム＋サスペンション＝足回り',
       suspension:'新入荷！サスペンション＋サブフレーム＝足回り', engine:'新入荷！エンジン＋足回り＝エンジン付き足回り', body:'新入荷！ボディ＋ドア＝艤装ボディ。シャシーとマリッジ！',
       purple:'新入荷！紫を3つ集めるとドア' },
-    marriage:'マリッジ！', mergeSame:'1つにまとまった',
+    marriage:'マリッジ！', mergeSame:'1つにまとまった', step_drop:'落とす', step_match:'そろえる', step_ship:'出荷！', pathL:'組み立ての道すじ', carL:'作る車',
     floorReset:'ごほうび：床がもとに戻った！', floorRestored:'床がもとに戻った！', hint_purple:'紫を3つ集めるとドア',
     roundStart:n=>`${n}周目スタート！`, roundSub:'軽トラから作り直し。不適合品箱が動くよ！', roundBonus:m=>`売上 ×${m}`, binMoving:'不適合品箱が動いている！', roundsReached:n=>`到達：${n}周目`,
     clear:'3周目クリア！', settle:'決算', unitsShipped:'出荷台数', unitsGood:'良品', unitsBad:'不良', profit:'利益', margin:'利益率', totalScore:'総合点', rankLabel:'ランク', personalRank:'個人ランキング', noRank:'まだ記録なし',
@@ -651,7 +899,7 @@ const TEXT = {
     tut_move:'指で左右に動かして、はなすと落ちるよ', tut_merge:'同じ色の部品どうしをくっつけると組み上がる', tut_car:'部品が全部そろうと車が1台できる！',
     tut_bad:'×の付いた部品は端の不適合品箱へ', tut_scrap:'良い部品を捨てるとお金が減るよ', tut_mechanic:'整備士は不良品にぶつかると直してくれる',
     tut_wait:'相手がまだ箱にないよ。先に置いておこう', tut_lines:'上の丸＝ボディ、下の丸＝シャシーのライン', tut_marriage:'灰色どうしをくっつけるとマリッジ！', tut_claim:'×の部品が入ったまま出すとクレーム', howConfirm:'今のゲームを終えて、説明つきで始めますか？', yes:'はい', back:'もどる', introShort:'スライドして離すと落ちる。同じ色をくっつけて車を作ろう！',
-    tut_skip:'説明をとばす', howToPlay:'遊び方', tut_merge_ok:'いいね！', tut_bad_ok:'OK！不良品はただで捨てられるよ',
+    tut_skip:'説明をとばす', onb_bin:'×→🗑️', onb_ok:'OK！', loading:'読み込み中…', bestLine:s=>`ベスト ${s}`, howToPlay:'遊び方', tut_merge_ok:'いいね！', tut_bad_ok:'OK！不良品はただで捨てられるよ',
     retry_title:'ラインがいっぱい！ つづける？', retry_sub:'上の部品を1段かたづけて、1回だけつづけられるよ',
     retry_ad:'📺 広告を見てつづける', retry_free:'つづける', retry_no:'結果を見る', retry_loading:'広告を読みこみ中…',
     retry_ok:'つづけます！', retry_grace:'つづき！', retry_ad_fail:'広告を出せませんでした。またあとで試してね',
@@ -668,7 +916,7 @@ const TEXT = {
     tierLuxury:'Parts upgraded: luxury (V6, alloy wheels)', tierSport:'Parts upgraded: sport (V8, forged wheels)',
     complaints:'Complaints', goodStreak:'Good streak', complaintTag:'Complaint!',
     titleLine:t=>`Title: ${t}`, topCarLine:c=>`Top car: ${c}`, shipped:'Cars', unitCars:'', time:'Time', none:'—',
-    share:'Share result', copied:'Copied!', pause:'Paused', resume:'Resume', soundOn:'🔊 Sound on', soundOff:'🔇 Sound off',
+    share:'Share result', copied:'Copied!', pause:'Paused', resume:'Resume', soundOn:'🔊 Sound on', soundOff:'🔇 Sound off', settings:'Settings', setSfx:'Sound effects', setBgm:'Music', setMotion:'Reduce motion', on:'On', off:'Off', credits:'Credits', back2:'Back',
     partNames:{ wheel:'Wheel', tire:'Tire', frame:'Subframe', suspension:'Suspension', engine:'Engine', panel:'Door Panel', glass:'Door Glass', hinge:'Hinge', tire_wheel:'Wheel Set', suspension_frame:'Suspension Set', engine_chassis:'Engine Unit', engine_body:'Body w/ Engine', rolling_chassis:'Rolling Chassis', body:'Painted Body', body_car:'Outfitted Body', screw:'Door', door_window:'Door Kit', mechanic:'Mechanic', car:'Finished Car' },
     defectTag:' (Defect)',
     holdHint:{ panel:'+ another purple = Door Kit', glass:'+ another purple = Door Kit', hinge:'+ another purple = Door Kit', door_window:'+ 1 more purple = Door' },
@@ -681,15 +929,15 @@ const TEXT = {
     newPart:{ wheel:'New part! Wheel + Tire = Wheel Set', tire:'New part! Tire + Wheel = Wheel Set', frame:'New part! Subframe + Suspension = Suspension Set',
       suspension:'New part! Suspension + Subframe = Suspension Set', engine:'New part! Engine + Suspension Set = Engine Unit', body:'New part! Body + Door = Outfitted Body. Marriage with chassis!',
       purple:'New part! 3 purples make a Door' },
-    marriage:'Marriage!', mergeSame:'Merged into one',
+    marriage:'Final assembly!', mergeSame:'Merged into one', step_drop:'Drop', step_match:'Match', step_ship:'Ship!', pathL:'Build path', carL:'Building',
     floorReset:'Bonus: the floor is reset!', floorRestored:'Floor restored!', hint_purple:'3 purples make a Door',
     roundStart:n=>`Round ${n} start!`, roundSub:'Back to the Kei truck. The reject bins are moving!', roundBonus:m=>`Sales ×${m}`, binMoving:'Reject bins on the move!', roundsReached:n=>`Reached: Round ${n}`,
     clear:'Round 3 cleared!', settle:'Settlement', unitsShipped:'Shipped', unitsGood:'Good', unitsBad:'Bad', profit:'Profit', margin:'Margin', totalScore:'Score', rankLabel:'Rank', personalRank:'Personal ranking', noRank:'No records yet',
     binName:'Reject bin', noMatch:'No match yet ⌛', noMatchTag:' (no match yet)', introReplay:'Watch assembly',
     tut_move:'Slide left or right, then let go to drop', tut_merge:'Match same-color parts to build them up', tut_car:'All parts in place makes a car!',
     tut_bad:'Drag parts with × to the reject bin at either edge', tut_scrap:'Scrapping good parts costs you money', tut_mechanic:'The mechanic fixes a bad part it touches',
-    tut_wait:'No match yet. Drop it, its pair will come', tut_lines:'Top row = body line, bottom = chassis', tut_marriage:'Join the two gray parts: Marriage!', tut_claim:'Ship a car with a × part: complaint!', howConfirm:'End this game and start with the tutorial?', yes:'Yes', back:'Back', introShort:'Slide, release to drop. Match colors to build a car!',
-    tut_skip:'Skip tutorial', howToPlay:'How to play', tut_merge_ok:'Nice!', tut_bad_ok:'Good! Defects are free to scrap',
+    tut_wait:'No match yet. Drop it, its pair will come', tut_lines:'Top row = body line, bottom = chassis', tut_marriage:'Join the two gray parts: Final assembly!', tut_claim:'Ship a car with a × part: complaint!', howConfirm:'End this game and start with the tutorial?', yes:'Yes', back:'Back', introShort:'Slide, release to drop. Match colors to build a car!',
+    tut_skip:'Skip tutorial', onb_bin:'×→🗑️', onb_ok:'OK!', loading:'Loading…', bestLine:s=>`Best ${s}`, howToPlay:'How to play', tut_merge_ok:'Nice!', tut_bad_ok:'Good! Defects are free to scrap',
     retry_title:'The line is full! Continue?', retry_sub:'Clear one row of parts and keep going (once per game)',
     retry_ad:'📺 Watch an ad to continue', retry_free:'Continue', retry_no:'See results', retry_loading:'Loading ad…',
     retry_ok:'Let\'s keep going!', retry_grace:'Back to work!', retry_ad_fail:'Couldn\'t show an ad. Please try again later',
@@ -700,15 +948,67 @@ let lang = 'ja';
 const L = () => TEXT[lang];
 
 // ===== 画面 =====
-const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const cv = document.getElementById('c'), mainCtx = cv.getContext('2d');
+let ctx = mainCtx;   // v0.9.6：PCの板の「次」の部品を小さいキャンバスに描くため、一時的に差し替えられるように let
 let cssScale = 1, devPx = 1;
+// v0.9.6：文字の最低サイズ。キャンバスに描く文字は、画面での大きさ（CSS px）が minTextCssPx 未満にならないように大きくする
+const minTextLogical = () => (CONFIG.minTextCssPx || 12) / (cssScale || 1);
+const FONT_RX = /(\d+(?:\.\d+)?)px/;
+const EMOJI_FONT_RX = /px\s*["']?(Apple Color Emoji|Segoe UI Emoji|Noto Color Emoji)/;   // 絵文字の「絵」だけの指定（最低サイズの対象外）。予備として並びの後ろにあるのは対象
+const CANVAS_FONT_STACK = "MPR1c, 'Hiragino Maru Gothic ProN', 'Arial Rounded MT Bold', system-ui, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif";
+(function(){
+  const P = CanvasRenderingContext2D.prototype, d = Object.getOwnPropertyDescriptor(P, 'font'); if (!d || !d.set) return;
+  // v0.9.7 A4：キャンバスの文字も MPR1c（太さ800）。sans-serif だけの指定を、うしろに予備フォント（絵文字・↻⌛⚠用）をつけた並びに置きかえる
+  const fam = v => /MPR1c/.test(v) ? v : v.replace(/\b(bold|normal|[1-9]00)\s+/, '').replace(/(\d+(?:\.\d+)?px)\s+sans-serif\s*$/, '800 $1 ' + CANVAS_FONT_STACK);
+  const fix = v => { if (EMOJI_FONT_RX.test(v)) return v; v = fam(v); const m = FONT_RX.exec(v); if (!m) return v; const mn = minTextLogical(); return +m[1] >= mn ? v : v.replace(m[0], (Math.ceil(mn*10)/10) + 'px'); };
+  Object.defineProperty(mainCtx, 'font', { configurable:true, get(){ return d.get.call(this); }, set(v){ d.set.call(this, fix(String(v))); } });
+  // 拡大縮小（ctx.scale）の中で描く文字も、画面での大きさで下限を守る
+  for (const fn of ['fillText', 'strokeText']){
+    const orig = P[fn];
+    mainCtx[fn] = function(text, x, y, maxW){
+      const f = d.get.call(this); if (EMOJI_FONT_RX.test(f)) return maxW === undefined ? orig.call(this, text, x, y) : orig.call(this, text, x, y, maxW);
+      const m = FONT_RX.exec(f), t = this.getTransform(), sc = Math.hypot(t.a, t.b) / (devPx || 1);
+      if (m && sc > 0 && +m[1]*sc < (CONFIG.minTextCssPx||12) - 0.05){ d.set.call(this, f.replace(m[0], (Math.ceil((CONFIG.minTextCssPx||12)/sc*10)/10) + 'px')); const r = maxW === undefined ? orig.call(this, text, x, y) : orig.call(this, text, x, y, maxW); d.set.call(this, f); return r; }
+      return maxW === undefined ? orig.call(this, text, x, y) : orig.call(this, text, x, y, maxW);
+    };
+  }
+})();
+// v0.9.6：横長の画面（PC・タブレット横）は左右に板を出し、キャンバスは y=pcViewTop〜pcViewBottom だけ（大きく映す）
+let pcLayout = false, viewTop = 0, viewH = CONFIG.H;
+// v0.9.7 C4 決定：レイアウト（スマホ縦／PC横の板）は「画面の形と広さ」で決める（device.type では決めない）。
+//   CrazyGames の確認サイズには 800×450 (mobile) や 1080×607 (tablet) の横長もあり、そこでも板つきのほうが大きく読みやすいため。
+//   device.type（SDK の SDKS.device.type）は「操作の説明」だけに使う：'desktop' ならキーボード／マウスの説明、'mobile'/'tablet' ならタッチの説明。
+//   SDK がないとき（CrazyGames 以外）は (pointer: coarse)＝指だけの端末ならタッチ、それ以外はキーボードの説明。
+function isDesktopInput(){
+  const t = SDKS && SDKS.device;   // SDK の user.systemInfo.device.type（'desktop'|'tablet'|'mobile'）
+  if (t) return t === 'desktop';
+  try{ return !matchMedia('(pointer: coarse)').matches; }catch(e){ return true; }   // 指だけの端末（coarse）以外はキーボードの説明
+}
+function wantPcLayout(iw, ih){
+  if (iw / ih < CONFIG.pcLayoutAspect) return false;
+  const vh = CONFIG.pcViewBottom - CONFIG.pcViewTop, s = ih / vh;
+  return (iw - CONFIG.W * s) / 2 >= CONFIG.pcSideMinPx + 24 || (iw - 2*(CONFIG.pcSideMinPx + 24)) / CONFIG.W >= 0.5;
+}
 function resize(){
-  const s = Math.min(window.innerWidth/CONFIG.W, window.innerHeight/CONFIG.H);
-  const dpr = window.devicePixelRatio||1;
+  const wr = document.getElementById('wrap'), wcs = wr ? getComputedStyle(wr) : null, pad = k => wcs ? (parseFloat(wcs[k]) || 0) : 0;
+  const iw = window.innerWidth - pad('paddingLeft') - pad('paddingRight'), ih0 = window.innerHeight - pad('paddingTop') - pad('paddingBottom'), dpr = window.devicePixelRatio||1;
+  pcLayout = wantPcLayout(iw, ih0);
+  document.body.classList.toggle('pc', pcLayout);
+  const ih = pcLayout ? ih0 - 2*(CONFIG.pcFramePx||0) : ih0;   // C4：列のわくの分だけキャンバスを小さく
+  viewTop = pcLayout ? CONFIG.pcViewTop : 0; viewH = pcLayout ? CONFIG.pcViewBottom - CONFIG.pcViewTop : CONFIG.H;
+  let s = Math.min(iw/CONFIG.W, ih/viewH);
+  if (pcLayout) s = Math.min(s, (iw - 2*(CONFIG.pcSideMinPx + 24 + (CONFIG.pcFramePx||0))) / CONFIG.W);
   cssScale = s; devPx = dpr;
-  cv.style.width = CONFIG.W*s+'px'; cv.style.height = CONFIG.H*s+'px';
-  cv.width = Math.round(CONFIG.W*s*dpr); cv.height = Math.round(CONFIG.H*s*dpr);
-  ctx.setTransform(s*dpr,0,0,s*dpr,0,0);
+  cv.style.width = CONFIG.W*s+'px'; cv.style.height = viewH*s+'px';
+  cv.width = Math.round(CONFIG.W*s*dpr); cv.height = Math.round(viewH*s*dpr);
+  mainCtx.setTransform(s*dpr,0,0,s*dpr,0,-viewTop*s*dpr);
+  const pl = document.getElementById('pcL'), pr = document.getElementById('pcR');
+  if (pl && pr){
+    pl.classList.toggle('hidden', !pcLayout); pr.classList.toggle('hidden', !pcLayout);
+    const pw = Math.max(CONFIG.pcSideMinPx, Math.min(CONFIG.pcPanelMaxPx||340, iw*0.26, (iw - CONFIG.W*s)/2 - 24 - (CONFIG.pcFramePx||0))) + 'px';
+    pl.style.width = pr.style.width = pw;
+  }
+  try{ updatePanels(true); }catch(e){}
 }
 window.addEventListener('resize', resize); resize();
 const flowImg = () => { const hi = CONFIG.flowW*cssScale*devPx >= CONFIG.flowHiResMinPx;
@@ -751,24 +1051,30 @@ function newState(){
 // 見た説明は1つずつ覚える（qr_tutorial_seen = 見たキーの一覧）。まだ見ていない説明は次のゲームでも出る
 // 前の版の qr_tutorial_done が true なら、ぜんぶ見たことにする
 const TUT_STEPS = ['tut_move','tut_merge','tut_wait','tut_lines','tut_bad','tut_marriage','tut_car','tut_claim','tut_scrap','tut_mechanic'];
-const TUT_EXTRA = ['tut_scrap','tut_mechanic'];   // v0.9.3：軽トラで完了したあとも初回に出す「おまけ」
+const TUT_EXTRA = ['tut_scrap','tut_mechanic'];
+// v0.9.8 C2：絵の説明は3つだけ。保存は qr_onboard_v1 = {"drag":true,"merge":true,"bin":true}（前の qr_tutorial_seen / qr_tutorial_done も読む・書く）
+const TUT_ONB = ['tut_move','tut_merge','tut_bad'];
+const ONB_KEY = { tut_move:'drag', tut_merge:'merge', tut_bad:'bin' };
+const onbSteps = () => CONFIG.onboardPictures ? TUT_ONB : TUT_STEPS;   // v0.9.3：軽トラで完了したあとも初回に出す「おまけ」
 function tutLoadSeen(){
   const o = {}; if (Store.get('tutorial_done', false) === true){ TUT_STEPS.forEach(k=>o[k]=true); return o; }
   const a = Store.get('tutorial_seen', []); if (Array.isArray(a)) a.forEach(k=>{ if (TUT_STEPS.includes(k)) o[k]=true; });
+  const ob = Store.get('onboard_v1', null); if (ob && typeof ob === 'object') TUT_ONB.forEach(k => { if (ob[ONB_KEY[k]]) o[k] = true; });
   return o;
 }
 let tutSeenStore = tutLoadSeen(), tutForceNext = false;
-const tutAllSeen = () => TUT_STEPS.every(k=>tutSeenStore[k]);
+const tutAllSeen = () => onbSteps().every(k=>tutSeenStore[k]);
 let tutDone = Store.get('tutorial_done', false) === true || tutAllSeen();
 function tutSaveSeen(key){   // 1つの説明を「見た」と保存する
   if (!TUT_STEPS.includes(key) || tutSeenStore[key]) return;
   tutSeenStore[key] = true; Store.set('tutorial_seen', TUT_STEPS.filter(k=>tutSeenStore[k]));
+  if (ONB_KEY[key]){ const ob = Object.assign({}, Store.get('onboard_v1', null) || {}); TUT_ONB.forEach(k => ob[ONB_KEY[k]] = !!tutSeenStore[k]); Store.set('onboard_v1', ob); }
   if (tutAllSeen() && !tutDone){ tutDone = true; Store.set('tutorial_done', true); }
-  if (key === 'tut_claim' && CONFIG.tutDoneOnFirstCar){ if (!tutDone){ tutDone = true; Store.set('tutorial_done', true); } if (state && state.tut) state.tut.extraOnly = true; }   // v0.9.3：軽トラ出庫（tut_car→tut_claim）で完了
+  if (key === 'tut_claim' && CONFIG.tutDoneOnFirstCar && !CONFIG.onboardPictures){ if (!tutDone){ tutDone = true; Store.set('tutorial_done', true); } if (state && state.tut) state.tut.extraOnly = true; }   // v0.9.3：軽トラ出庫（tut_car→tut_claim）で完了
 }
-function tutSaveAll(){ TUT_STEPS.forEach(tutSaveSeen); }   // 「説明をとばす」：ぜんぶ見たことにする
+function tutSaveAll(){ onbSteps().forEach(tutSaveSeen); if (!tutDone){ tutDone = true; Store.set('tutorial_done', true); } }   // 「説明をとばす」：ぜんぶ見たことにする
 const tutWanted = () => CONFIG.tutorialMode === 'always' || (CONFIG.tutorialMode !== 'off' && (!tutDone || tutForceNext));
-const tutExtraWanted = () => CONFIG.tutorialMode !== 'off' && tutDone && TUT_EXTRA.some(k=>!tutSeenStore[k]);
+const tutExtraWanted = () => !CONFIG.onboardPictures && CONFIG.tutorialMode !== 'off' && tutDone && TUT_EXTRA.some(k=>!tutSeenStore[k]);
 // replay（遊び方・always）は全部出す。ふつうはまだ見ていない説明だけ出す
 function tutNew(on, replay, extraOnly){
   const prev = on && !replay ? Object.assign({}, tutSeenStore) : {};
@@ -777,23 +1083,29 @@ function tutNew(on, replay, extraOnly){
 function tutMark(t, key){ t.seen[key] = true; t.log.push({ key, t: +state.elapsed.toFixed(2) }); }
 function tutFlash(key, sec){ const t = state.tut; if (!t.on) return; t.queue.push({ key, t:0, dur:sec }); }
 function tutStep(key, sec){   // 3・5・6：最初の1回だけ短く出す
-  const t = state && state.tut; if (!t || !t.on || t.seen[key]) return; if (t.extraOnly && !TUT_EXTRA.includes(key)) return; tutMark(t, key); tutFlash(key, sec);
+  const t = state && state.tut; if (!t || !t.on || t.seen[key]) return; if (CONFIG.onboardPictures && !TUT_ONB.includes(key)) return; if (t.extraOnly && !TUT_EXTRA.includes(key)) return; tutMark(t, key); tutFlash(key, sec);
 }
-function tutSkip(){ const t = state.tut; if (!t.on) return; t.on = false; t.bad = null; t.cur = null; t.queue = []; tutSaveAll(); }
+function onbSaveShip(){ state.onbShipWanted = false; const ob = Object.assign({}, Store.get('onboard_v1', null) || {}); ob.ship = true; Store.set('onboard_v1', ob); }
+function tutSkip(){ if (state.onbShip && state.onbShip.t < CONFIG.onbShipSec){ state.onbShip.t = CONFIG.onbShipSec; onbSaveShip(); } const t = state.tut; if (!t.on) return; t.on = false; t.bad = null; t.cur = null; t.queue = []; tutSaveAll(); }
 // 投下までの時間を止めるか（1 のあいだ・4 のあいだ。どちらも上限あり）
 const tutFreeze = () => { const t = state.tut; return !!(t.on && ((t.cur === 'tut_move' && t.curT < CONFIG.tutMoveMaxSec) || (t.bad && t.bad.t < CONFIG.tutBadMaxSec))); };
 const tutSlow = () => { const t = state.tut; return t.on && t.bad && t.bad.t < CONFIG.tutBadMaxSec ? CONFIG.tutSlowScale : 1; };
+// v0.9.8 C2：自動で始まったゲームは、最初の操作まで最初の部品の時間を止める（上限 firstWaitMaxSec）
+const hintFreeze = () => CONFIG.onboardPictures ? onbActive() : tutFreeze();   // v0.9.8 監査3：落とすまでの時間は「説明の絵が出ているあいだだけ」止める
+const firstWaitFreeze = () => false &&  !!(state.firstWait && !state.firstWait.done && state.firstWait.t < CONFIG.firstWaitMaxSec);
+function firstInput(){ if (state && state.firstWait && !state.firstWait.done){ state.firstWait.done = true; state.firstWait.at = state.firstWait.t; } }
 function tutUpdate(rdt){
+  if (state.onbShip && state.onbShip.t < CONFIG.onbShipSec && state.running){ state.onbShip.t += rdt; if (state.onbShip.t >= CONFIG.onbShipSec) onbSaveShip(); }
   const t = state.tut; if (!t.on || !state.running) return;
   if (t.extraOnly){ const held0 = state.canDrop && state.current; if (held0 && state.current.k === K.mechanic) tutStep('tut_mechanic', CONFIG.tutMsgSec);
     if (t.queue.length){ tutSaveSeen(t.queue[0].key); t.queue[0].t += rdt; if (t.queue[0].t >= t.queue[0].dur) t.queue.shift(); } return; }
   if (CONFIG.tutSampleDefect && !t.sampleDone && !t.seen.tut_bad && t.drops >= CONFIG.tutDefectAt - 2 && state.next && K[CONFIG.tutDefectKind] != null){   // v0.9.3 手順5：見本の不良品を「次」に1つだけ
     t.sampleDone = true; state.next = piece(K[CONFIG.tutDefectKind], true); }
-  if (!t.seen.tut_move){ tutMark(t, 'tut_move'); t.cur = 'tut_move'; t.curT = 0; tutSaveSeen('tut_move'); }
+  if (!t.seen.tut_move){ tutMark(t, 'tut_move'); t.cur = 'tut_move'; t.curT = 0; if (!CONFIG.onboardPictures) tutSaveSeen('tut_move'); }   // v0.9.8：絵の説明1は最初に離したときに「覚えた」
   const held = state.canDrop && state.current;
   // 2：2つ目の部品を持ったら（まだ合体していなければ）
   if (held && t.drops >= 1 && !t.seen.tut_merge && !t.merged){ tutMark(t, 'tut_merge'); t.cur = 'tut_merge'; t.curT = 0; }
-  if (t.cur === 'tut_merge' && t.curT >= CONFIG.tutMergeMaxSec){ t.cur = null; tutSaveSeen('tut_merge'); }   // 2：時間切れでも見たことにする
+  if (!CONFIG.onboardPictures && t.cur === 'tut_merge' && t.curT >= CONFIG.tutMergeMaxSec){ t.cur = null; tutSaveSeen('tut_merge'); }   // v0.9.8：絵の説明は合体するまで出す   // 2：時間切れでも見たことにする
   // 4：最初の×の部品を持ったとき
   if (held && state.current.bad && !t.seen.tut_bad){ tutMark(t, 'tut_bad'); t.bad = { p: state.current, t:0 }; tutSaveSeen('tut_bad'); }
   // 6：最初の整備士を持ったとき
@@ -806,13 +1118,17 @@ function tutUpdate(rdt){
 function tutOnDrop(p, auto){
   const t = state.tut; if (!t.on) return;
   t.drops++;
-  if (t.cur === 'tut_move') t.cur = null;
-  if (t.bad && t.bad.p === p){ t.bad = null; if (!auto && state.bin !== 0) tutFlash('tut_bad_ok', CONFIG.tutBadOkSec); }
+  if (t.cur === 'tut_move'){ t.cur = null; tutSaveSeen('tut_move'); }
+  if (t.bad && t.bad.p === p){ t.bad = null;
+    if (!auto && state.bin !== 0){ if (CONFIG.onboardPictures) state.popups.push({ text:L().onb_ok, color:'#ffd84a', x: binX(state.bin) - state.bin*60, y: binY(state.bin) + 40, t:0, size:22, dur:CONFIG.onbOkSec, fixY: binY(state.bin) + 44 }); else tutFlash('tut_bad_ok', CONFIG.tutBadOkSec); } }
 }
-function tutOnMerge(){
+function tutOnMerge(x, y){
+  if (state && state.firstMergeAt == null){ state.firstMergeAt = performance.now(); state.firstMergeElapsed = state.elapsed; }   // v0.9.8：最初の合体の時刻（テスト・計測用）
   const t = state.tut; if (!t.on || t.merged) return;
   t.merged = true; tutSaveSeen('tut_merge');   // 2：合体できたら見たことにする
-  if (t.cur === 'tut_merge'){ t.cur = null; tutFlash('tut_merge_ok', CONFIG.tutMergeOkSec); }
+  if (t.cur === 'tut_merge'){ t.cur = null;
+    if (CONFIG.onboardPictures){ if (x != null) state.popups.push({ text:L().tut_merge_ok, color:'#ffd84a', x, y, t:0, size:24, dur:CONFIG.onbOkSec }); }
+    else tutFlash('tut_merge_ok', CONFIG.tutMergeOkSec); }
 }
 // いま帯に出す文のキー（なければ null）
 // 前のLv2ヒント（×の部品の説明）を出さないとき：
@@ -835,14 +1151,14 @@ function fitText(text, maxW, fontPx, minPx){
   let px = fontPx; const f = p => `bold ${p}px sans-serif`;
   ctx.font = f(px);
   while (px > minPx && ctx.measureText(text).width > maxW){ px--; ctx.font = f(px); }
-  if (ctx.measureText(text).width <= maxW) return { px, lines:[text] };
+  if (ctx.measureText(text).width <= maxW) return { px: Math.max(px, ctx === mainCtx ? minTextLogical() : 0), lines:[text] };
   px = fontPx; ctx.font = f(px);
   let cut = Math.ceil(text.length/2);
   const sp = text.lastIndexOf(' ', cut), sp2 = text.indexOf(' ', cut), jp = Math.max(text.lastIndexOf('、', cut), text.lastIndexOf('。', cut));
   if (sp > 0 || sp2 > 0) cut = (sp > 0 && (sp2 < 0 || cut - sp <= sp2 - cut)) ? sp : sp2; else if (jp > text.length*0.3) cut = jp + 1;
   const lines = [text.slice(0, cut).trim(), text.slice(cut).trim()];
   while (px > minPx && Math.max(...lines.map(l => ctx.measureText(l).width)) > maxW){ px--; ctx.font = f(px); }
-  return { px, lines };
+  return { px: Math.max(px, ctx === mainCtx ? minTextLogical() : 0), lines };
 }
 function drawFitText(text, cx, cy, maxW, fontPx, minPx){
   const r = fitText(text, maxW, fontPx, minPx), lh = r.px + 4;
@@ -853,15 +1169,73 @@ const tutBandH = key => { if (!key) return CONFIG.hintH; const r = fitText(L()[k
 function tutSkipRect(){
   ctx.font = `bold ${CONFIG.tutSkipFontPx}px sans-serif`;
   const w = Math.ceil(ctx.measureText(L().tut_skip).width) + 18;
-  const y = Math.max(CONFIG.tutSkipY, CONFIG.tutY + tutBandH(state && state.tut && state.tut.on ? tutText() : null) + 4);   // 2行の帯のときは帯の下へ
+  const y = CONFIG.onboardPictures ? CONFIG.tutSkipY : Math.max(CONFIG.tutSkipY, CONFIG.tutY + tutBandH(state && state.tut && state.tut.on ? tutText() : null) + 4);   // 2行の帯のときは帯の下へ
   return { x: CONFIG.tutSkipRight - w, y, w, h: CONFIG.tutSkipH };
 }
+// ===== v0.9.8 C2：絵の説明3つ =====
+// 1 動かす：最初の部品を持っているあいだ、指マーク（hand_drag.webp）が左右に動く。文字なし。最初に離したら消える
+// 2 くっつける：箱に合体の相手があるとき、相手を強く光らせ、手の部品と相手を点線で結ぶ（0.6秒で点滅）。最初の合体で「いいね！」
+// 3 ×は端の箱へ：最初の×の部品を持ったとき、左右の箱の上で矢印が点滅＋箱が跳ねる。文字は「×→🗑️」だけ
+const onbMergeHint = () => { const t = state && state.tut; return !!(t && t.on && state.running && t.cur === 'tut_merge' && !t.bad && state.canDrop && state.current && (state.glowCache.list||[]).length); };
+const onbShipActive = () => !!(state && state.running && state.onbShip && state.onbShip.t < CONFIG.onbShipSec);
+const onbActive = () => { const t = state && state.tut; if (onbShipActive()) return true; return !!(t && t.on && state.running && !t.extraOnly && (t.cur === 'tut_move' || t.bad || onbMergeHint())); };
+const onbBusy = () => { const t = state && state.tut; return !!(t && t.on && !t.extraOnly && state.running && (!t.seen.tut_move || t.cur === 'tut_move' || t.cur === 'tut_merge' || (!t.merged && t.drops >= 1) || t.bad)); };   // 説明1〜3のどれかが出ている／出る直前
+const onbBinBounce = now => { const t = state && state.tut; return (CONFIG.onboardPictures && t && t.on && t.bad) ? Math.abs(Math.sin(now/170)) * 6 : 0; };
+function onbCardStep(){ const t = state.tut; if (onbShipActive()) return 2; if (!t.on || t.bad) return -1; if (t.cur === 'tut_move') return 0; if (onbMergeHint()) return 1; return -1; }
+function drawOnbCard(i){   // 遊び方の絵（横）の i 番目のマスだけを切り出して出す
+  const im = UI.howto[lang==='ja'?'ja':'en'], c = ART_MANIFEST.howtoCell.h; if (!im || !im.ok || i < 0) return;
+  const S = Math.min(CONFIG.onbCardMax, CONFIG.onbCardCss / (cssScale || 1)), sk = tutSkipRect();   // 1マスは画面で 160 CSS px 以上
+  let x = Math.max(BOX.left + 6, Math.min(CONFIG.W/2 - S/2 - CONFIG.onbCardShiftX, sk.x - 8 - S)), y = CONFIG.onbCardY;
+  if (x + S > sk.x - 4 && y < sk.y + sk.h + 6 && y + S > sk.y - 4) y = sk.y + sk.h + 6;   // 「説明をとばす」と重ならない（横に入らなければ下へ）
+  state.onbCardRect = { x, y, w:S, h:S };
+  ctx.save(); ctx.globalAlpha = CONFIG.onbCardAlpha; ctx.drawImage(im, c.dx*i, c.dy*i, c.w, c.h, x, y, S, S); ctx.restore();
+  state.onbCardShown = i;
+}
+function drawOnboard(now){
+  const t = state.tut; state.onbCardShown = -1; if (!state.running) return;
+  if (onbShipActive()) drawOnbCard(2);
+  if (!t.on){ if (onbShipActive()) drawOnbSkip(); return; }
+  const W = CONFIG.W, hd = heldDraw();
+  drawOnbCard(onbCardStep() === 2 ? -1 : onbCardStep());
+  if (t.cur === 'tut_move' && !t.bad && hd){
+    const im = UI.hand, per = CONFIG.onbHandPeriod*1000, ph = (now % per) / per, sw = Math.sin(ph*Math.PI*2), dir = Math.cos(ph*Math.PI*2) >= 0 ? 1 : 0;
+    const sz = CONFIG.onbHandSize, x = Math.max(sz/2, Math.min(W - sz/2, hd.hx + sw*CONFIG.onbHandSwing)), y = HOLD_Y + CONFIG.onbHandDy;
+    if (im && im.ok) ctx.drawImage(im, dir*im.width/2, 0, im.width/2, im.height, x - sz/2, y - sz/2, sz, sz);
+    else drawEmoji('👆', x, y, 22);
+  }
+  if (onbMergeHint() && hd){
+    const ps = state.glowCache.list, b = ps.reduce((m, p) => Math.hypot(p.position.x-hd.hx, p.position.y-hd.hy) < Math.hypot(m.position.x-hd.hx, m.position.y-hd.hy) ? p : m, ps[0]);
+    const on = (now % (CONFIG.onbLinkBlinkSec*1000)) < CONFIG.onbLinkBlinkSec*1000*0.7;   // 0.6秒周期（7割表示）
+    if (on){ ctx.save(); ctx.setLineDash([7,7]); ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.strokeStyle = 'rgba(255,255,255,.95)'; ctx.beginPath(); ctx.moveTo(hd.hx, hd.hy + hd.dr); ctx.lineTo(b.position.x, b.position.y - b.circleRadius); ctx.stroke();
+      ctx.lineWidth = 2.5; ctx.strokeStyle = CONFIG.pal.frame; ctx.stroke(); ctx.restore(); }
+  }
+  if (t.bad){
+    const blink = Math.floor(now/300) % 2 === 0, by = binY(-1) - 34;
+    if (blink){ ctx.save(); ctx.fillStyle = CONFIG.pal.accent; ctx.strokeStyle = CONFIG.pal.ink; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+      [[-1, binX(-1) + 30], [1, binX(1) - 30]].forEach(([d, x]) => {
+        ctx.beginPath(); ctx.moveTo(x + d*14, by); ctx.lineTo(x - d*4, by - 13); ctx.lineTo(x - d*4, by - 5); ctx.lineTo(x - d*22, by - 5);
+        ctx.lineTo(x - d*22, by + 5); ctx.lineTo(x - d*4, by + 5); ctx.lineTo(x - d*4, by + 13); ctx.closePath(); ctx.fill(); ctx.stroke(); });
+      ctx.restore(); }
+    ctx.save(); ctx.font = `bold 22px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const txt = L().onb_bin, tw = ctx.measureText(txt).width + 28, y = CONFIG.onbBinTextY;
+    ctx.fillStyle = CONFIG.pal.inkPlate; rrPath(W/2 - tw/2, y - 20, tw, 40, 20); ctx.fill();
+    ctx.fillStyle = '#FFFFFF'; ctx.fillText(txt, W/2, y + 1); ctx.restore();
+  }
+  if (!onbActive()) return;
+  drawOnbSkip();
+}
+function drawOnbSkip(){
+  const r = tutSkipRect();   // 「説明をとばす」：1〜3のあいだだけ
+  ctx.fillStyle=CONFIG.pal.inkPlate; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(r.x, r.y, r.w, r.h, r.h/2) : ctx.rect(r.x, r.y, r.w, r.h); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font=`bold ${CONFIG.tutSkipFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(L().tut_skip, r.x + r.w/2, r.y + r.h/2 + 0.5);
+}
 function drawTutorial(now){
+  if (CONFIG.onboardPictures) return drawOnboard(now);
   const t = state.tut; if (!t.on || !state.running) return;
   const W = CONFIG.W, key = tutText();
   if (key){
     const y = CONFIG.tutY, h = tutBandH(key);
-    ctx.fillStyle='rgba(0,0,0,.75)'; ctx.fillRect(W/2 - CONFIG.fitMaxW/2 - 5, y, CONFIG.fitMaxW + 10, h);
+    ctx.fillStyle=CONFIG.pal.inkPlate; ctx.fillRect(W/2 - CONFIG.fitMaxW/2 - 5, y, CONFIG.fitMaxW + 10, h);
     ctx.fillStyle='#ffd84a'; ctx.textAlign='center'; ctx.textBaseline='middle'; drawFitText(L()[key], W/2, y+h/2, CONFIG.fitMaxW, CONFIG.hintFontPx, CONFIG.fitMinPx);
     if (key === 'tut_move') drawEmoji('👆', W/2 + Math.sin(now/450)*90, y+h+34, 20);   // 指のマーク（左右に動く）
     if (key === 'tut_bad'){   // 両端のごみ箱を指す矢印
@@ -881,11 +1255,11 @@ function drawTutorial(now){
     ctx.strokeStyle='rgba(255,216,74,.9)'; ctx.lineWidth=2; ctx.strokeRect(3, CONFIG.pathY - 1, W - 6, CONFIG.pathH + 2); }
   if (t.extraOnly) return;   // 完了後（おまけだけ）は「とばす」を出さない
   const r = tutSkipRect();   // 「説明をとばす」
-  ctx.fillStyle='rgba(0,0,0,.6)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(r.x, r.y, r.w, r.h, r.h/2) : ctx.rect(r.x, r.y, r.w, r.h); ctx.fill();
+  ctx.fillStyle=CONFIG.pal.inkPlate; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(r.x, r.y, r.w, r.h, r.h/2) : ctx.rect(r.x, r.y, r.w, r.h); ctx.fill();
   ctx.strokeStyle='rgba(255,255,255,.7)'; ctx.lineWidth=1; ctx.stroke();
   ctx.fillStyle='#fff'; ctx.font=`bold ${CONFIG.tutSkipFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(L().tut_skip, r.x + r.w/2, r.y + r.h/2 + 0.5);
 }
-function hitTutSkip(g){ if (!state.tut.on || state.tut.extraOnly) return false; const r = tutSkipRect(), m = 6; return g.x >= r.x-m && g.x <= r.x+r.w+m && g.y >= r.y-m && g.y <= r.y+r.h+m; }
+function hitTutSkip(g){ if (!onbShipActive() && (!state.tut.on || state.tut.extraOnly)) return false; if (CONFIG.onboardPictures && !onbActive()) return false; const r = tutSkipRect(), m = 6; return g.x >= r.x-m && g.x <= r.x+r.w+m && g.y >= r.y-m && g.y <= r.y+r.h+m; }
 const piece = (k, bad) => ({ k, bad: !!bad });
 const gameBodies = () => world ? Composite.allBodies(world).filter(b => b.k !== undefined) : [];
 const defectsAllowed = () => state.cars >= 1 && state.elapsed >= CONFIG.noDefectSec;
@@ -932,6 +1306,7 @@ function bodyIngredient(){   // DR3：ボディは落ちてくる部品なので
 // v5o：直近のふつうの部品（不良品・整備士をのぞく）を覚える（hingeBoost 'pity' 用）
 function randPiece(lv){
   const pc = randPieceRaw(lv);
+  if (state) (state.pieceSrc = state.pieceSrc || []).push(pc.k);   // v0.9.8：テスト用（どの部品も通常の乱数から出たか）
   if (state && !pc.bad && pc.k !== K.mechanic){ const h = state.normalHist || (state.normalHist = []); h.push(ITEMS[pc.k].id); const n = Math.max(1, (CONFIG.hingeBoost||{}).pityN || 6); while (h.length > n) h.shift(); }
   return pc;
 }
@@ -1034,6 +1409,7 @@ function mechanicChanceNow(round = (state ? state.round||1 : 1)){
   if (off('glow')) CONFIG.partnerGlow = false; else if (q.get('glow') === '1') CONFIG.partnerGlow = true;
   const gu = num('glowUntil'); if (gu != null) CONFIG.partnerGlowUntilRank = Math.floor(gu);
   if (off('path')) CONFIG.pathShow = false; else if (q.get('path') === '1') CONFIG.pathShow = true;
+  if (off('autostart')) CONFIG.autoStart = false;   // v0.9.8：?autostart=0 で前のタイトル画面（確認用）
   if (off('intro')) CONFIG.introBreakShow = 'off'; else if (q.get('intro') === '1') CONFIG.introBreakShow = 'always';
   if (off('retry')) CONFIG.retryEnabled = false; else if (q.get('retry') === '1') CONFIG.retryEnabled = true;
   if (q.get('wdoor') === '1' || q.get('wdoor') === 'on') CONFIG.windowDoor = true; else if (off('wdoor')) CONFIG.windowDoor = false;   // v0.8：流れ図の窓つきドア版
@@ -1125,24 +1501,59 @@ function mergeTierOf(nk, same){
   if (id === 'engine_chassis' || id === 'screw' || id === 'body_car' || id === 'rolling_chassis') return 'mid';
   return 'small';
 }
+// v0.9.9 C5：画面全体の光。0.34秒以内に重なったら1回にまとめる。「動きを減らす」は不透明度0.15まで
+function flashScreen(color, alpha, dur){
+  const now = performance.now()/1000;
+  if (state.flash && now - (state.flashAt||-1e9) < CONFIG.flashMinGap){ state.flash.alpha = Math.max(state.flash.alpha, alpha); state.flashMerged = (state.flashMerged||0) + 1; return; }
+  if (now - (state.flashAt||-1e9) < CONFIG.flashMinGap){ state.flashMerged = (state.flashMerged||0) + 1; return; }
+  state.flash = { color, alpha, t:0, dur }; state.flashAt = now; (state.flashLog = state.flashLog || []).push(+now.toFixed(3));
+}
+const RING_TINT = {};
+function ringImg(color){
+  const im = FX.ring; if (!im || !im.ok) return null; if (!color || color.toUpperCase() === '#FFFFFF') return im;
+  if (RING_TINT[color]) return RING_TINT[color];
+  try{ const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; const g = c.getContext('2d'); g.drawImage(im, 0, 0); g.globalCompositeOperation = 'source-atop'; g.globalAlpha = 0.75; g.fillStyle = color; g.fillRect(0, 0, c.width, c.height); c.ok = true; RING_TINT[color] = c; return c; }catch(e){ return im; }
+}
+function addRing(x, y, r, ring, delay){ state.effects.push({ type:'ring', x, y, r0:r*ring.from, r1:r*ring.to, t:-(delay||0), dur:ring.dur, color:ring.color }); }
+function mergeChainRate(){
+  const now = performance.now()/1000;
+  state.chainN = (now - (state.lastMergeAt||-1e9) <= CONFIG.chainSec) ? Math.min(CONFIG.chainMax, (state.chainN||0) + 1) : 0;
+  state.lastMergeAt = now; return Math.pow(2, state.chainN/12);
+}
 function applyMergeFx(tier, x, y, r){
-  const fx = (CONFIG.mergeFx && CONFIG.mergeFx[tier]) || CONFIG.mergeFx.small;
-  state.shake = Math.max(state.shake, fx.shake||2);
-  if (fx.slowmo > 0) state.slowmo = Math.max(state.slowmo, fx.slowmo);
-  sfx(fx.sfx || 'merge');
-  const n = fx.sparks|0;
+  const fx = (CONFIG.mergeFx && CONFIG.mergeFx[tier]) || CONFIG.mergeFx.small, rm = Settings.reduceMotion, half = rm ? 0.5 : 1;
+  state.shake = Math.max(state.shake, rm ? 0 : (fx.shake||2));
+  if (!rm && fx.slowmo > 0) state.slowmo = Math.max(state.slowmo, fx.slowmo);
+  if (!rm && fx.hitstop > 0) state.hitstop = Math.max(state.hitstop||0, fx.hitstop);
+  const rate = mergeChainRate();
+  sfx(fx.sfx || 'merge', fx.sfx === 'merge' || !fx.sfx ? { rate } : null);
+  (state.fxLog = state.fxLog || []).push({ tier, t:+(performance.now()/1000).toFixed(3), rate:+rate.toFixed(4) }); if (state.fxLog.length > 40) state.fxLog.shift();
+  if (fx.ring){ addRing(x, y, r, fx.ring, 0); if (fx.ring.double && !rm) addRing(x, y, r, Object.assign({}, fx.ring, { color:'#FFFFFF', to: fx.ring.to*0.8 }), 0.08); }
+  const n = Math.round((fx.sparks|0) * half), life = fx.sparkLife || 0.35;
   for (let i=0;i<n;i++){
     const ang = Math.random()*Math.PI*2, sp = 80 + Math.random()*180 + (tier==='big'?120:0);
     addParticle({ frames:FX.sparkle, frameDur:CONFIG.sparkleFrame, x:x+(Math.random()-.5)*r*0.4, y:y+(Math.random()-.5)*r*0.4,
-      vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp - 40, g:200, s0:r*0.35, s1:r*0.15, life:0.35+Math.random()*0.25, fb:'sparkle', fade:true });
+      vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp - 40, g:200, s0:r*0.35, s1:r*0.15, life:life*(0.8+Math.random()*0.4), fb:'sparkle', fade:true, juice:1 });
   }
+  for (let i=0;i<Math.round((fx.stars|0)*half);i++){ const ang = -Math.PI/2 + (i-1)*0.7, sp = 160;
+    addParticle({ art:FX.star, x, y, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp, g:260, s0:r*0.5, s1:r*0.35, life:0.5, vr:(Math.random()-.5)*6, fade:true, juice:1 }); }
+  if (!rm) addConfetti(x, y, fx.confetti|0);
+  if (fx.flash) flashScreen(fx.flash.color, fx.flash.alpha, fx.flash.dur);
+  if (fx.cutin) state.cutin = { t:0 };
+  if (fx.bgmDuck) bgmDuck(fx.bgmDuck.db, fx.bgmDuck.sec);
+}
+function addConfetti(x, y, n){
+  for (let i=0;i<n;i++){ const ang = -Math.PI/2 + (Math.random()-.5)*2.2, sp = 220 + Math.random()*220;
+    addParticle({ art:(FX.confetti||[])[i % 4], x, y, vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp, g:420, s0:14, s1:12, life:0.8 + Math.random()*0.3, rot:Math.random()*6, vr:(Math.random()-.5)*12, fade:true, juice:1, confetti:1 }); }
 }
 
 const merging = new Set();
+let landReq = false;
 function onCollide(ev){
   if (!state.running) return;
   for (const p of ev.pairs){
     const a=p.bodyA, b=p.bodyB;
+    for (const bd of [a, b]) if (bd.dropped && !bd.landSnd){ bd.landSnd = true; landReq = true; }   // v0.9.9：落とした部品が最初に何かに当たった瞬間
     if (a.k===undefined || b.k===undefined) continue;
     if (merging.has(a.id)||merging.has(b.id)) continue;
     if (a.mech || b.mech){  // 整備士：不良品に触れたら直す（整備士同士・良品とは何もしない）
@@ -1161,13 +1572,11 @@ function onCollide(ev){
       merging.delete(a.id); merging.delete(b.id);
       if (state !== s0 || !state.running) return;
       state.effects.push({x,y,r:R(nk),t:0});
-      tutOnMerge();
+      tutOnMerge(x, y - R(nk) - 14);
       const tier = mergeTierOf(nk, same);
       applyMergeFx(tier, x, y, R(nk));
       if (nk === K.car){   // v0.7：マリッジ＝完成 → 演出のあと出荷
         pathMark('marriage'); pathMark('car');
-        state.popups.push({ text:L().marriage, color:'#ffd84a', x, y:y-R(nk)-10, t:0, size:24 });
-        state.flash = { color:'255,216,74', t:0, dur:0.45 };
         shipCar(x, y, bad); glowRefresh(true); return;
       }
       const nb = makePart(nk, x, y, {bad}); noticeMade(nk, nb); pathMark(ITEMS[nk].id); glowRefresh(true);
@@ -1222,10 +1631,12 @@ function drawPartnerGlow(now){
   if (!ps.length) return;
   const [a0, a1] = CONFIG.partnerGlowAlpha;
   const ph = 0.5 + 0.5*Math.sin(now*2*Math.PI/CONFIG.partnerGlowPeriodMs), c = CONFIG.partnerGlowColor;
-  const a = a0 + (a1 - a0)*ph, w = CONFIG.partnerGlowWidth;
+  const strong = onbMergeHint(), a = strong ? 0.6 + 0.4*ph : a0 + (a1 - a0)*ph, w = CONFIG.partnerGlowWidth * (strong ? 1.3 : 1);   // v0.9.8：説明2のあいだは強く
   ctx.save(); ctx.beginPath();   // 影なし・太い輪（v0.8）
   for (const b of ps){ const r = b.circleRadius + w*0.55 + ph*1.5; ctx.moveTo(b.position.x + r, b.position.y); ctx.arc(b.position.x, b.position.y, r, 0, Math.PI*2); }
   ctx.lineWidth = w; ctx.strokeStyle = `rgba(${c},${a.toFixed(3)})`; ctx.stroke();
+  ctx.beginPath(); for (const b of ps){ const r = b.circleRadius + w*1.05 + ph*1.5; ctx.moveTo(b.position.x + r, b.position.y); ctx.arc(b.position.x, b.position.y, r, 0, Math.PI*2); }
+  ctx.lineWidth = 2; ctx.strokeStyle = `rgba(224,161,0,${Math.min(1, a + 0.2).toFixed(3)})`; ctx.stroke();   // v0.9.7 の明るい作業台でも見えるふち
   ctx.restore();
 }
 function drawNoMatch(heldRect){
@@ -1238,7 +1649,7 @@ function drawNoMatch(heldRect){
   let x = CONFIG.W/2 - w/2, y = CONFIG.pathY + CONFIG.pathH + 2;
   if (heldRect){ x = Math.max(4, Math.min(CONFIG.W-4-w, heldRect.x + heldRect.w/2 - w/2)); y = heldRect.y + heldRect.h + 3; }
   ctx.globalAlpha = Math.min(1, (CONFIG.noMatchSec - state.noMatch.t)/0.25);
-  ctx.fillStyle = 'rgba(0,0,0,.62)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x,y,w,h,h/2) : ctx.rect(x,y,w,h); ctx.fill();
+  ctx.fillStyle = CONFIG.pal.inkPlate; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x,y,w,h,h/2) : ctx.rect(x,y,w,h); ctx.fill();
   ctx.fillStyle = '#ffe08a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x+w/2, y+h/2+0.5, w-8);
   ctx.restore();
 }
@@ -1267,7 +1678,8 @@ function buildGrayBadges(){
     }catch(e){}
   }
 }
-function pathMark(id){ if (state && state.pathMade && id){ if (!state.pathAny){ state.pathAny = true; tutStep('tut_lines', CONFIG.tutLinesSec); } state.pathMade[id] = true; } }
+function pathMark(id){ if (state && state.onbShipWanted && !state.onbShip && (id === 'rolling_chassis' || id === 'body_car')){ state.onbShip = { t:0 }; }   // v0.9.8：はじめて大きい部品ができたら「③出荷！」の絵
+  if (state && state.pathMade && id){ if (!state.pathAny){ state.pathAny = true; tutStep('tut_lines', CONFIG.tutLinesSec); } state.pathMade[id] = true; } }
 function pathReset(){ if (state) state.pathMade = {}; }
 function pathCurrentIds(){
   const m = state.pathMade || {}, cur = [];
@@ -1281,7 +1693,9 @@ function pathDotPos(){
   // v0.9（A2）：横長2段。上段＝ボディ側3つ（右寄せ）、下段＝シャシー側4つ、右端で合体→完成車
   const y0 = CONFIG.pathY, h = CONFIG.pathH, mid = y0 + h/2, g = CONFIG.pathRowGap;
   const topY = mid - g/2 - 1, botY = mid + g/2 - 1;   // 94 / 118（下段の光る輪が名前の帯 y134 にかからないよう1px上げる）
-  const xs = [66, 140, 214, 288], marX = 322, carX = 366;
+  let x0 = 66;   // v0.9.6：段の名前（ボディ／シャシー）が文字の最低サイズで大きくなったら、点を右へずらして名前を画面に収める
+  try{ if (ctx === mainCtx){ ctx.save(); ctx.font = 'bold 10px sans-serif'; const lw = Math.max(ctx.measureText(lang==='ja'?'シャシー':'Chassis').width, ctx.measureText(lang==='ja'?'ボディ':'Body').width - 74); ctx.restore(); x0 = Math.max(66, Math.ceil(lw) + 4 + 16); } }catch(e){}
+  const st = (288 - x0)/3, xs = [x0, x0+st, x0+2*st, 288], marX = 322, carX = 366;
   const dots = [];
   PATH_LEFT.forEach((id,i)=> dots.push({ id, x:xs[i+1], y:topY, row:0 }));
   PATH_RIGHT.forEach((id,i)=> dots.push({ id, x:xs[i], y:botY, row:1 }));
@@ -1291,18 +1705,19 @@ function pathDotPos(){
 }
 function drawPath(now){
   if (!CONFIG.pathShow || !state) return;
+  if (pcLayout && CONFIG.pcPathInPanel) return;
   const dots = pathDotPos(), cur = new Set(pathCurrentIds()), made = state.pathMade || {};
   const pulse = 0.5 + 0.5*Math.sin((now||0)*2*Math.PI/CONFIG.pathPulseMs);
   // 線：左右 → マリッジ → 車
   const mar = dots.find(d=>d.id==='marriage'), car = dots.find(d=>d.id==='car');
   ctx.save();
-  ctx.strokeStyle = 'rgba(255,255,255,.22)'; ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(43,47,74,.25)'; ctx.lineWidth = 2;
   for (const row of [0,1]){
     const rd = dots.filter(d=>d.row===row); if (!rd.length || !mar) continue;
     const last = rd[rd.length-1];
     ctx.beginPath(); ctx.moveTo(rd[0].x, rd[0].y); ctx.lineTo(last.x, last.y); ctx.lineTo(mar.x, mar.y); ctx.stroke();
   }
-  ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = CONFIG.pal.ink; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
   { const t0 = dots.find(d=>d.row===0), t1 = dots.find(d=>d.row===1);
     if (t0) ctx.fillText(lang==='ja'?'ボディ':'Body', t0.x - 16, t0.y);
     if (t1) ctx.fillText(lang==='ja'?'シャシー':'Chassis', t1.x - 16, t1.y); }
@@ -1312,10 +1727,11 @@ function drawPath(now){
     let im = null;
     if (d.id === 'marriage'){
       // 文字の丸
-      ctx.beginPath(); ctx.arc(d.x, d.y, px/2, 0, Math.PI*2);
-      ctx.fillStyle = made.marriage ? 'rgba(255,216,74,.85)' : 'rgba(120,120,120,.55)'; ctx.fill();
+      ctx.font = `bold ${Math.max(9, px*0.28)}px sans-serif`; const mrR = Math.max(px/2, ctx.measureText(lang==='ja'?'合体':'Join').width/2 + 3);   // v0.9.6：文字が大きくなっても丸からはみ出さない
+      ctx.beginPath(); ctx.arc(d.x, d.y, mrR, 0, Math.PI*2);
+      ctx.fillStyle = made.marriage ? CONFIG.pal.accent : '#D5D8E4'; ctx.fill();
       if (isCur){ ctx.strokeStyle = `rgba(255,236,120,${0.35+0.45*pulse})`; ctx.lineWidth = 3; ctx.stroke(); }
-      ctx.fillStyle = '#1b2330'; ctx.font = `bold ${Math.max(9, px*0.28)}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillStyle = CONFIG.pal.ink; ctx.font = `bold ${Math.max(9, px*0.28)}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(lang==='ja'?'合体':'Join', d.x, d.y);
     } else {
       const colored = !!made[d.id];
@@ -1345,8 +1761,10 @@ function startIntro(replay){
   if (!replay) Store.set('intro_seen', true);
   return true;
 }
+let replaySkipAt = -1e9;   // v0.9.9：とばした指の続き（click）がメニューのボタンを押してしまわないように
 function skipIntro(){
-  if (state.intro && !state.intro.done){ state.intro.done = true; state.intro.t = state.intro.dur; }
+  if (state.intro && !state.intro.done){ state.intro.done = true; state.intro.t = state.intro.dur;
+    if (state.intro.replay && state.paused){ renderPause(); pauseOv.classList.remove('hidden'); replaySkipAt = performance.now(); } }   // v0.9.9：一時停止の「組み立てを見る」をとばしたら、すぐ一時停止メニューに戻す（v0.98 QA 中）
 }
 const introActive = () => !!(state && state.intro && !state.intro.done && state.intro.t < state.intro.dur);
 function introTick(rdt){
@@ -1459,7 +1877,7 @@ function drawHoldLabel(){
   const hd = heldDraw();
   const parts = holdLabelParts(p); if (!parts || !parts.name) return;
   const r = holdLabelRect(parts, hd.hx, hd.hy, hd.dr, hd.r);
-  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.68)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(r.x, r.y, r.w, r.h, r.h/2) : ctx.rect(r.x, r.y, r.w, r.h); ctx.fill();
+  ctx.save(); ctx.fillStyle = CONFIG.pal.inkPlate; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(r.x, r.y, r.w, r.h, r.h/2) : ctx.rect(r.x, r.y, r.w, r.h); ctx.fill();
   const purple = ITEMS[p.k].color === 'purple' && !p.bad, f = r.parts;
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   let tx = r.x + 7; const ty = r.cy + 0.5;
@@ -1481,7 +1899,7 @@ function newPartUpdate(rdt){
   if (state.madeGlow){ state.madeGlow.t += rdt; if (state.madeGlow.t >= CONFIG.madeGlowSec) state.madeGlow = null; }
   if (state.newCur){ state.newCur.t += rdt; if (state.newCur.t >= CONFIG.newPartSec){ const was = state.newCur; state.newCur = null; if (was.type === 'made' && (was.id === 'rolling_chassis' || was.id === 'body_car')) tutStep('tut_marriage', CONFIG.tutMarriageSec); if (state.queuedDrop && state.canDrop && !state.paused && !state.newQueue.length) drop(); } }
   if (state.celebHoldNew && !(state.celebT > 0) && !state.roundBanner) state.celebHoldNew = false;   // v0.9.3：お祝い＋周の帯が終わるまで新入荷を待たせる
-  if (!state.newCur && state.newQueue.length && !state.money.length && !state.celebHoldNew){
+  if (!state.newCur && state.newQueue.length && !state.money.length && !state.celebHoldNew && !(CONFIG.onboardPictures && onbBusy())){   // v0.9.8：絵の説明のあいだは新入荷の文を待たせる（最初の文字を少なく）
     const q = state.newQueue.shift(); state.newCur = { id:q.id, type:q.type, t:0 }; state.newShown.push({ id:q.id, type:q.type, t:+state.elapsed.toFixed(2) });
     if (q.type === 'made') state.madeGlow = { k:K[q.id], id:q.bid, t:0 };
   }
@@ -1504,7 +1922,7 @@ function drawFallLabel(heldRect){
   const cy = b.position.y - r - 4 - h/2, x = Math.max(4, Math.min(CONFIG.W - 4 - w, b.position.x - w/2));
   if (cy - h/2 < CONFIG.holdLabelMinY + CONFIG.holdLabelH/2 + 2 || (heldRect && cy - h/2 < heldRect.y + heldRect.h + 2 && x < heldRect.x + heldRect.w && x + w > heldRect.x)) { ctx.restore(); return; }   // HUD・持っている部品の名前とは重ねない
   ctx.globalAlpha = Math.min(1, (CONFIG.fallLabelSec - f.t)/0.25);
-  ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, cy - h/2, w, h, h/2) : ctx.rect(x, cy - h/2, w, h); ctx.fill();
+  ctx.fillStyle = CONFIG.pal.inkPlate; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x, cy - h/2, w, h, h/2) : ctx.rect(x, cy - h/2, w, h); ctx.fill();
   ctx.fillStyle = b.bad ? '#ff9a8a' : '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, x + w/2, cy + 0.5, w - 6);
   ctx.restore();
 }
@@ -1514,7 +1932,7 @@ function drawNewPart(){
   const W = CONFIG.W, h = CONFIG.newPartH, y = CONFIG.newPartY, d = CONFIG.newPartSec, f = Math.min(1, n.t/0.12, (d - n.t)/0.2);
   ctx.save(); ctx.globalAlpha = Math.max(0, f); ctx.font = `bold ${CONFIG.newPartFontPx}px sans-serif`;
   const w = Math.min(W - 16, Math.ceil(ctx.measureText(text).width) + 20);
-  ctx.fillStyle = 'rgba(20,20,30,.82)'; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W/2 - w/2, y - h/2, w, h, h/2) : ctx.rect(W/2 - w/2, y - h/2, w, h); ctx.fill();
+  ctx.fillStyle = CONFIG.pal.inkPlate; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W/2 - w/2, y - h/2, w, h, h/2) : ctx.rect(W/2 - w/2, y - h/2, w, h); ctx.fill();
   ctx.strokeStyle = 'rgba(255,216,74,.8)'; ctx.lineWidth = 1.5; ctx.stroke();
   ctx.fillStyle = '#ffd84a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, W/2, y + 0.5, w - 12);
   ctx.restore();
@@ -1528,11 +1946,12 @@ function explodeStrength(rank){
   return 'max';
 }
 function explodeGoodShip(x, y, rank, fromBH){
+  if (!fromBH && isTrailerRank(rank)) happyOnce('trailer');   // v0.9.6 C1：初めてトレーラーを良品出荷
   const eg = CONFIG.explodeGood; if (!eg || !eg.enabled) return;
   const mode = explodeStrength(rank);
   if (mode === 'max' && CONFIG.blackHoleFx && !fromBH){ bhStart(x, y, rank); return; }   // v0.9.2：先に吸い込み → 爆発は bhExplode から
   state.shake = Math.max(state.shake, mode==='max' ? 18 : mode==='mid' ? 12 : 6);
-  state.flash = { color:'255,230,160', t:0, dur: eg.flashDur || 0.45 };
+  flashScreen('255,230,160', 0.6, eg.flashDur || 0.45); if (!Settings.reduceMotion) addConfetti(x, y, 16);   // v0.9.9：トレーラーにも紙吹雪
   debris(x, y, mode==='max' ? 16 : mode==='mid' ? 10 : 5);
   for (let i=0;i<(mode==='max'?10:6);i++){
     const ang = Math.random()*Math.PI*2, sp = 120+Math.random()*220;
@@ -1571,12 +1990,12 @@ function bhStart(x, y, rank){
   bhRumble();
 }
 function bhRumble(){   // 既存の音（floor_rise）を低く・ゆっくり鳴らす
-  if (muted || !audioUnlocked) return;
+  if (audioOff() || !audioUnlocked) return;
   try{ const buf = sfxBuf.floor_rise || sfxBuf.game_over; if (!buf || !actx || actx.state !== 'running') return;
     const s = actx.createBufferSource(), g = actx.createGain(); s.buffer = buf; s.playbackRate.value = 0.45;
     g.gain.setValueAtTime(0.0001, actx.currentTime); g.gain.exponentialRampToValueAtTime(CONFIG.sfxVolume, actx.currentTime + 0.6);
     g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + CONFIG.bhImplodeSec + CONFIG.bhFreezeSec);
-    s.connect(g).connect(actx.destination); s.start(); s.stop(actx.currentTime + CONFIG.bhImplodeSec + CONFIG.bhFreezeSec + 0.05);
+    s.connect(g).connect(audioOut()); s.start(); s.stop(actx.currentTime + CONFIG.bhImplodeSec + CONFIG.bhFreezeSec + 0.05);
   }catch(e){} }
 function bhTick(rdt){
   const bh = state.bh; bh.t += rdt;
@@ -1587,7 +2006,7 @@ function bhExplode(){
   state.celebT = CONFIG.celebQuietSec; activePointer = null; state.armed = false; state.queuedDrop = false;   // v0.9.3（2）
   explodeGoodShip(bh.x, bh.y, bh.rank, true);   // もとの最大の爆発（箱を空にする）
   state.shake = CONFIG.bhShake;
-  state.flash = { color:'255,255,255', t:0, dur:0.7 };
+  flashScreen('255,255,255', 0.6, 0.7);
   state.bhRings = [ { t:0, dur:0.75, max:560, w:22, c:'255,255,255' }, { t:-0.14, dur:0.85, max:460, w:12, c:'200,140,255' } ].map(r => Object.assign(r, { x:bh.x, y:bh.y }));
   for (let i=0;i<34;i++){ const a = Math.random()*Math.PI*2, sp = 200 + Math.random()*420;
     addParticle({ frames:FX.sparkle, frameDur:CONFIG.sparkleFrame, x:bh.x, y:bh.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, g:120, s0:46, s1:8, life:0.6+Math.random()*0.4, fb:'sparkle', fade:true, bhp:true }); }
@@ -1638,7 +2057,7 @@ function shipCar(x, y, bad){
   const value = (!bad || CONFIG.badCarPays) ? fullValue : 0;
   if (state.firstCarAt == null) state.firstCarAt = state.elapsed;   // 1台目の完成の時刻（時間で床が上がるのはここから）
   state.cars++; state.topRank = Math.max(state.topRank, rank);
-  glowStopCheck(rank);   // v5p：コンパクトカー（partnerGlowUntilRank 2、弘司さん決定 11/4）を出庫したら光らせない
+  glowStopCheck(rank);   // v5p：コンパクトカー（partnerGlowUntilRank 2、オーナー決定 11/4）を出庫したら光らせない
   pathMark('marriage'); pathMark('car'); pathReset();   // v0.8：1台出したら道すじを灰色に戻す
   if (value){ state.sales += value; state.grossSales = (state.grossSales||0) + value; state.countRate = (state.sales - state.salesShown)/CONFIG.countUpTime; state.countDelay = 0.35; }
   state.shipping.push({x, y, phase:0, rank, value, bad, smokeT:0});
@@ -1705,7 +2124,7 @@ function setStartRound(n){
   updateTitle();
 }
 // v5l：ページのタイトルに版と周（ゲーム中だけ「 - Round N」）
-const titleBase = () => `${gameName()} ${CONFIG.versionLabel||''}`.trim();   // v0.9.5
+const titleBase = () => gameName();   // v0.9.8 監査1：タブ名・見出しに版を出さない（版は CONFIG.versionLabel だけ）
 function updateTitle(){
   const tb = QA_MODE ? titleBase() + ' QA' : titleBase(), t = (state && state.round) ? `${tb} - Round ${state.round}` : tb;
   if (document.title !== t) document.title = t;
@@ -1750,7 +2169,7 @@ function levelUp(){
   const nr = rankForLevel(state.level);
   if (nr > oldRank) state.rankUp = { rank:nr, t:-0.9, dur:1.5 };
   toast(`${L().levelUp}  Lv${state.level}`, CONFIG.levelBannerColor, 0, 0, { level:true, front:true });
-  state.flash = { color:'255,255,255', t:0, dur:0.25 };
+  flashScreen('255,255,255', 0.6, 0.25);
   sfx('level_up');
   preloadTiers(state.level);
   const nt = tierIndexFor(state.level);
@@ -1787,7 +2206,7 @@ function addParticle(p){
 
 // ===== 操作 =====
 let activePointer = null;
-function toGame(e){ const r = cv.getBoundingClientRect(); return { x:(e.clientX - r.left) * CONFIG.W / r.width, y:(e.clientY - r.top) * CONFIG.H / r.height }; }
+function toGame(e){ const r = cv.getBoundingClientRect(); return { x:(e.clientX - r.left) * CONFIG.W / r.width, y:(e.clientY - r.top) * viewH / r.height + viewTop }; }
 const toGameX = clientX => { const r = cv.getBoundingClientRect(); return (clientX - r.left) * CONFIG.W / r.width; };
 // ===== ごみ箱の位置（動くごみ箱）=====
 function binsMoving(){
@@ -1861,10 +2280,17 @@ function setAim(rawX){
   state.aimX = clampAim(rawX, r);
 }
 const clampAim = (x, r) => Math.max(BOX.left+r, Math.min(BOX.right-r, x));
+// v0.9.6：一時停止・音ボタンの位置と大きさ。画面での直径が btnMinCssPx 以上になるよう半径を広げ、右下の角に寄せる（PC横は板のHTMLボタン）
+function btnGeom(){
+  const r = Math.max(CONFIG.btnR, Math.min(CONFIG.btnMaxR, CONFIG.btnMinCssPx/2/(cssScale||1)));
+  const muteX = CONFIG.W - r - 4, pauseX = muteX - 2*r - 10, y = CONFIG.H - r - 4;
+  return { r, y, pauseX, muteX, hit: r + CONFIG.btnHitPad, cssDiameter: 2*r*(cssScale||1), canvas: !pcLayout };
+}
 function hitButton(g){
-  const d = (x,y) => Math.hypot(g.x-x, g.y-y) <= CONFIG.btnR + 6;
-  if (d(CONFIG.pauseX, CONFIG.btnY)) return 'pause';
-  if (d(CONFIG.muteX, CONFIG.btnY)) return 'mute';
+  if (pcLayout) return null;
+  const b = btnGeom(), d = (x,y) => Math.hypot(g.x-x, g.y-y) <= b.hit;
+  if (d(b.pauseX, b.y)) return 'pause';
+  if (d(b.muteX, b.y)) return 'mute';
   return null;
 }
 cv.addEventListener('pointerdown', e=>{
@@ -1873,16 +2299,16 @@ cv.addEventListener('pointerdown', e=>{
   if (!state.running || state.paused || activePointer!==null || state.retryInputLock > 0) return;
   const btn = hitButton(toGame(e));
   if (btn === 'pause'){ pauseGame(); return; }
-  if (btn === 'mute'){ setMuted(!muted); return; }
+  if (btn === 'mute'){ toggleAllSound(); return; }
   if (hitTutSkip(toGame(e))){ tutSkip(); return; }
-  activePointer = e.pointerId; state.armed = true; state.queuedDrop = false; setAim(toGameX(e.clientX));
+  firstInput(); activePointer = e.pointerId; state.armed = true; state.queuedDrop = false; setAim(toGameX(e.clientX)); squishAt = performance.now();   // v0.9.7 C3：ぷるっ
   try{ cv.setPointerCapture(e.pointerId); }catch(err){}   // v0.9.3（2）：画面の外で離しても pointerup が届く
 });
 cv.addEventListener('pointermove', e=>{
   if (!state.running || state.paused) return;
   if (activePointer!==null && e.pointerId!==activePointer) return;
   if (activePointer===null && e.pointerType!=='mouse') return;
-  setAim(toGameX(e.clientX));
+  firstInput(); setAim(toGameX(e.clientX));
 });
 function release(e){
   if (e.pointerId!==activePointer) return;
@@ -1901,18 +2327,18 @@ cv.addEventListener('pointercancel', e=>{ if (e.pointerId===activePointer){ acti
 const dropIntervalOk = () => state.dropClock - state.lastDropAt >= CONFIG.minDropInterval - 1e-6;
 function drop(auto){
   if (!state.canDrop || !state.running || introActive() || state.bh){ if (!auto) state.ignoredDrops++; return; }   // v0.9.3：落とさなかったタップも数える
-  if (noticeFreeze() && (auto || CONFIG.newPartBlockDrop)){ if (!auto) state.queuedDrop = true; return; }   // v5p：お知らせのあいだは時間切れで落ちない（newPartBlockDrop＝指で離した分もお知らせのあとに落とす）
+  if (noticeFreeze() && !auto && CONFIG.newPartBlockDrop){ state.queuedDrop = true; return; }   // v0.9.9：お知らせ（新入荷）のあいだも時間は進み、時間切れでふつうに落ちる（止めるのは説明の絵だけ）
   if (!auto && !dropIntervalOk()){ state.ignoredDrops++; return; }   // 連続投下の最短間隔（自動投下は制限時間≧1.5秒なので影響なし）
   state.lastDropAt = state.dropClock;
   state.armed = false; state.queuedDrop = false;
   const p = state.current;
   if (auto){
     const r = R(p.k), x = BOX.left + r + Math.random()*(BOX.right - BOX.left - 2*r);
-    state.fall = { b: makePart(p.k, x, HOLD_Y, { bad:p.bad, auto:true }), t:0 };
+    state.fall = { b: makePart(p.k, x, HOLD_Y, { bad:p.bad, auto:true }), t:0 }; state.fall.b.dropped = true;
     state.idleCount++; state.manualSinceIdle = 0;     // 時間切れが続くほど次の制限時間が短くなる
   } else {
     if (binsMoving()) state.bin = binSideFor(state.rawX);   // 動くごみ箱：離した瞬間の箱の位置で判定（v5o：すきまの狙いは捨てない）
-    if (state.bin !== 0) discard(p); else { state.fall = { b: makePart(p.k, state.aimX, HOLD_Y, { bad:p.bad }), t:0 }; sfx('drop'); }
+    if (state.bin !== 0) discard(p); else { state.fall = { b: makePart(p.k, state.aimX, HOLD_Y, { bad:p.bad }), t:0 }; state.fall.b.dropped = true; sfx('drop'); }
     if (state.idleCount && ++state.manualSinceIdle >= CONFIG.idleReset){ state.idleCount = 0; state.manualSinceIdle = 0; }
   }
   tutOnDrop(p, auto);
@@ -1950,7 +2376,7 @@ function discard(p){
 }
 
 // ===== 効果音 =====
-const SFX_NAMES = ['drop','merge','merge_big','complete','coin','defect_putter','discard','complaint','floor_rise','warning','mechanic_in','repair','level_up','game_over','round_start'];
+const SFX_NAMES = ['drop','merge','merge_big','complete','coin','defect_putter','discard','complaint','floor_rise','warning','mechanic_in','repair','level_up','game_over','round_start','marriage','ui_tap','land'];   // v0.9.9 A8：marriage・ui_tap・land を追加（catalog_new・badge は図鑑の v1.00-rc から）
 const SFX_SOFT = ['drop','merge'];
 let actx, audioUnlocked = false, sfxLoading = false, muted = !!Store.get('muted', false);
 const sfxBuf = {}, sfxEl = {};
@@ -1958,8 +2384,9 @@ function resumeAudio(){   // 最初に画面に触れたときだけ音を使え
   try{
     actx = actx || new (window.AudioContext||window.webkitAudioContext)();
     if (actx.state !== 'running') actx.resume();
+    audioOut();   // v0.9.9：効果音の出口（コンプレッサー）を先に作る
   }catch(e){}
-  audioUnlocked = true; loadSfx();
+  audioUnlocked = true; loadSfx(); if (SDKS.gameplay || (state && state.running)) bgmLoad(); bgmUpdate(true);
 }
 ['pointerdown','touchend','click','keydown'].forEach(ev => window.addEventListener(ev, resumeAudio, {passive:true}));
 function loadSfx(){
@@ -1974,35 +2401,104 @@ function loadSfx(){
       .then(buf => { sfxBuf[n] = buf; }).catch(fallback);
   });
 }
-function sfx(name){
-  if (muted || !audioUnlocked) return;
-  const vol = SFX_SOFT.includes(name) ? CONFIG.sfxVolumeSoft : CONFIG.sfxVolume;
+// v0.9.6 C1：CrazyGames の muteAudio はゲーム内の音設定より優先（true のあいだは一切鳴らさない）
+const audioOff = () => muted || SDKS.muteAudio;
+// v0.9.9 C6：効果音はすべて sfxBus → DynamicsCompressor（1つ）→ 出口。BGM は別の音量で出口へ（圧縮しない）
+let sfxBus = null, sfxComp = null;
+function audioOut(){
+  if (!actx) return null;
+  if (!sfxBus){ const c = CONFIG.sfxComp; sfxComp = actx.createDynamicsCompressor();
+    sfxComp.threshold.value = c.threshold; sfxComp.knee.value = c.knee; sfxComp.ratio.value = c.ratio; sfxComp.attack.value = c.attack; sfxComp.release.value = c.release;
+    sfxBus = actx.createGain(); sfxBus.gain.value = 1; sfxBus.connect(sfxComp); sfxComp.connect(actx.destination); }
+  return sfxBus;
+}
+const sfxSilent = () => audioOff() || !audioUnlocked || document.hidden || SDKS.adPlaying || !!(state && state.paused);
+const sfxLog = [];   // テスト用：最後の30回（名前・速さ・音量）
+function sfx(name, opts){
+  if (sfxSilent()) return;
+  opts = opts || {};
+  const vol = opts.vol != null ? opts.vol : name === 'land' ? CONFIG.landVol : SFX_SOFT.includes(name) ? CONFIG.sfxVolumeSoft : CONFIG.sfxVolume;
+  const rate = opts.rate || 1;
+  sfxLog.push({ name, rate:+rate.toFixed(4), vol, t:+(performance.now()/1000).toFixed(3) }); if (sfxLog.length > 30) sfxLog.shift();
   try{
     if (sfxBuf[name] && actx && actx.state === 'running'){
       const s = actx.createBufferSource(), g = actx.createGain(); g.gain.value = vol;
-      s.buffer = sfxBuf[name]; s.connect(g).connect(actx.destination); s.start(); return;
+      s.buffer = sfxBuf[name]; s.playbackRate.value = rate; s.connect(g).connect(audioOut()); s.start(); return;
     }
-    if (sfxEl[name]){ const el = sfxEl[name].cloneNode(); el.volume = vol; const pr = el.play(); if (pr) pr.catch(()=>{}); }
+    if (sfxEl[name]){ const el = sfxEl[name].cloneNode(); el.volume = vol; try{ el.playbackRate = rate; el.preservesPitch = false; }catch(e){} const pr = el.play(); if (pr) pr.catch(()=>{}); }
   }catch(e){}
 }
+// ===== v0.9.9 C6：BGM（Happy Vibes / Ruskerdax / CC0、仮）=====
+// gameplayStart のあとに読み込む。ogg を優先。mp3 で長さが 45.41 秒より長いとき（先頭の無音）は ogg を試し、だめなら loopStart をずらす
+const BGM = { buf:null, src:null, gain:null, loading:false, failed:false, fmt:null, loopStart:0, loopEnd:0, target:-1, duckUntil:0, starts:0 };
+function bgmLoad(){
+  if (BGM.loading || !window.fetch || location.protocol === 'file:') return;
+  try{ actx = actx || new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; }
+  BGM.loading = true;
+  const L0 = CONFIG.bgm.loopEnd;
+  let canOgg = false; try{ canOgg = !!document.createElement('audio').canPlayType('audio/ogg; codecs="vorbis"'); }catch(e){}
+  const dec = ext => fetch(CONFIG.bgm[ext]).then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+    .then(b => new Promise((res, rej) => actx.decodeAudioData(b, res, rej))).then(buf => ({ buf, ext }));
+  const pick = r => {
+    BGM.buf = r.buf; BGM.fmt = r.ext; const d = r.buf.duration;
+    if (r.ext === 'mp3' && d > L0 + 0.004){ BGM.loopStart = d - L0; BGM.loopEnd = d; } else { BGM.loopStart = 0; BGM.loopEnd = Math.min(L0, d); }
+    bgmUpdate(true);
+  };
+  (canOgg ? dec('ogg').catch(() => dec('mp3'))
+          : dec('mp3').then(r => r.buf.duration > L0 + 0.004 ? dec('ogg').catch(() => r) : r))
+    .then(pick).catch(() => { BGM.failed = true; });
+}
+function bgmTarget(){
+  if (!Settings.bgm || SDKS.muteAudio || document.hidden || SDKS.adPlaying || !audioUnlocked) return 0;
+  if (!state || state.paused) return 0;                       // 一時停止中は無音
+  if (!state.running || state.retryOffer || overlayMode === 'result' && !ov.classList.contains('hidden')) return CONFIG.bgm.volSoft;   // 結果・つづける画面は小さく
+  let v = CONFIG.bgm.vol;
+  if (performance.now() < BGM.duckUntil) v *= BGM.duckMul || 0.5;   // マリッジの瞬間だけ −6dB
+  return v;
+}
+function bgmUpdate(force){
+  if (!BGM.buf || !actx) return;
+  const want = bgmTarget();
+  if (!BGM.gain){ BGM.gain = actx.createGain(); BGM.gain.gain.value = 0; BGM.gain.connect(actx.destination); }
+  if (!BGM.src && want > 0 && actx.state === 'running'){
+    const s = actx.createBufferSource(); s.buffer = BGM.buf; s.loop = true; s.loopStart = BGM.loopStart; s.loopEnd = BGM.loopEnd;
+    s.connect(BGM.gain); s.start(0, BGM.loopStart); BGM.src = s; BGM.starts++; BGM.startedAt = actx.currentTime;
+    BGM.gain.gain.cancelScheduledValues(actx.currentTime); BGM.gain.gain.setValueAtTime(0, actx.currentTime); BGM.target = 0;
+  }
+  if (!force && Math.abs(want - BGM.target) < 1e-4) return;
+  const t = actx.currentTime, g = BGM.gain.gain;
+  g.cancelScheduledValues(t); g.setValueAtTime(g.value, t);
+  const tc = want === 0 ? 0.02 : (BGM.target <= 0.001 ? CONFIG.bgm.fadeIn/3 : 0.06);   // 0 にするときはすぐ、出だしは0.5秒でフェードイン
+  g.setTargetAtTime(want, t, tc); BGM.target = want;
+}
+function bgmDuck(db, sec){ BGM.duckMul = Math.pow(10, db/20); BGM.duckUntil = performance.now() + sec*1000; }
+function sfxReady(){ return !!actx; }
 function beep(freq, dur){   // 制限時間の残りわずかの「ピッ」
-  if (muted || !audioUnlocked) return;
+  if (audioOff() || !audioUnlocked) return;
   try{
     if (!actx || actx.state !== 'running') return;
     const o=actx.createOscillator(), g=actx.createGain();
     o.frequency.value=freq; o.type='triangle';
     g.gain.setValueAtTime(0.12, actx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, actx.currentTime+dur);
-    o.connect(g).connect(actx.destination); o.start(); o.stop(actx.currentTime+dur);
+    o.connect(g).connect(audioOut()); o.start(); o.stop(actx.currentTime+dur);
   }catch(e){}
 }
-function setMuted(v){ muted = !!v; Store.set('muted', muted); renderPause(); }
+function setMuted(v){ muted = !!v; Store.set('muted', muted); renderPause(); renderSettings(); updatePanels(true); }   // 効果音（qr_muted）
+function setBgmOn(v){ Settings.set('bgm', !!v); if (v) bgmLoad(); bgmUpdate(true); renderSettings(); updatePanels(true); }
+const allSoundOff = () => SDKS.muteAudio || (muted && !Settings.bgm);
+function toggleAllSound(){ const on = allSoundOff() ? true : false; muted = !on; Store.set('muted', muted); Settings.set('bgm', on); if (on) bgmLoad(); bgmUpdate(true); renderPause(); renderSettings(); updatePanels(true); }   // 画面の音ボタン＝全部の音
 
+// v0.9.6 C5：揺れは上限 shakeMax、減り方は時間基準（0.85^(秒×60)）。「動きを減らす」設定では揺れなし
+const shakeCap = () => (Settings.reduceMotion ? 0 : CONFIG.shakeMax);
+function shakeDecay(v, rdt){ return Math.min(shakeCap(), v) * Math.pow(CONFIG.shakeDecayPerFrame60, rdt*60); }
 // ===== ループ =====
 const PHYS_STEP = 1000/60, PHYS_MAX_STEPS = 5;
 let last = performance.now(), physAcc = 0;
 let frameAvg = 16.7;
 function loop(now){
   const rdt = Math.min(0.05, (now-last)/1000); last = now;
+  bgmUpdate(false);
+  updatePanels(false, now);
   frameAvg = frameAvg*0.9 + rdt*1000*0.1;   // 重いときは煙などを間引く
   if (state.paused){ introTick(rdt); draw(now); requestAnimationFrame(loop); return; }
   if (state.bh){ bhTick(rdt); draw(now); requestAnimationFrame(loop); return; }   // v0.9.2：ブラックホール中は全部止める
@@ -2011,11 +2507,14 @@ function loop(now){
   }
   if (state.slowmo > 0) state.slowmo -= rdt;
   const dt = (state.slowmo > 0 ? rdt*CONFIG.slowmoScale : rdt) * (state.running ? tutSlow() : 1);   // 良品の完成車の瞬間だけスロー（説明4のあいだもスロー）
-  if (state.running) tutUpdate(rdt);
+  if (state.running){ tutUpdate(rdt); if (state.firstWait && !state.firstWait.done) state.firstWait.t += rdt; }
+  if (state.running) keyAimStep(rdt);   // v0.9.6 C8
   if (state.running){
     if (state.noMatch.show){ state.noMatch.t += rdt; if (state.noMatch.t >= CONFIG.noMatchSec) state.noMatch.show = false; }
     physAcc += dt*1000; let n = 0;
+    if (state.hitstop > 0){ state.hitstop -= rdt; physAcc = 0; state.hitstopFrames = (state.hitstopFrames||0) + 1; }   // v0.9.9 C5：ヒットストップ（物理だけ止める。演出は動く）
     while (physAcc >= PHYS_STEP && n < PHYS_MAX_STEPS){ stepFloor(); doorMagnetStep(); Engine.update(engine, PHYS_STEP); physAcc -= PHYS_STEP; n++; }
+    if (landReq){ landReq = false; sfx('land'); state.lands = (state.lands||0) + 1; }   // 着地の音は1フレーム1回まで
     if (n === PHYS_MAX_STEPS) physAcc = 0;
     state.elapsed += dt;
     if (binsMoving()){   // 動くごみ箱：実時間で動かす。指を止めていても箱の位置に合わせて判定し直す
@@ -2024,7 +2523,7 @@ function loop(now){
     }
     state.dropClock += rdt;   // 連続投下の間隔は実時間で数える（スロー中も0.6秒）
     if (state.canDrop){
-      const lim = dropLimit(); if (lim < state.minDropLimit) state.minDropLimit = lim; const before = lim-state.dropTimer; if (!tutFreeze() && !noticeFreeze() && !(state.retryDropFreeze > 0)) state.dropTimer += dt; const left = lim-state.dropTimer;
+      const lim = dropLimit(); if (lim < state.minDropLimit) state.minDropLimit = lim; const before = lim-state.dropTimer; if (!hintFreeze() && !(state.retryDropFreeze > 0)) state.dropTimer += dt;   /* v0.9.9：止めるのは説明の絵のときだけ（新入荷のお知らせでは止めない） */ const left = lim-state.dropTimer;
       if (left <= CONFIG.warnBelow && Math.ceil(left*4)!==Math.ceil(before*4)) beep(1500,0.03);
       if (state.dropTimer >= lim) drop(true);
     }
@@ -2085,7 +2584,8 @@ function loop(now){
   }
   state.shipping = state.shipping.filter(s=>s.phase<2.4);
   for (const e of state.effects) e.t += rdt;
-  state.effects = state.effects.filter(e=>e.t<0.35);
+  state.effects = state.effects.filter(e=>e.t<(e.dur||0.35));
+  if (state.cutin){ state.cutin.t += rdt; const c = CONFIG.cutin; if (state.cutin.t > c.inSec + c.holdSec + c.outSec) state.cutin = null; }
   for (const p of state.popups) p.t += rdt;
   state.popups = state.popups.filter(p=>p.t<(p.dur||1.2));
   if (state.celebT > 0){ state.celebT -= rdt; state.popups = state.popups.filter(p => p.celeb); }
@@ -2110,7 +2610,7 @@ function loop(now){
   newPartUpdate(rdt);   // v5p
   if (state.fall) state.fall.t += rdt;
   if (state.hint > 0) state.hint -= dt;
-  state.shake *= 0.85;
+  state.shake = shakeDecay(state.shake, rdt);   // v0.9.6 C5：実時間基準（60Hzでも144Hzでも同じ速さで減る）
   draw(now);
   requestAnimationFrame(loop);
 }
@@ -2165,7 +2665,9 @@ function drawPlaceholder(it, c, r){
 }
 function drawPart(k, bad, x, y, angle, now, tier, bye, rr){
   const it = ITEMS[k], r = rr || R(k);   // v5o：箱の中の部品は当たりの半径（circleRadius）で描く
-  ctx.save(); ctx.translate(x,y); ctx.rotate(angle||0);
+  ctx.save(); ctx.translate(x,y);
+  if (CONFIG.partShadow && UI.shadow && UI.shadow.ok){ const s = r*2*CONFIG.badgeImgScale; ctx.globalAlpha = 0.9; ctx.drawImage(UI.shadow, -s*1.05/2, r*0.62 - s*0.38/2, s*1.05, s*0.38); ctx.globalAlpha = 1; }   // A5：影（回さない）
+  ctx.rotate(angle||0);
   const im = artFor(k, bad, tier || tierFor(state.level), bye);
   if (im){ const s = r*2*CONFIG.badgeImgScale; ctx.drawImage(im, -s/2, -s/2, s, s); }
   else {
@@ -2178,7 +2680,9 @@ function drawPart(k, bad, x, y, angle, now, tier, bye, rr){
     }
   }
   // v0.8 4-1：縁の色＝部品の色表（レシピ／ITEM_DEFS と同じ COLORS）
-  { const hex = rimHex(k); ctx.beginPath(); ctx.arc(0,0,r+1.2,0,Math.PI*2); ctx.lineWidth=Math.max(2, r*0.09); ctx.strokeStyle=hex; ctx.globalAlpha=0.85; ctx.stroke(); ctx.globalAlpha=1; }
+  { const hex = rimHex(k), rw = Math.max(2, r*0.09); ctx.beginPath(); ctx.arc(0,0,r+1.2,0,Math.PI*2); ctx.lineWidth=rw; ctx.strokeStyle=hex; ctx.globalAlpha=0.85; ctx.stroke(); ctx.globalAlpha=1;
+    if (CONFIG.partOutlineW > 0){ const ow = Math.max(CONFIG.partOutlineW, r*0.06); ctx.beginPath(); ctx.arc(0,0,r+1.2+rw/2+ow/2,0,Math.PI*2); ctx.lineWidth=ow; ctx.strokeStyle=CONFIG.partOutline; ctx.stroke(); } }   // v0.9.7 C3：濃いふち（明るい背景で形が分かる）
+  if (CONFIG.partGloss && UI.gloss && UI.gloss.ok){ const s = r*2; ctx.drawImage(UI.gloss, -s/2, -s/2, s, s); }   // A5：つや
   if (bad){
     // 組み立てたもの（専用の不良画像がない）にはひびを重ねる
     if (!(im && /_bad\.webp$/.test(im.src))){
@@ -2191,14 +2695,50 @@ function drawPart(k, bad, x, y, angle, now, tier, bye, rr){
   }
   ctx.restore();
 }
+// ===== v0.9.7 C3：明るい作業台・HUDの板・コンベア・押したときのぷるっ =====
+function rrPath(x, y, w, h, r){ ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x, y, w, h, r); else ctx.rect(x, y, w, h); }
+function drawBench(){
+  const P = CONFIG.pal, x = BOX.left, y = BOX.top-30, w = BOX.right-BOX.left, h = BOX.bottom-BOX.top+30;
+  ctx.save();
+  rrPath(x, y, w, h, 12); ctx.fillStyle = P.bench; ctx.fill();
+  ctx.save(); rrPath(x, y, w, h, 12); ctx.clip();
+  ctx.strokeStyle = P.benchGrid; ctx.lineWidth = 1; ctx.beginPath();
+  for (let gx = x + 32; gx < x + w; gx += 32){ ctx.moveTo(gx + 0.5, y); ctx.lineTo(gx + 0.5, y + h); }
+  for (let gy = y + 32; gy < y + h; gy += 32){ ctx.moveTo(x, gy + 0.5); ctx.lineTo(x + w, gy + 0.5); }
+  ctx.stroke();
+  rrPath(x, y, w, h, 12); ctx.lineWidth = 10; ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.stroke();   // 内側の影
+  ctx.restore();
+  rrPath(x, y, w, h, 12); ctx.lineWidth = 6; ctx.strokeStyle = P.frame; ctx.stroke();
+  ctx.restore();
+}
+function drawHudPlate(){
+  if (pcLayout && CONFIG.pcPathInPanel) return;   // v0.9.8：横長は道すじもHUDも板の中なので白い帯はいらない
+  const P = CONFIG.pal, top = Math.max(4, viewTop + 4), bottom = CONFIG.hudBottom + 4;
+  if (bottom - top < 10) return;
+  ctx.save();
+  rrPath(6, top + 3, CONFIG.W - 12, bottom - top, 14); ctx.fillStyle = P.plateShadow; ctx.fill();
+  rrPath(6, top, CONFIG.W - 12, bottom - top, 14); ctx.fillStyle = P.plate; ctx.fill();
+  ctx.restore();
+}
+function drawBelt(now){
+  const P = CONFIG.pal, y = LANE_Y-36, W = CONFIG.W;
+  ctx.fillStyle = P.belt; ctx.fillRect(0, y, W, 72);
+  ctx.fillStyle = P.beltLine; const off = ((now||0)/40) % 24;
+  for (let x = -24 + off; x < W; x += 24) ctx.fillRect(x, y + 6, 3, 60);
+  ctx.fillStyle = P.frame; ctx.fillRect(0, y, W, 4); ctx.fillRect(0, y + 68, W, 4);
+}
+let squishAt = -1e9;
+function squishK(now){ const t = ((now||performance.now()) - squishAt)/1000, d = CONFIG.squishSec || 0.12;
+  if (t < 0 || t > d || Settings.reduceMotion) return 1; return 1 + (CONFIG.squishAmp || 0.08) * Math.sin(Math.PI * t / d); }
 function drawBin(side, now){
   const x = binX(side), y = binY(side);
   const on = state.running && state.bin===side;
-  ctx.save(); ctx.translate(x,y); ctx.scale(CONFIG.binScale, CONFIG.binScale); ctx.translate(-x,-y);
+  ctx.save(); ctx.translate(x,y - onbBinBounce(now)); ctx.scale(CONFIG.binScale, CONFIG.binScale); ctx.translate(-x,-y);   // v0.9.8：説明3のあいだ跳ねる
   ctx.beginPath(); ctx.arc(x,y,BIN_DRAW_R,0,Math.PI*2);
-  ctx.fillStyle = on ? `rgba(255,80,80,${0.55+0.3*Math.sin(now/90)})` : 'rgba(255,255,255,.14)'; ctx.fill();
-  ctx.fillStyle='#cfd6df'; ctx.fillRect(x-9, y-6, 18, 18); ctx.fillRect(x-12, y-11, 24, 4); ctx.fillRect(x-4, y-14, 8, 3);
-  ctx.fillStyle='#6b7480'; ctx.fillRect(x-5, y-3, 2, 12); ctx.fillRect(x-1, y-3, 2, 12); ctx.fillRect(x+3, y-3, 2, 12);
+  ctx.fillStyle = on ? `rgba(255,90,95,${0.55+0.3*Math.sin(now/90)})` : 'rgba(255,255,255,.85)'; ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = CONFIG.pal.lav; ctx.stroke();
+  ctx.fillStyle='#5A6280'; ctx.fillRect(x-9, y-6, 18, 18); ctx.fillRect(x-12, y-11, 24, 4); ctx.fillRect(x-4, y-14, 8, 3);
+  ctx.fillStyle='#D9DEEA'; ctx.fillRect(x-5, y-3, 2, 12); ctx.fillRect(x-1, y-3, 2, 12); ctx.fillRect(x+3, y-3, 2, 12);
   ctx.restore();
 }
 // ゴミ箱モードの持ち上げ：大きい部品ほど少なく（上端が hudBottom より上に出ない＝「次」やゲージと重ならない）
@@ -2211,6 +2751,15 @@ function heldDraw(){
   const k = state.current.k, r = R(k), s = holdScale(r), hx = clampAim(state.aimX, r), dr = r * s;
   const hy = state.bin===0 ? HOLD_Y : HOLD_Y - binLiftFor(dr * 1.03);   // 絵の端（×1.03）で計算＝上端が hudBottom 134 より上に出ない
   return { k, r, s, dr, hx, hy, top: hy - dr*1.03 };
+}
+function drawCutin(){   // v0.9.9：マリッジの文字絵（0.12秒で大きく→0.3秒止め→0.18秒で消える）。英語は「Final assembly!」を描く（監査4）
+  const c = state.cutin; if (!c || state.bh) return; const C = CONFIG.cutin, t = c.t;
+  const sc = t < C.inSec ? 0.4 + 0.6*(t/C.inSec) : 1, a = t > C.inSec + C.holdSec ? Math.max(0, 1 - (t - C.inSec - C.holdSec)/C.outSec) : 1;
+  ctx.save(); ctx.globalAlpha = a; ctx.translate(CONFIG.W/2, C.y); ctx.scale(sc, sc);
+  if (lang === 'ja' && UI.cutin && UI.cutin.ok){ const w = C.w, h = w*UI.cutin.height/UI.cutin.width; ctx.drawImage(UI.cutin, -w/2, -h/2, w, h); }
+  else { ctx.font = 'bold 40px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const txt = L().marriage;
+    ctx.lineJoin = 'round'; ctx.strokeStyle = CONFIG.pal.ink; ctx.lineWidth = 10; ctx.strokeText(txt, 0, 2); ctx.strokeStyle = '#3B5FC4'; ctx.lineWidth = 5; ctx.strokeText(txt, 0, 0); ctx.fillStyle = '#FFD84A'; ctx.fillText(txt, 0, 0); }
+  ctx.restore(); state.cutinDrawn = (state.cutinDrawn||0) + 1;
 }
 function drawParticle(p){
   if (p.delay > 0) return;
@@ -2230,42 +2779,50 @@ function drawParticle(p){
   ctx.restore();
 }
 function drawButtons(){
-  const y = CONFIG.btnY, r = CONFIG.btnR;
-  for (const [x, kind] of [[CONFIG.pauseX,'pause'],[CONFIG.muteX,'mute']]){
-    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,.16)'; ctx.fill();
-    ctx.fillStyle='#fff';
+  if (pcLayout) return;   // v0.9.6：PC横は板のHTMLボタン
+  const g = btnGeom(), y0 = g.y, r = g.r;
+  for (const [x0, kind] of [[g.pauseX,'pause'],[g.muteX,'mute']]){
+    const ic = kind==='pause' ? UI.iconPause : (allSoundOff() ? UI.iconSoundOff : UI.iconSoundOn);
+    if (ic && ic.ok){ ctx.beginPath(); ctx.arc(x0,y0+3,r,0,Math.PI*2); ctx.fillStyle=CONFIG.pal.plateShadow; ctx.fill(); ctx.beginPath(); ctx.arc(x0,y0,r,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,.95)'; ctx.fill();
+      const isz = r*1.6; ctx.drawImage(ic, x0-isz/2, y0-isz/2, isz, isz); continue; }   // v0.9.7 A3：あーとのアイコン
+    ctx.beginPath(); ctx.arc(x0,y0,r,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,.9)'; ctx.fill();
+    ctx.save(); ctx.translate(x0, y0); ctx.scale(r/16, r/16); const x = 0, y = 0; const muted = allSoundOff();
+    ctx.fillStyle=CONFIG.pal.ink;
     if (kind==='pause'){ ctx.fillRect(x-6,y-7,4,14); ctx.fillRect(x+2,y-7,4,14); }
     else {
       ctx.beginPath(); ctx.moveTo(x-8,y-3); ctx.lineTo(x-4,y-3); ctx.lineTo(x+1,y-8); ctx.lineTo(x+1,y+8); ctx.lineTo(x-4,y+3); ctx.lineTo(x-8,y+3); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle='#fff'; ctx.lineWidth=2;
+      ctx.strokeStyle=CONFIG.pal.ink; ctx.lineWidth=2;
       if (muted){ ctx.beginPath(); ctx.moveTo(x+4,y-4); ctx.lineTo(x+10,y+4); ctx.moveTo(x+10,y-4); ctx.lineTo(x+4,y+4); ctx.stroke(); }
       else { ctx.beginPath(); ctx.arc(x+2,y,5,-0.9,0.9); ctx.stroke(); ctx.beginPath(); ctx.arc(x+2,y,9,-0.9,0.9); ctx.stroke(); }
     }
+    ctx.restore();
   }
 }
 function draw(now){
   const W=CONFIG.W,H=CONFIG.H;
   ctx.save();
-  if (state.shake>0.5) ctx.translate((Math.random()-.5)*state.shake,(Math.random()-.5)*state.shake);
+  { const sh = Math.min(state.shake, shakeCap()); if (sh>0.5) ctx.translate((Math.random()-.5)*sh,(Math.random()-.5)*sh); }
   ctx.clearRect(-30,-30,W+60,H+60);
-  ctx.fillStyle='#24303f'; ctx.fillRect(BOX.left, BOX.top-30, BOX.right-BOX.left, BOX.bottom-BOX.top+30);
+  drawBench();   // v0.9.7 C3：明るい作業台（方眼）＋青いわく
   const graceBlink = state.retryGrace > 0;
-  ctx.strokeStyle = graceBlink ? `rgba(80,220,255,${0.45+0.45*Math.sin(now/90)})` : (state.overflowT>0 ? `rgba(255,60,60,${0.5+0.5*Math.sin(now/80)})` : 'rgba(255,80,80,.5)');
+  ctx.strokeStyle = graceBlink ? `rgba(80,220,255,${0.45+0.45*Math.sin(now/90)})` : (state.overflowT>0 ? `rgba(255,90,95,${0.5+0.5*Math.sin(now/80)})` : 'rgba(255,90,95,.85)');   // 危険ライン #FF5A5F（線＝塗りあつかい）
   ctx.setLineDash([8,6]); ctx.lineWidth = (graceBlink || (state.overflowT>0 && overflowInGrace())) ? 4 : 2; ctx.beginPath(); ctx.moveTo(BOX.left,DANGER_Y); ctx.lineTo(BOX.right,DANGER_Y); ctx.stroke(); ctx.setLineDash([]);
-  if (graceBlink){ ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle=`rgba(80,220,255,${0.7+0.3*Math.sin(now/90)})`; ctx.fillText(L().retry_grace, CONFIG.W/2, DANGER_Y+6); }
+  if (graceBlink){ ctx.font='bold 14px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle=`rgba(21,101,192,${0.75+0.25*Math.sin(now/90)})`; ctx.fillText(L().retry_grace, CONFIG.W/2, DANGER_Y+6); }
   // 手持ち部品（HUDより先に描く）
   if (state.running && state.canDrop && state.current){
     const hd = heldDraw(), hr = hd.r, hx = hd.hx, hy = hd.hy;
-    if (state.bin===0){ ctx.strokeStyle='rgba(255,255,255,.15)'; ctx.beginPath(); ctx.moveTo(hx,HOLD_Y); ctx.lineTo(hx,BOX.bottom); ctx.stroke();
-      ctx.fillStyle=`rgba(255,255,255,${CONFIG.holdWidthLineAlpha})`; ctx.fillRect(hx-hr, BOX.top, hr*2, 4); }   // v0.9.1：本当の幅
-    ctx.save(); if (state.bin!==0) ctx.globalAlpha=0.8; ctx.translate(hx, hy); ctx.scale(hd.s, hd.s); drawPart(state.current.k, state.current.bad, 0, 0, 0, now); ctx.restore();
+    if (state.bin===0){ ctx.strokeStyle='rgba(59,95,196,.25)'; ctx.beginPath(); ctx.moveTo(hx,HOLD_Y); ctx.lineTo(hx,BOX.bottom); ctx.stroke();
+      ctx.fillStyle=`rgba(59,95,196,${Math.min(1, CONFIG.holdWidthLineAlpha*2)})`; ctx.fillRect(hx-hr, BOX.top, hr*2, 4); }   // v0.9.1：本当の幅
+    const sq = squishK(now);   // C3：押した瞬間のぷるっ
+    ctx.save(); if (state.bin!==0) ctx.globalAlpha=0.8; ctx.translate(hx, hy); ctx.scale(hd.s*sq, hd.s*sq); drawPart(state.current.k, state.current.bad, 0, 0, 0, now); ctx.restore();
   }
   // HUD
   const limit = dropLimit(), leftT = Math.max(0, limit-state.dropTimer), low = leftT/limit < 0.3;
-  ctx.fillStyle='#fff'; ctx.textAlign='left'; ctx.textBaseline='top'; ctx.font=`bold ${CONFIG.hudSalesFontPx}px sans-serif`;
-  if (state.salesShown < 0) ctx.fillStyle = '#ff4a3a';   // 売上がマイナスなら赤
+  drawHudPlate();   // C3：HUD は白い板の上（文字は濃紺 #2B2F4A）
+  ctx.fillStyle=CONFIG.pal.ink; ctx.textAlign='left'; ctx.textBaseline='top'; ctx.font=`bold ${CONFIG.hudSalesFontPx}px sans-serif`;
+  if (state.salesShown < 0) ctx.fillStyle = CONFIG.pal.warnText;   // 売上がマイナスなら濃い赤（#FF5A5F は文字に使わない）
   ctx.fillText(`${L().sales} ${fmtYen(Math.sign(state.salesShown)*Math.round(Math.abs(state.salesShown)/10000)*10000 || 0)}`, 14, 12);
-  ctx.fillStyle='#fff'; ctx.font=`bold ${CONFIG.hudFontPx}px sans-serif`;
+  ctx.fillStyle=CONFIG.pal.ink; ctx.font=`bold ${CONFIG.hudFontPx}px sans-serif`;
   ctx.fillText(`${L().cars} ${state.cars}`, 14, 36);
   ctx.fillText(`Lv ${state.level}`, 110, 36);
   {
@@ -2274,26 +2831,31 @@ function draw(now){
     if (im && im.ok){ const w=44, h=w*im.height/im.width; ctx.drawImage(im, 152, 45-h/2, w, h); }
     ctx.font=`bold ${CONFIG.levelCountFontPx}px sans-serif`; ctx.textBaseline='middle';
     const left = need - state.carsThisLevel;
-    ctx.fillText(atMax ? L().maxRank : L().toNext(left), 200, 45);
-    if (!atMax) for (let i=0;i<need;i++){
-      const sw = 22, x0 = W-14-need*(sw+4)+4 + i*(sw+4);
-      ctx.fillStyle = i < state.carsThisLevel ? '#f5b700' : 'rgba(255,255,255,.22)'; ctx.fillRect(x0, 40, sw, 10);
+    const tnText = atMax ? L().maxRank : L().toNext(left); ctx.fillText(tnText, 200, 45);
+    // v0.9.9：進み具合の箱は「次の車まで」の文字の右、「次」の絵（右上）より左に収める。入らなければ細く、それでも無理なら出さない
+    const tnEnd = 200 + ctx.measureText(tnText).width + 6, limX = CONFIG.nextX - CONFIG.nextMaxR - 8, swFit = Math.min(22, (limX - tnEnd)/Math.max(1, need) - 4);
+    state.hudPips = { tnEnd, limX, sw: swFit, need };
+    if (!atMax && swFit >= 6) for (let i=0;i<need;i++){
+      const sw = swFit, x0 = limX - need*(sw+4) + 4 + i*(sw+4);
+      ctx.fillStyle = i < state.carsThisLevel ? CONFIG.pal.accent : CONFIG.pal.track; ctx.fillRect(x0, 40, sw, 10);
+      ctx.strokeStyle = i < state.carsThisLevel ? CONFIG.pal.accentEdge : CONFIG.pal.lav; ctx.lineWidth = 1; ctx.strokeRect(x0+0.5, 40.5, sw-1, 9);
     }
-    ctx.fillStyle='#fff'; ctx.font=`bold ${CONFIG.hudFontPx}px sans-serif`; ctx.textBaseline='top';
+    ctx.fillStyle=CONFIG.pal.ink; ctx.font=`bold ${CONFIG.hudFontPx}px sans-serif`; ctx.textBaseline='top';
   }
   if (state.running){
     ctx.textAlign='right';
-    ctx.fillStyle = low ? (Math.sin(now/90)>0 ? '#ff4a3a' : '#ffb0a8') : '#fff';
+    ctx.fillStyle = low ? (Math.sin(now/90)>0 ? CONFIG.pal.warnText : CONFIG.pal.ink) : CONFIG.pal.ink;
     ctx.fillText(`${L().drop} ${leftT.toFixed(1)}s`, W-14, 12);
   }
   const gw = W - CONFIG.gaugeRightPad - BOX.left;
-  ctx.fillStyle='rgba(255,255,255,.12)'; ctx.fillRect(BOX.left, GAUGE_Y, gw, GAUGE_H);
-  if (state.running){
-    ctx.fillStyle = low ? (Math.sin(now/90)>0 ? '#ff3b2f' : '#ff8a7a') : '#f5b700';
+  if (!pcLayout) ctx.fillStyle=CONFIG.pal.track, ctx.fillRect(BOX.left, GAUGE_Y, gw, GAUGE_H);   // v0.9.6：PC横は右の板にゲージ
+  if (state.running && !pcLayout){
+    ctx.fillStyle = low ? (Math.sin(now/90)>0 ? CONFIG.pal.danger : '#FF8F92') : CONFIG.pal.accent;   // 30%未満は赤（塗り）
     ctx.fillRect(BOX.left, GAUGE_Y, gw*Math.min(1, leftT/limit), GAUGE_H);
+    ctx.strokeStyle = CONFIG.pal.accentEdge; ctx.lineWidth = 1; ctx.strokeRect(BOX.left+0.5, GAUGE_Y+0.5, gw-1, GAUGE_H-1);
   }
-  if (state.next){ const nr = R(state.next.k), sc = Math.min(1, CONFIG.nextMaxR/nr);
-    ctx.fillStyle='#fff'; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.font=`${CONFIG.nextLabelFontPx}px sans-serif`;
+  if (state.next && !pcLayout){ const nr = R(state.next.k), sc = Math.min(1, CONFIG.nextMaxR/nr);
+    ctx.fillStyle=CONFIG.pal.ink; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.font=`${CONFIG.nextLabelFontPx}px sans-serif`;
     ctx.fillText(L().next, CONFIG.nextX-CONFIG.nextMaxR-4, CONFIG.nextY);
     ctx.save(); ctx.translate(CONFIG.nextX, CONFIG.nextY); ctx.scale(sc, sc); drawPart(state.next.k, state.next.bad, 0, 0, 0, now); ctx.restore(); }
   drawPath(now);   // v0.8：道すじ（HUDの下・箱の上）
@@ -2314,15 +2876,20 @@ function draw(now){
   if (state.running && state.overflowT>0 && overflowInGrace()){   // 最初の1分：あふれそうの文字（猶予中だけ・部品より手前）
     ctx.font=`bold ${CONFIG.warnFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
     const tw = ctx.measureText(L().almostFull).width + 20;
-    ctx.fillStyle='rgba(0,0,0,.6)'; ctx.fillRect(CONFIG.W/2-tw/2, DANGER_Y+6, tw, 26);
-    ctx.fillStyle = Math.sin(now/80)>0 ? '#ff4a3a' : '#ffd0c8'; ctx.fillText(L().almostFull, CONFIG.W/2, DANGER_Y+19);
+    ctx.fillStyle=CONFIG.pal.danger; ctx.fillRect(CONFIG.W/2-tw/2, DANGER_Y+6, tw, 26);   // 赤い帯（塗り）＋白い文字
+    ctx.fillStyle = Math.sin(now/80)>0 ? '#FFFFFF' : '#FFF3C4'; ctx.fillText(L().almostFull, CONFIG.W/2, DANGER_Y+19);
   }
   for (const e of state.effects){
+    if (e.type === 'ring'){ if (e.t < 0) continue;
+      const k = Math.min(1, e.t/e.dur), ease = 1 - Math.pow(1-k, 2), R0 = e.r0 + (e.r1-e.r0)*ease, im = ringImg(e.color), a = 1 - k;
+      if (im){ const w = R0*2.46; ctx.save(); ctx.globalAlpha = a; ctx.drawImage(im, e.x - w/2, e.y - w/2, w, w); ctx.restore(); }
+      else { ctx.beginPath(); ctx.arc(e.x, e.y, R0, 0, Math.PI*2); ctx.strokeStyle = e.color; ctx.globalAlpha = a; ctx.lineWidth = 5; ctx.stroke(); ctx.globalAlpha = 1; }
+      continue; }
     ctx.beginPath(); ctx.arc(e.x,e.y,e.r*(1+e.t*(e.grow||3)),0,Math.PI*2);
     ctx.strokeStyle=`rgba(255,230,120,${1-e.t/0.35})`; ctx.lineWidth=4; ctx.stroke();
   }
   // 床：在庫の箱（レベル）＋クレームの札
-  ctx.fillStyle='#3b4a60'; ctx.fillRect(BOX.left-10, BOX.bottom, BOX.right-BOX.left+20, 12);
+  ctx.fillStyle=CONFIG.pal.frame; ctx.fillRect(BOX.left-10, BOX.bottom, BOX.right-BOX.left+20, 12);
   if (state.floorY < BOX.bottom - 0.5){
     const top = state.floorY, hh = BOX.bottom - top, cw = 45, ch = 23;
     ctx.save(); ctx.beginPath(); ctx.rect(BOX.left, top, BOX.right-BOX.left, hh); ctx.clip();
@@ -2336,7 +2903,7 @@ function draw(now){
       }
     }
     ctx.restore();
-    ctx.fillStyle='#3b4a60'; ctx.fillRect(BOX.left, top-4, BOX.right-BOX.left, 4);
+    ctx.fillStyle=CONFIG.pal.frame; ctx.fillRect(BOX.left, top-4, BOX.right-BOX.left, 4);
   }
   if (state.claimSteps > 0){   // クレーム1回ごとに札を床に重ねる
     const tw = 66, th = 21, rows = Math.max(1, Math.floor((BOX.bottom - state.floorY - 2)/(th+2))), cols = 5;
@@ -2352,14 +2919,14 @@ function draw(now){
       if (fall) ctx.restore();
     }
   }
-  ctx.fillStyle='#151c26'; ctx.fillRect(0, LANE_Y-36, W, 72);
+  drawBelt(now);   // C3：明るいコンベア
   if (state.claimSteps > 0){   // 回復までの良品カウント（コンベアの左上）
-    ctx.fillStyle='#fff'; ctx.font=`bold ${CONFIG.goodStreakFontPx}px sans-serif`; ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillStyle=CONFIG.pal.ink; ctx.font=`bold ${CONFIG.goodStreakFontPx}px sans-serif`; ctx.textAlign='left'; ctx.textBaseline='middle';
     ctx.fillText(`${L().goodStreak} ${state.goodStreak}/${CONFIG.recoverStreak}`, 10, LANE_Y-24);
   }
-  ctx.strokeStyle='#f5b700'; ctx.lineWidth=2; ctx.setLineDash([20,14]); ctx.beginPath(); ctx.moveTo(0,LANE_Y+26); ctx.lineTo(W,LANE_Y+26); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle=CONFIG.pal.accentEdge; ctx.lineWidth=2; ctx.setLineDash([20,14]); ctx.beginPath(); ctx.moveTo(0,LANE_Y+26); ctx.lineTo(W,LANE_Y+26); ctx.stroke(); ctx.setLineDash([]);
   // 下の帯：組み立ての流れ（pathShow のときは道すじ表示が本体なので slim は出さない）＋ボタン
-  ctx.fillStyle='#1b2330'; ctx.fillRect(0, LANE_Y+36, W, H-(LANE_Y+36));
+  ctx.fillStyle='rgba(255,255,255,.35)'; ctx.fillRect(0, LANE_Y+36, W, H-(LANE_Y+36));   // C3：下の帯は背景が透ける明るい帯
   if (!CONFIG.pathShow){ const im = flowImg(), fh = CONFIG.flowW/9;
     if (im) ctx.drawImage(im, CONFIG.flowX, CONFIG.flowY, CONFIG.flowW, fh);
     else { // 予備：色の丸を並べる
@@ -2379,9 +2946,10 @@ function draw(now){
     }
     if (s.phase<0.35){ ctx.beginPath(); ctx.arc(x,y,size,0,Math.PI*2); ctx.fillStyle= s.bad ? 'rgba(90,60,60,.85)' : 'rgba(217,70,59,.85)'; ctx.fill(); }
     drawCar(x, y, size, s.rank);
-    if (s.phase>0.8 && !s.bad){ ctx.fillStyle='rgba(255,255,255,.75)'; ctx.font=`bold ${CONFIG.vroomFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(L().vroom, x-60, y-34); }
+    if (s.phase>0.8 && !s.bad){ ctx.fillStyle=CONFIG.pal.ink; ctx.font=`bold ${CONFIG.vroomFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(L().vroom, x-60, y-34); }
   }
   for (const p of state.parts) drawParticle(p);
+  drawCutin();
   for (const p of (state.bh ? [] : state.popups)){
     if (p.t < 0) continue; const pd = p.dur||1.2, isMar = p.text === L().marriage;
     ctx.globalAlpha = p.celeb ? Math.max(0, Math.min(1, (pd - p.t)/CONFIG.celebFade)) : Math.max(0, 1-p.t/pd); ctx.fillStyle=p.color; ctx.font=`bold ${p.size||CONFIG.popupFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -2389,6 +2957,7 @@ function draw(now){
     let py = p.fixY != null ? p.fixY : p.y - p.t*30;
     if (isMar && p.fixY == null) py = Math.max(py, CONFIG.newPartY + CONFIG.newPartH/2 + CONFIG.notifGap + fs/2);   // v0.9.3：新入荷帯の下から6px以上
     if (p.celeb){ ctx.strokeStyle = '#000'; ctx.lineWidth = CONFIG.celebOutline*2; ctx.lineJoin = 'round'; ctx.strokeText(p.text, px, py); }
+    if (!p.celeb && !p.outline){ ctx.strokeStyle = CONFIG.pal.ink; ctx.lineWidth = 4; ctx.lineJoin = 'round'; ctx.strokeText(p.text, px, py); }   // v0.9.7：明るい背景でも読めるように濃紺のふち
     if (p.outline){ ctx.strokeStyle = CONFIG.discardOutline; ctx.lineWidth = CONFIG.discardOutlineW; ctx.lineJoin = 'round'; ctx.strokeText(p.text, px, py); }   // 黒いふちどり（文字の前に）
     ctx.fillText(p.text, px, py); ctx.globalAlpha = 1;
   }
@@ -2396,41 +2965,41 @@ function draw(now){
     if (m.t < 0) continue;
     const k = m.t/CONFIG.moneyTime;
     ctx.globalAlpha = m.celeb ? Math.max(0, Math.min(1, (CONFIG.moneyTime - m.t)/CONFIG.celebFade)) : (k < 0.5 ? 1 : Math.max(0, (1-k)/0.5)); ctx.fillStyle='#ffd84a'; ctx.font=`bold ${CONFIG.moneyFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-    if (m.celeb){ ctx.strokeStyle='#000'; ctx.lineWidth=CONFIG.celebOutline*2; ctx.lineJoin='round'; ctx.strokeText(m.text, Math.max(70, Math.min(W-70, m.x)), moneyY(m, k)); ctx.fillStyle='#ffd84a'; }
+    { ctx.strokeStyle = m.celeb ? '#000' : CONFIG.pal.ink; ctx.lineWidth = m.celeb ? CONFIG.celebOutline*2 : 4; ctx.lineJoin='round'; ctx.strokeText(m.text, Math.max(70, Math.min(W-70, m.x)), moneyY(m, k)); ctx.fillStyle='#ffd84a'; }   // v0.9.7：ふちはいつも
     ctx.fillText(m.text, Math.max(70, Math.min(W-70, m.x)), moneyY(m, k)); ctx.globalAlpha = 1;
   }
   state.toasts.filter(t => !(t.wait > 0)).slice(0,1).forEach((t) => {   // 大事なお知らせ：1つだけ、決まった場所に
     const k = t.t/t.dur, y = CONFIG.bannerY;
     ctx.globalAlpha = k < 0.85 ? 1 : (1-k)/0.15;
     if (t.level){   // LEVEL UP：黄色い帯（同じ場所・同じ列）
-      ctx.fillStyle='rgba(245,183,0,.92)'; ctx.fillRect(0, y-CONFIG.bannerLevelH/2, W, CONFIG.bannerLevelH);
+      ctx.fillStyle=CONFIG.pal.accent; ctx.fillRect(0, y-CONFIG.bannerLevelH/2, W, CONFIG.bannerLevelH);
       ctx.fillStyle=t.color; ctx.font=`bold ${CONFIG.bannerLevelFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
       ctx.fillText(t.text, W/2 + (k<0.12 ? (1-k/0.12)*-W : 0), y); ctx.globalAlpha = 1; return;
     }
     const ft = fitText(t.text, CONFIG.fitMaxW, CONFIG.bannerFontPx, CONFIG.fitMinPx), bh2 = ft.lines.length > 1 ? CONFIG.bannerH + ft.px + 4 : CONFIG.bannerH;
     const tw = Math.min(CONFIG.fitMaxW + 24, Math.max(...ft.lines.map(l => ctx.measureText(l).width)) + 24);
-    ctx.fillStyle='rgba(0,0,0,.72)'; ctx.fillRect(W/2-tw/2, y-bh2/2, tw, bh2);
+    ctx.fillStyle=CONFIG.pal.inkPlate; ctx.fillRect(W/2-tw/2, y-bh2/2, tw, bh2);
     ctx.fillStyle=t.color; ctx.textAlign='center'; ctx.textBaseline='middle'; drawFitText(t.text, W/2, y, CONFIG.fitMaxW, CONFIG.bannerFontPx, CONFIG.fitMinPx);
     ctx.globalAlpha = 1;
   });
   if (state.hint > 0 && state.hint <= CONFIG.hintShow && state.running && !tutHidesHint()){   // 説明4を見たことがあれば出さない（遊び方のやり直し中は、帯が出ているとき・説明4のあとだけ出さない）
     const hh = fitText(L().hint, CONFIG.fitMaxW, CONFIG.hintFontPx, CONFIG.fitMinPx).lines.length > 1 ? CONFIG.tutH2 : CONFIG.hintH;
-    ctx.fillStyle='rgba(0,0,0,.75)'; ctx.fillRect(W/2 - CONFIG.fitMaxW/2 - 5, 300, CONFIG.fitMaxW + 10, hh);
+    ctx.fillStyle=CONFIG.pal.inkPlate; ctx.fillRect(W/2 - CONFIG.fitMaxW/2 - 5, 300, CONFIG.fitMaxW + 10, hh);
     ctx.fillStyle='#ffd84a'; ctx.textAlign='center'; ctx.textBaseline='middle'; drawFitText(L().hint, W/2, 300+hh/2, CONFIG.fitMaxW, CONFIG.hintFontPx, CONFIG.fitMinPx);
   }
   drawTutorial(now);
   if (state.banner){
     const k = state.banner.t/state.banner.dur;
     ctx.globalAlpha = k<0.8 ? 1 : (1-k)/0.2;
-    ctx.fillStyle='rgba(245,183,0,.92)'; ctx.fillRect(0, 230, W, CONFIG.centerBannerH);
-    ctx.fillStyle='#222'; ctx.font=`bold ${CONFIG.centerBannerFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillStyle=CONFIG.pal.accent; ctx.fillRect(0, 230, W, CONFIG.centerBannerH);
+    ctx.fillStyle=CONFIG.pal.ink; ctx.font=`bold ${CONFIG.centerBannerFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
     ctx.fillText(`${state.banner.text}  Lv${state.level}`, W/2 + (k<0.15 ? (1-k/0.15)*-W : 0), 230+CONFIG.centerBannerH/2);
     ctx.globalAlpha = 1;
   }
   if (state.rankUp && state.rankUp.t >= 0){
     const ru = state.rankUp, k = ru.t/ru.dur, im = CAR_RANKS[ru.rank] && CAR_RANKS[ru.rank].img;
     ctx.globalAlpha = k<0.1 ? k/0.1 : (k>0.8 ? (1-k)/0.2 : 1);
-    ctx.fillStyle='rgba(0,0,0,.55)'; ctx.fillRect(0, 372, W, 170);
+    ctx.fillStyle=CONFIG.pal.inkPlate; ctx.fillRect(0, 372, W, 170);
     const sc = 0.85 + 0.15*Math.min(1, k/0.15);
     if (im && im.ok){ const w=230*sc*(CAR_RANKS[ru.rank].scale||1), h=w*im.height/im.width; ctx.drawImage(im, W/2-w/2, 452-h/2, w, h); }
     ctx.fillStyle='#ffd84a'; ctx.font=`bold ${CONFIG.rankUpFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -2468,7 +3037,7 @@ function draw(now){
   drawBH(now);   // v0.9.2
   drawIntro(now);   // v0.8：分解演出（最前面）
   ctx.restore();
-  if (state.flash && !state.bh){ ctx.fillStyle=`rgba(${state.flash.color},${0.6*(1-state.flash.t/state.flash.dur)})`; ctx.fillRect(0,0,W,H); }
+  if (state.flash && !state.bh){ const fa = Math.min(state.flash.alpha != null ? state.flash.alpha : 0.6, Settings.reduceMotion ? CONFIG.reduceFlashMax : 1); ctx.fillStyle=`rgba(${state.flash.color},${fa*(1-state.flash.t/state.flash.dur)})`; ctx.fillRect(0,0,W,H); }
   if (state.ending > 0){ ctx.fillStyle=`rgba(0,0,0,${0.5*(1-state.ending/0.9)})`; ctx.fillRect(0,0,W,H); }
 }
 
@@ -2478,10 +3047,15 @@ const ov=document.getElementById('overlay'), ovText=document.getElementById('ovT
 const shareBtn=document.getElementById('shareBtn'), copiedEl=document.getElementById('copied'), flowTitle=document.getElementById('flowTitle');
 const pauseOv=document.getElementById('pauseOv'), howBtn=document.getElementById('howBtn');
 let overlayMode = 'title';
+function stepsText(){ document.querySelectorAll('.steps3 .stT').forEach(b => { b.textContent = L()[b.dataset.k] || ''; });
+  const want = howtoSrc(false); document.querySelectorAll('img.howto3').forEach(im => { if (im.getAttribute('src') !== want){ im.hidden = false; if (im.nextElementSibling) im.nextElementSibling.hidden = true; im.src = want; } im.alt = `${L().step_drop} → ${L().step_match} → ${L().step_ship}`; });
+  const hi = document.getElementById('howImg'); if (hi){ const vert = !pcLayout && innerHeight > innerWidth; const w2 = howtoSrc(vert); if (hi.getAttribute('src') !== w2) hi.src = w2; hi.className = vert ? 'v' : 'h'; hi.alt = `${L().step_drop} → ${L().step_match} → ${L().step_ship}`; } }
 function renderOverlay(){
   const T = L();
+  stepsText();
   copiedEl.textContent = '';
   updateTitle();
+  ov.classList.toggle('loading', overlayMode==='title' && CONFIG.autoStart && !bootDone);   // v0.9.8：自動で始めるときは読み込み画面だけ
   if (overlayMode==='title'){
     flowTitle.style.display = '';
     const pr = personalRanks(), best = pr[0];
@@ -2496,27 +3070,28 @@ function renderOverlay(){
     const r=window.lastResult || {}, names=CAR_NAMES[lang];
     const title = titleFor(r);
     const head = r.cleared ? (T.clear||'CLEAR') : T.over;
-    let html = `<b style="font-size:22px">${head}</b><br>`;
-    if (r.newRecord) html += `<span class="newRec">${T.newRec}</span><br>`;
-    html += `<div class="title">${T.titleLine(title)}</div>`;
-    // DR3 決算
+    // v0.9.7 C3：明るい結果カード。一番上に大きく「ランク」と「総合点」→ 出庫・売上 → 記録 → ランキング
     const gross = r.grossSales != null ? r.grossSales : r.sales;
     const profit = r.profit != null ? r.profit : gross;
     const marginPct = r.margin != null ? (r.margin*100) : 0;
-    html += `<div class="res"><b>${T.settle||'Settlement'}</b><br>`;
+    let html = `<div class="rCard"><div class="rHead">${head}</div>`;
+    if (r.score != null) html += `<div class="rTop"><div class="rRank" id="resRank">${r.scoreRank||'C'}</div><div class="rScore" id="resScore">${r.score}<small>/1000</small></div></div>`
+      + `<div style="font-size:14px">${T.totalScore||'Score'}・${T.rankLabel||'Rank'}`+(r.retry?` <span class="rRetry">${T.retry_used_note||'↻'}</span>`:'')+`</div>`;
+    if (r.newRecord) html += `<span class="newRec">${T.newRec}</span><br>`;
+    html += `<div class="title">${T.titleLine(title)}</div>`;
+    html += `<div class="rStats"><b>${T.settle||'Settlement'}</b><br>`;
     html += `${T.unitsShipped||T.shipped} <b>${r.carsGood||0}</b>${T.unitCars}（${T.unitsGood||'Good'}） / <b>${r.carsBad||0}</b>（${T.unitsBad||'Bad'}）`+(r.claims ? ` / ${T.complaints} ${r.claims}` : '')+`<br>`;
     html += `${T.thisSales} <b>${fmtYen(gross||0)}</b><br>`;
-    html += `${T.profit||'Profit'} <b${profit<0 ? ' style="color:#ff4a3a"' : ''}>${fmtYen(profit||0)}</b> / ${T.margin||'Margin'} <b>${(marginPct).toFixed(1)}%</b><br>`;
-    if (r.score != null) html += `<b style="font-size:20px;color:#ffd84a">${T.totalScore||'Score'} ${r.score}/1000　${T.rankLabel||'Rank'} ${r.scoreRank||'C'}</b>`+(r.retry?` <span style="color:#ffd84a">${T.retry_used_note||'↻'}</span>`:'')+`<br>`;
+    html += `${T.profit||'Profit'} <b${profit<0 ? ' class="neg"' : ''}>${fmtYen(profit||0)}</b> / ${T.margin||'Margin'} <b>${(marginPct).toFixed(1)}%</b><br>`;
     html += `${T.best} ${fmtYen(r.bestSales||0)}`+( (r.bestRound||1) >= CONFIG.roundShowFrom ? (lang==='ja' ? `（${T.roundsReached(r.bestRound)}）` : ` (${T.roundsReached(r.bestRound)})`) : '' )+`<br>`;
     html += `Lv ${r.level||1} / ${T.time} ${fmtTime(r.seconds != null ? r.seconds : 0)}`;
     if ((r.round||1) >= CONFIG.roundShowFrom) html += `<br><b>${T.roundsReached(r.round)}</b>`;
-    html += `</div>`;
+    html += `</div></div>`;
     // 個人ランキング top10
     const pr = r.personalRanks || personalRanks();
-    html += `<div class="res" style="margin-top:8px;font-size:14px"><b>${T.personalRank||'Ranking'}</b><br>`;
+    html += `<div class="rCard rRanks"><b>${T.personalRank||'Ranking'}</b><br>`;
     if (!pr.length) html += (T.noRank||'—');
-    else pr.forEach((e,i)=>{ html += `${i+1}. ${e.score}（${e.rank||'?'}） ${fmtYen(e.sales||0)} / ${e.cars||0}${T.unitCars}`+(e.retry?` <span style="color:#ffd84a">${T.rank_retry_mark||'↻'}</span>`:'')+`<br>`; });
+    else pr.forEach((e,i)=>{ html += `${i+1}. ${e.score}（${e.rank||'?'}） ${fmtYen(e.sales||0)} / ${e.cars||0}${T.unitCars}`+(e.retry?` <span class="rRetry">${T.rank_retry_mark||'↻'}</span>`:'')+`<br>`; });
     html += `</div>`;
     ovText.innerHTML = html; startBtn.textContent=T.retry; startBtn.disabled = false;
     shareBtn.textContent = T.share; shareBtn.classList.remove('hidden');
@@ -2526,30 +3101,50 @@ function renderOverlay(){
   document.documentElement.lang = lang;
 }
 function renderPause(){
+  stepsText();
+  { const pr = personalRanks(), best = pr[0], el = document.getElementById('pauseBest'); if (el) el.textContent = best ? L().bestLine(`${best.score}（${best.rank}）`) : ''; }   // v0.9.8：タイトル画面がないので、ベストは一時停止メニューに
+  document.getElementById('langJa2').classList.toggle('on', lang==='ja'); document.getElementById('langEn2').classList.toggle('on', lang==='en');
   document.getElementById('pauseTitle').textContent = L().pause;
   document.getElementById('resumeBtn').textContent = L().resume;
   document.getElementById('introReplayBtn').textContent = L().introReplay;
   document.getElementById('howBtn2').textContent = L().howToPlay;
   document.getElementById('howConfirmText').textContent = L().howConfirm; document.getElementById('howYes').textContent = L().yes; document.getElementById('howNo').textContent = L().back;
-  document.getElementById('muteBtn2').textContent = muted ? L().soundOff : L().soundOn;
+  document.getElementById('setBtn').textContent = '⚙ ' + L().settings;
+  renderSettings();
 }
-function pauseGame(){
+function renderSettings(){   // v0.9.9 C6
+  const T = L(), el = id => document.getElementById(id); if (!el('setOv')) return;
+  const tg = (id, label, on, note) => { const b = el(id); b.innerHTML = `${label}：<b>${on ? T.on : T.off}</b>${note ? ' ' + note : ''}`; b.classList.toggle('off', !on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+  const sdkMute = SDKS.muteAudio ? '🔇' : '';
+  tg('muteBtn2', T.setSfx, !muted, sdkMute); tg('bgmBtn', T.setBgm, Settings.bgm, sdkMute); tg('motionBtn', T.setMotion, Settings.reduceMotion);
+  el('setTitle').textContent = T.settings; el('credL').textContent = T.credits; el('setBack').textContent = T.back2;
+  el('langJa2').classList.toggle('on', lang==='ja'); el('langEn2').classList.toggle('on', lang==='en');
+}
+function pauseGame(fromVisibility){
   if (!state.running || state.paused || introActive()) return;
-  state.paused = true; activePointer = null; state.armed = false; state.queuedDrop = false;
+  state.paused = true; activePointer = null; state.armed = false; state.queuedDrop = false; keysClear();
   renderPause(); pauseOv.classList.remove('hidden');
+  if (fromVisibility !== true) gameplayStop();   // v0.9.6：タブ切り替えでは gameplayStop を呼ばない（CrazyGames の指示）
 }
-function resumeGame(){ if (!state.paused) return; if (introActive() && state.intro && state.intro.replay) skipIntro(); state.paused = false; last = performance.now(); pauseOv.classList.add('hidden'); if (!state.canDrop) state.canDrop = true; }
+function resumeGame(){ if (!state.paused) return; if (introActive() && state.intro && state.intro.replay) skipIntro(); state.paused = false; last = performance.now(); pauseOv.classList.add('hidden'); if (!state.canDrop) state.canDrop = true; howCf.classList.add('hidden'); blurActive(); gameplayStart(); }
 document.getElementById('resumeBtn').onclick = resumeGame;
 document.getElementById('introReplayBtn').onclick = ()=>replayIntro();
+['click','pointerup'].forEach(ev => pauseOv.addEventListener(ev, e => { if (performance.now() - replaySkipAt < 450){ e.stopPropagation(); e.preventDefault(); } }, true));
 const howCf = document.getElementById('howConfirm');   // v0.9.4：confirm() のかわりにゲーム内の確認
 document.getElementById('howBtn2').onclick = ()=>{ howCf.classList.remove('hidden'); };
 document.getElementById('howNo').onclick = ()=>{ howCf.classList.add('hidden'); };
 document.getElementById('howYes').onclick = ()=>{ howCf.classList.add('hidden'); state.paused = false; pauseOv.classList.add('hidden'); tutForceNext = true; startGame(); };
 document.getElementById('muteBtn2').onclick = ()=>setMuted(!muted);
-document.addEventListener('visibilitychange', ()=>{ if (document.hidden) pauseGame(); else resumeAudio(); });
+document.getElementById('bgmBtn').onclick = ()=>setBgmOn(!Settings.bgm);
+document.getElementById('motionBtn').onclick = ()=>{ Settings.set('reduceMotion', !Settings.reduceMotion); renderSettings(); };
+document.getElementById('setBtn').onclick = ()=>{ renderSettings(); document.getElementById('setOv').classList.remove('hidden'); };
+document.getElementById('setBack').onclick = ()=>{ document.getElementById('setOv').classList.add('hidden'); renderPause(); };
+// v0.9.9 A8：ボタンを押したときの「ポッ」（一時停止中は無音のルールなので、遊んでいる画面・結果画面だけ鳴る）
+document.addEventListener('click', e => { if (e.target && e.target.closest && e.target.closest('button')) sfx('ui_tap'); }, true);
+document.addEventListener('visibilitychange', ()=>{ if (document.hidden){ keysClear(); pauseGame(true); bgmUpdate(true); try{ if (actx && actx.state === 'running') actx.suspend(); }catch(e){} } else resumeAudio(); });   // v0.9.9：隠れたら無音
 // 称号：2周目以降は「自動車王 ×2」のように周の数をつける
 const titleFor = r => TITLES[lang][Math.max(0, r.topRank)] + ((r.round||1) >= CONFIG.roundShowFrom ? ` ×${r.round}` : '');
-function startGame(){
+function startGame(auto){
   setupWorld(); newState(); if ((CONFIG.startRound||1) > 1) setStartRound(CONFIG.startRound); state.running=true; activePointer=null; ov.classList.add('hidden');
   if (state.round > 1){   // v5l：2周目から始めるときも、周のバナーと round_start の音（音はバナーが出たとき loop で鳴らす）
     state.roundStartedAt.push({ round:state.round, level:state.level, t:state.elapsed });
@@ -2557,16 +3152,21 @@ function startGame(){
     if (binsMoving()) toast(L().binMoving, '#ffd84a', 0, 0.6 + CONFIG.roundBannerSec);
   }
   updateTitle();
-  { const w = tutWanted(); state.tut = w ? tutNew(true, tutForceNext || CONFIG.tutorialMode === 'always') : tutNew(tutExtraWanted(), false, true); } tutForceNext = false;
+  { const w = tutWanted(); state.tut = w ? tutNew(true, tutForceNext || CONFIG.tutorialMode === 'always') : tutNew(tutExtraWanted(), false, true); }
+  { const ob = Store.get('onboard_v1', null) || {}; state.onbShipWanted = !!(CONFIG.onboardPictures && state.tut.on && !state.tut.extraOnly && (state.tut.replay || !ob.ship)); state.onbShip = null; }   // v0.9.8：「③出荷！」の絵を出すか
+  tutForceNext = false;
   preloadTiers(1); loadFx();
-  startIntro(false);   // v0.8：初回（または always）は分解演出
+  startIntro(false);   // v0.8：初回（または always）は分解演出。v0.9.8：introBreakShow 'off' なので出ない
+  state.firstWait = auto === true ? { t:0, done:false } : null;
   if (QA_MODE === 'trailer') qaTrailerSetup();
+  keysClear(); blurActive(); updatePanels(true);
+  gameplayStart();   // v0.9.6 C1：手に部品を持ち、遊べる状態になった瞬間
 }
 // QA：Lv8（トレーラーの段）から始め、箱に部品と艤装ボディを置き、手に走れるシャシーを持たせる。
 // → 手の部品をボディの上で離す → 合体 → トレーラー出庫 → 最大の爆発（揺れ・光・箱の部品が全部飛ぶ）
 function qaTrailerSetup(){
   if (state.intro){ state.intro.done = true; state.intro.t = state.intro.dur; }
-  state.tut = tutNew(false, false);
+  state.tut = tutNew(false, false); state.onbShipWanted = false; state.onbShip = null;
   state.levelBase = 0; state.level = 8; state.carsThisLevel = 0; preloadTiers(8);
   const yb = BOX.bottom - 30;
   for (let i=0;i<7;i++) makePart('wheel', 50 + i*50, yb);
@@ -2610,8 +3210,8 @@ function finishClear(){
   if (state.cleared) return;
   state.cleared = true;
   if (state.tut.on) state.tut.bad = null;
-  state.running = false; state.ending = 0.9; state.shake = 10;
-  state.flash = { color:'255,216,74', t:0, dur:0.7 };
+  state.running = false; state.ending = 0.9; state.shake = 10; gameplayStop();
+  flashScreen('255,216,74', 0.6, 0.7);
   sfx('complete'); setTimeout(()=>sfx('level_up'), 400);
   finalizeResult(true);
 }
@@ -2624,6 +3224,7 @@ function finalizeResult(cleared){
   const prevRound = Store.get('bestRound', 1), round = state.round||1;
   if (round > prevRound) Store.set('bestRound', round);
   settle.retry = !!state.retryUsed;
+  if (settle.rank === 'S') happyOnce('rankS');   // v0.9.6 C1
   const ranks = savePersonalRank(settle);
   // v0.7：プレイ時間はゲーム内 elapsed を優先。0 の誤表示防止に壁時計も参照
   const wallSec = state.wallStart ? (performance.now() - state.wallStart) / 1000 : 0;
@@ -2638,34 +3239,40 @@ function finalizeResult(cleared){
 function startEnding(){
   if (state.cleared) return;   // クリア後のあふれば無視
   if (state.tut.on) state.tut.bad = null;
-  state.running=false; state.shake=16;
+  state.running=false; state.shake=16; gameplayStop();
   state.flash={ color:'255,40,40', t:0, dur:0.6 };
   sfx('game_over');
   activePointer = null; state.armed = false; state.queuedDrop = false;
   if (CONFIG.retryEnabled && !state.retryUsed){ retryOffer(); return; }   // v0.9.5：1回だけ「つづける？」
   state.ending=0.9; finalizeResult(false);
 }
-function showResult(){ overlayMode='result'; renderOverlay(); ov.classList.remove('hidden'); document.getElementById('retryOv').classList.add('hidden'); }
+function showResult(){ gameplayStop(); overlayMode='result'; renderOverlay(); ov.classList.remove('hidden'); document.getElementById('retryOv').classList.add('hidden'); }
 // ===== v0.9.5 つづける（リトライ） =====
 const retryOv = document.getElementById('retryOv');
 let qaAdPending = null;   // でばぐ：qaAdResult で広告結果をまねる
-function adSdk(){ try{ return window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.ad; }catch(e){ return null; } }
-function gameSdk(){ try{ return window.CrazyGames && window.CrazyGames.SDK && window.CrazyGames.SDK.game; }catch(e){ return null; } }
-function gameplayStart(){ try{ const g=gameSdk(); if (g && g.gameplayStart) g.gameplayStart(); }catch(e){} }
-function gameplayStop(){ try{ const g=gameSdk(); if (g && g.gameplayStop) g.gameplayStop(); }catch(e){} }
+function adSdk(){ try{ const s = cgSdk(); return s && s.ad; }catch(e){ return null; } }   // v0.9.6：SDKが使えるとき（init 済み・disabled でない）だけ
+function gameSdk(){ try{ const s = cgSdk(); return s && s.game; }catch(e){ return null; } }
+// v0.9.6：同じものを2回続けて送らない（start→start にしない）。intent はSDKがなくても記録（テスト用）
+// SDK は gameplayStart/Stop を1秒以内に続けて送ると「throttled」のエラーを出すので、送るのは1秒に1回まで。すぐに戻った（一時停止→すぐ再開）ときは送らずにまとめる
+let gpTimer = null; SDKS.sent = false; SDKS.lastSentAt = -1e12;
+function gpSync(){
+  gpTimer = null;
+  if (SDKS.gameplay === SDKS.sent) return;
+  const wait = SDKS.lastSentAt + CONFIG.sdkGameplayMinGapMs - Date.now();
+  if (wait > 0){ gpTimer = setTimeout(gpSync, wait + 10); return; }
+  SDKS.sent = SDKS.gameplay; SDKS.lastSentAt = Date.now(); sdkCall('game', SDKS.sent ? 'gameplayStart' : 'gameplayStop');
+}
+function gameplayStart(){ if (SDKS.gameplay) return; SDKS.gameplay = true; setTimeout(bgmLoad, 0);   /* v0.9.9：BGM は遊び始めてから読む */ SDKS.intent.push('gameplayStart'); (SDKS.gpAt = SDKS.gpAt || []).push({ t: performance.now(), playable: !!(state && state.running && !state.paused && !introActive() && state.current) });   // v0.9.8：遊べる瞬間に送ったか（テスト用）
+  if (!gpTimer) gpSync(); }
+function gameplayStop(){ if (!SDKS.gameplay) return; SDKS.gameplay = false; SDKS.intent.push('gameplayStop'); if (!gpTimer) gpSync(); }
 function retryHasAdblock(){
   const ad = adSdk(); if (!ad || !ad.hasAdblock) return false;
   try{ const v = ad.hasAdblock(); return !!(v && typeof v.then !== 'function' ? v : false); }catch(e){ return false; }
 }
-function retryCanFree(){ return !adSdk() || !!state.adsOff; }
+function retryCanFree(){ return true; }   // v0.9.8 監査6：Basic Launch では広告なし。つづけるはいつも無料
 function retrySetButtons(busy){
-  const adB = document.getElementById('retryAdBtn'), freeB = document.getElementById('retryFreeBtn'), noB = document.getElementById('retryNoBtn');
-  const free = retryCanFree();
-  adB.classList.toggle('hidden', free); freeB.classList.toggle('hidden', !free);
-  const block = CONFIG.retryOnAdblock === 'block' && retryHasAdblock() && !free;
-  adB.disabled = !!busy || block; freeB.disabled = !!busy; noB.disabled = !!busy;
-  if (block){ adB.textContent = L().retry_adblock; adB.style.opacity = '.55'; }
-  else { adB.style.opacity = ''; adB.textContent = L().retry_ad; }
+  const freeB = document.getElementById('retryFreeBtn'), noB = document.getElementById('retryNoBtn');
+  freeB.classList.remove('hidden'); freeB.disabled = !!busy; noB.disabled = !!busy;
   freeB.textContent = L().retry_free; noB.textContent = L().retry_no;
 }
 function retryOffer(){
@@ -2715,35 +3322,11 @@ function retryMuteTemp(on){
   if (on){ if (state.muteHold == null) state.muteHold = muted; muted = true; }
   else { if (state.muteHold != null){ muted = state.muteHold; state.muteHold = null; } }
 }
-function retryStartAd(){
+function retryStartAd(){   // v0.9.8 監査6：広告は出さず、そのまま無料でつづける
   if (!state.retryOffer || state.retryOffer.busy) return;
-  if (retryCanFree()){ retryResume(); return; }
-  if (CONFIG.retryOnAdblock === 'block' && retryHasAdblock()){ document.getElementById('retryMsg').textContent = L().retry_adblock; return; }
-  state.retryOffer.busy = true; retrySetButtons(true);
-  document.getElementById('retryMsg').textContent = L().retry_loading;
-  const finish = (ok, code) => {
-    retryMuteTemp(false);
-    if (!state.retryOffer) return;
-    state.retryOffer.busy = false;
-    if (ok){ retryResume(); return; }
-    if (code === 'adsDisabled'){ state.adsOff = true; retryResume(); return; }
-    // adError → no reward（決定どおり）
-    document.getElementById('retryMsg').textContent = L().retry_ad_fail;
-    setTimeout(()=>{ if (state.retryOffer){ state.retryOffer = null; retryOv.classList.add('hidden'); state.ending = 0.01; finalizeResult(false); showResult(); } }, (CONFIG.retryAdFailSec||2)*1000);
-  };
-  if (qaAdPending){ const r = qaAdPending; qaAdPending = null; if (r === 'finished'){ retryMuteTemp(true); gameplayStop(); finish(true); } else finish(false, r); return; }
-  const ad = adSdk();
-  if (!ad || !ad.requestAd){ finish(true); return; }
-  try{
-    ad.requestAd('rewarded', {
-      adStarted(){ retryMuteTemp(true); gameplayStop(); },
-      adFinished(){ finish(true); },
-      adError(err){ const code = (err && (err.code || err)) || 'other'; finish(false, String(code)); }
-    });
-  }catch(e){ finish(false, 'other'); }
+  retryResume();
 }
-function qaAdResult(code){ qaAdPending = code; }   // 'finished'|'adsDisabled'|'unfilled'|'adblock'|…
-document.getElementById('retryAdBtn').onclick = ()=>retryStartAd();
+function qaAdResult(code){ qaAdPending = code; }   // 互換のため残す（使わない）
 document.getElementById('retryFreeBtn').onclick = ()=>retryStartAd();
 document.getElementById('retryNoBtn').onclick = ()=>retryDecline();
 startBtn.onclick = ()=>{ if (overlayMode==='title' && !assetsReady) return; startGame(); };
@@ -2757,61 +3340,136 @@ shareBtn.onclick = ()=>{
   try{ navigator.clipboard.writeText(text).then(done, ()=>{ copiedEl.textContent = text; }); }catch(e){ copiedEl.textContent = text; }
 };
 function setAssetsReady(){ if (assetsReady) return; assetsReady = true; buildGrayBadges(); renderOverlay(); setTimeout(()=>{ loadFx(); preloadTiers(1); buildGrayBadges(); }, 0); }
-Promise.all(IMG_WAIT).then(setAssetsReady);
-setTimeout(setAssetsReady, CONFIG.loadTimeout*1000);
-document.getElementById('langJa').onclick = ()=>{ lang='ja'; updateTitle(); renderOverlay(); };
-document.getElementById('langEn').onclick = ()=>{ lang='en'; updateTitle(); renderOverlay(); };
+document.getElementById('langJa').onclick = ()=>{ lang='ja'; Settings.set('lang','ja'); updateTitle(); renderOverlay(); renderPause(); updatePanels(true); };
+document.getElementById('langJa2').onclick = ()=>document.getElementById('langJa').onclick();   // v0.9.8：言語の切り替えは一時停止メニューへ（v0.99 で設定画面）
+document.getElementById('langEn2').onclick = ()=>document.getElementById('langEn').onclick();
+document.getElementById('langEn').onclick = ()=>{ lang='en'; Settings.set('lang','en'); updateTitle(); renderOverlay(); renderPause(); updatePanels(true); };
 function detectLang(){
   const q = new URLSearchParams(location.search).get('lang');
   if (q === 'ja' || q === 'en') return q;
-  const sdk = window.CrazyGames && window.CrazyGames.SDK;
-  if (sdk){
-    try{ const loc = (sdk.user && sdk.user.systemInfo && sdk.user.systemInfo.locale) || ''; return loc.slice(0,2) === 'ja' ? 'ja' : 'en'; }
-    catch(e){ return 'en'; }
-  }
-  return (navigator.language||'').slice(0,2) === 'ja' ? 'ja' : 'en';
+  const saved = Settings.lang; if (saved) return saved;   // v0.9.6：自分で選んだ言語（qr_lang）
+  if (SDKS.ok) return (SDKS.locale || '').slice(0,2) === 'ja' ? 'ja' : 'en';   // SDK の systemInfo.locale。取れなければ英語
+  return (navigator.language||'').slice(0,2) === 'ja' ? 'ja' : 'en';   // SDK なし（GitHub Pages・ローカル）
 }
-if (CONFIG.windowDoor) document.querySelectorAll('img.flowBig').forEach(im => {
-  im.onerror = function(){ this.onerror = null; this.src = 'assets/ui/assembly_flow.webp'; this.classList.remove('wd'); };   // v0.8 4-3：無いときは普通の流れ図へ
-  im.src = 'assets/ui/assembly_flow_wdoor.webp'; im.classList.add('wd');
-});
+// v0.9.8 監査1：流れ図の画像（assembly_flow*.webp）は3ステップの絵に替えたので使わない
 lang = detectLang();
 setupWorld(); newState(); renderOverlay(); renderPause(); requestAnimationFrame(loop);
-// テスト用：window.QR でゲーム状態を確認できます
-window.QR = { bhStart, seqShipTexts, fitText, holdLabelRect, pathDotPos, TUT_EXTRA, get activePointer(){return activePointer;}, get state(){return state;}, drop, setAim, CONFIG, ITEMS, K, RECIPES, COLORS, recipeResult, makePart, shipCar, levelUp, fmtYen, clampAim, BOX, HOLD_Y, DANGER_Y, GAME_NAME, gameName, titleBase, retryOffer, retryClearRow, retryResume, retryDecline, qaAdResult, get retryUsed(){return !!(state&&state.retryUsed);},
-  get assetsReady(){return assetsReady;}, binHitZones, hingeBoostActive, dropWeightsNow, defectsAllowed, mechanicAllowed, mechanicCount, randPiece, piece, dropLimit, dropLimitAt, defectChance, floorTarget, riseFrac, diffCars, neededParts, mechanicForced, disposalCostOf, disposalPartCost, currentCarPrice, CAR_VALUES, CAR_NAMES, timeRiseFrac, claimCap, carsToLevelUp, moneyY, toast, defectAge,
-  tierFor, artFor, ART, FX, UI, binLiftFor, pauseGame, resumeGame, setMuted, get muted(){return muted;}, sfx, TITLES, TEXT, gameBodies, startGame, startEnding, flowImg,
-  get audioUnlocked(){return audioUnlocked;}, sfxBuf, sfxEl,
-  floorStartT, overflowLimit, overflowInGrace, dropIntervalOk,
-  get lang(){return lang;}, setLang(l){ lang = l; },
-  get tutorial(){return state.tut;}, get tutorialDone(){return tutDone;}, get tutorialStored(){return Store.get('tutorial_done', false);}, get tutorialSeen(){return TUT_STEPS.filter(k=>tutSeenStore[k]);}, TUT_STEPS,
-  resetTutorial(){ tutDone = false; tutForceNext = false; tutSeenStore = {}; try{ const b = Store.backend(); b && b.removeItem && (b.removeItem('qr_tutorial_done'), b.removeItem('qr_tutorial_seen')); }catch(e){} },
-  reloadTutorialStore(){ tutSeenStore = tutLoadSeen(); tutDone = tutAllSeen(); },
-  skipTutorial: tutSkip, tutText, tutHidesHint, tutFreeze, tutSlow, artFile, hitTutSkip, tutSkipRect, howToPlay(){ howBtn.click(); },
-  binsMoving, binsVertMoving, binOffset, binVertOffset, binX, binY, binSideAt,
-  computeSettlement, finishClear, finalizeResult, personalRanks, savePersonalRank,
-  get round(){return state.round;}, setRound(n){ state.round = n; updateTitle(); },
-  difficulty(){ const b = diffBasis(), sp = CONFIG.difficulty.shipped; return { basis:b, shipped:shippedCount(), n:b==='shipped'?diffN():diffCars(), roundAdd:roundVal('diffAdd'), round:state.round,
-    minutes:+(b==='shipped'?shippedMin():elapsedMin()).toFixed(3), dropLimit:+dropLimit().toFixed(3), defectChance:+defectChance().toFixed(3), floorRise:+timeRiseFrac().toFixed(4), riseMax:riseMaxNow(),
-    caps: b==='shipped' ? { defectMax:sp.defect.max, dropTimeMin:sp.dropTime.min, riseMax:sp.riseMax } : { defectMax:roundVal('defectMax'), dropTimeMin:roundVal('dropTimeMin'), floorTimeMax:roundVal('floorTimeMax'), riseMax:CONFIG.riseMax } }; },
-  setDifficultyBasis(b){ CONFIG.difficulty.basis = b === 'time' ? 'time' : 'shipped'; return CONFIG.difficulty.basis; },
-  shippedCount, shippedVal, diffN, shippedMin, riseMaxNow, bodyIngredient, bodyNeeded, elapsedMin, diffBasis,
-  roundVal, roundParams, UI, ensureTier, SFX_NAMES, carValue, relLevel, startNextRound, setStartRound, titleFor, RECIPES_FOR, OUT_OF, rankForLevel, artPending, PLACEHOLDER_FILL,
-  get roundBanner(){return state.roundBanner;}, get levelBase(){return state.levelBase;},
-  get binPositions(){ return { left:binX(-1), right:binX(1), y:binY(-1), yL:binY(-1), yR:binY(1), r:BIN_DRAW_R*CONFIG.binScale, moving:binsMoving(), vert:binsVertMoving(), t:state.binT }; },
-  binHitZones, roundFloorAll, roundFloorRise, roundShipped, roundMin, get floorRiseNow(){ return +riseFrac().toFixed(4); }, get floorTimeRiseNow(){ return +timeRiseFrac().toFixed(4); },
-  doorMagnetStep, updateTitle, get magnet(){ return { pulls:state.magnetPulls, attach:state.magnetAttach, giveUp:state.magnetGiveUp, retries:state.magnetRetries||0, active:state.magnet.size }; },
-  setBinTime(t){ state.binT = t; },
-  binSideFor, get gapLatch(){ return state.gapLatch; }, get gapGuarded(){ return state.gapGuarded||0; }, hingePityActive, hingeNearbyCount, hingeConditions, randPieceRaw, mechanicCooldownOk,
-  get normalHist(){ return state.normalHist||[]; }, shipPos, carRadiusFor, carSpriteSize, isTrailerRank, CAR_RANKS, rankRadius, curRank, drawPart, get hingePity(){ return state.hingePity||0; },
-  dropWeightsFor, tireWeightAt, tireDecayParams, mechanicChanceNow, bodyUnlocked, mergeTierOf, applyMergeFx, explodeGoodShip, explodeStrength,
-  isDoorK, isStackPair, glowActive, glowAllowed, noticeMade, noticeFreeze, get madeGlow(){ return state.madeGlow; }, get fall(){ return state.fall; }, glowPartners, glowSetOff, partName, holdLabelText, holdLabelRect, holdLabelParts, holdScale, heldDraw, QA_MODE, qaTrailerSetup, newPartUpdate, PARTNERS,
-  glowRefresh, rimHex, pathMark, pathReset, pathDotPos, pathCurrentIds, PATH_LEFT, PATH_RIGHT, PATH_ALL, ART_GRAY, buildGrayBadges, drawPath, drawIntro, startIntro, skipIntro, introActive, replayIntro, introWanted,
-  get pathMade(){ return state.pathMade; }, get glowCache(){ return state.glowCache; }, get noMatch(){ return state.noMatch; }, get intro(){ return state.intro; },
-  get glow(){ return { off:state.glowOff, at:state.glowOffAt, why:state.glowOffWhy, active:glowActive(), list:(state.glowCache&&state.glowCache.list)||[] }; }, get newPart(){ return { seen:Object.keys(state.newSeen), queue:state.newQueue.slice(), cur:state.newCur, shown:state.newShown.slice() }; },
-  get tirePreset(){ return CONFIG.tireDecayPreset; }, setTirePreset(p){ if ((CONFIG.tireDecayPresets||{})[p] || p === 'custom') CONFIG.tireDecayPreset = p; return CONFIG.tireDecayPreset; },
-  get mechRound2Pct(){ return CONFIG.mechanicRound2Pct; }, setMechRound2Pct(v){ CONFIG.mechanicRound2Pct = v; return v; },
-  get lastDropAt(){return state.lastDropAt;}, get overflowSince(){return state.overflowSince;}, get firstCarAt(){return state.firstCarAt;} };
+// v0.9.6 C1：起動の順番 SDK.init → (保存の引っ越し・読み直し・言語) → loadingStart → 画像 → loadingStop → スタートできる
+function reloadSaves(){
+  muted = !!Store.get('muted', false);
+  tutSeenStore = tutLoadSeen(); tutDone = Store.get('tutorial_done', false) === true || tutAllSeen();
+}
+var bootDone = false;   // v0.9.8：renderOverlay（起動の最初）から見るので var
+async function boot(){
+  try{ await sdkInit(); }catch(e){}
+  sdkMigrate(); reloadSaves();
+  lang = detectLang(); updateTitle(); renderOverlay(); renderPause(); resize();
+  SDKS.loading = true; SDKS.intent.push('loadingStart'); sdkCall('game', 'loadingStart');
+  const fontP = (document.fonts && document.fonts.load) ? document.fonts.load("800 16px MPR1c").catch(()=>{}) : Promise.resolve();   // v0.9.7 A4
+  const waits = [...IMG_WAIT, fontP]; let nDone = 0; const prog = () => setLoadProgress(++nDone / waits.length);
+  waits.forEach(p => Promise.resolve(p).then(prog, prog));
+  await Promise.race([ Promise.all(waits).catch(()=>{}), new Promise(r => setTimeout(r, CONFIG.loadTimeout*1000)) ]);
+  setLoadProgress(1);
+  SDKS.loading = false; SDKS.intent.push('loadingStop'); sdkCall('game', 'loadingStop');
+  bootDone = true; setAssetsReady();
+  if (CONFIG.autoStart && overlayMode === 'title'){ ov.classList.remove('loading'); startGame(true); }   // v0.9.8 C2：0タップで始める（gameplayStart はここ＝遊べる瞬間）
+}
+function setLoadProgress(f){ const fl = document.getElementById('loadFill'), pc = document.getElementById('loadPct'); const v = Math.round(Math.max(0, Math.min(1, f))*100); if (fl) fl.style.width = v + '%'; if (pc) pc.textContent = v + '%'; }
+boot();
+// ===== v0.9.6 C8：キーボード（←→/A D で狙い、スペース/↓で落とす、Pで一時停止。Escは使わない）=====
+const keys = { left:false, right:false };
+function keysClear(){ keys.left = keys.right = false; }
+function blurActive(){ try{ const a = document.activeElement; if (a && a !== document.body && a.blur) a.blur(); }catch(e){} }
+const visible = el => el && !el.classList.contains('hidden') && getComputedStyle(el).display !== 'none';
+function keyAimStep(rdt){
+  const dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+  if (!dir || state.paused || !state.current || introActive()) return;
+  setAim(Math.max(0, Math.min(CONFIG.W, (state.rawX != null ? state.rawX : state.aimX) + dir*CONFIG.keyAimSpeed*rdt)));
+}
+window.addEventListener('keydown', e => {
+  const k = e.key, c = e.code;
+  const isL = k === 'ArrowLeft' || c === 'KeyA', isR = k === 'ArrowRight' || c === 'KeyD';
+  const isDrop = k === ' ' || c === 'Space' || k === 'ArrowDown' || k === 'Spacebar';
+  const isOk = isDrop || k === 'Enter', isP = c === 'KeyP' || k === 'p' || k === 'P';
+  const onBtn = e.target && e.target.tagName === 'BUTTON' && visible(e.target.closest('.ov') || e.target);
+  if (onBtn && (k === ' ' || k === 'Enter' || c === 'Space')) return;   // フォーカスのあるボタンはブラウザの標準動作（押す）
+  if (isL || isR || isDrop || k === 'ArrowUp') e.preventDefault();   // iframe の親ページがスクロールしないように
+  if (visible(retryOv)){
+    if (isOk && !e.repeat && state.retryOffer && !state.retryOffer.busy){ const b = ['retryFreeBtn'].map(id => document.getElementById(id)).find(b => b && visible(b) && !b.disabled); if (b) b.click(); }
+    return;
+  }
+  if (visible(pauseOv)){
+    if (!visible(howCf) && !e.repeat && (isP || isOk)) resumeGame();
+    return;
+  }
+  if (visible(ov)){
+    if (isOk && !e.repeat && !startBtn.disabled) startBtn.click();
+    return;
+  }
+  if (introActive()){ if ((isOk || isL || isR) && !e.repeat) skipIntro(); return; }
+  if (!state.running || state.paused) return;
+  if (isP && !e.repeat){ pauseGame(); return; }
+  if (isL || isR || isDrop) firstInput();
+  if (state.retryInputLock > 0) return;
+  if (isL){ keys.left = true; return; }
+  if (isR){ keys.right = true; return; }
+  if (isDrop && !e.repeat){ if (activePointer !== null) return; setAim(state.rawX != null ? state.rawX : state.aimX); state.armed = false; drop(); }
+});
+window.addEventListener('keyup', e => { const k = e.key, c = e.code; if (k === 'ArrowLeft' || c === 'KeyA') keys.left = false; if (k === 'ArrowRight' || c === 'KeyD') keys.right = false; });
+window.addEventListener('blur', keysClear);
+// ===== v0.9.6：PC横の左右の板（HUD・次・投下まで・ボタン・操作） =====
+const PANEL = {}; let panelT = 0;
+['pSalesL','pSales','pCarsL','pCars','pLv','pCarImg','pCarL','pPath','pToNext','pPips','pNextL','pNextCv','pDropL','pDrop','pGaugeBar','pPause','pMute','pKeys'].forEach(id => PANEL[id] = document.getElementById(id));
+const setTxt = (el, t) => { if (el && el.textContent !== t) el.textContent = t; };
+function updatePanels(force, now){
+  if (!pcLayout || !state) return;
+  now = now || performance.now();
+  if (!force && now - panelT < 100) return; panelT = now;
+  const T = L();
+  setTxt(PANEL.pSalesL, T.sales); setTxt(PANEL.pCarsL, T.cars); setTxt(PANEL.pNextL, T.next); setTxt(PANEL.pDropL, T.drop);
+  const sv = Math.sign(state.salesShown)*Math.round(Math.abs(state.salesShown)/10000)*10000 || 0;
+  setTxt(PANEL.pSales, fmtYen(sv)); PANEL.pSales.style.color = state.salesShown < 0 ? CONFIG.pal.warnText : CONFIG.pal.ink;
+  setTxt(PANEL.pCars, String(state.cars)); setTxt(PANEL.pLv, String(state.level));
+  const rk = rankForLevel(state.level), need = carsToLevelUp(state.level), atMax = rk >= CAR_VALUES.length-1;
+  const im = CAR_RANKS[rk] && CAR_RANKS[rk].img; if (im && im.ok && PANEL.pCarImg.getAttribute('src') !== im.src) PANEL.pCarImg.src = im.src;
+  setTxt(PANEL.pToNext, atMax ? T.maxRank : T.toNext(need - state.carsThisLevel));
+  const pips = atMax ? '' : Array.from({length:need}, (_, i) => `<span class="${i < state.carsThisLevel ? 'on' : ''}"></span>`).join('');
+  if (PANEL.pPips.innerHTML !== pips) PANEL.pPips.innerHTML = pips;
+  const limit = dropLimit(), leftT = Math.max(0, limit - state.dropTimer), low = leftT/limit < 0.3;
+  setTxt(PANEL.pDrop, state.running ? `${leftT.toFixed(1)}s` : '—');
+  PANEL.pGaugeBar.style.width = (state.running ? Math.min(100, 100*leftT/limit) : 0).toFixed(1) + '%';
+  PANEL.pGaugeBar.style.background = low ? CONFIG.pal.danger : CONFIG.pal.accent; PANEL.pDrop.style.color = low ? CONFIG.pal.warnText : CONFIG.pal.ink;   // 赤は塗り（ゲージ）だけ。文字は濃い赤
+  { const want = allSoundOff() ? 'assets/ui/icon_sound_off.webp' : 'assets/ui/icon_sound_on.webp', mi = document.getElementById('pMuteImg'); if (mi && mi.getAttribute('src') !== want) mi.setAttribute('src', want); }
+  const keysHtml = !isDesktopInput()   // v0.9.7：device.type が mobile/tablet ならタッチの説明
+    ? (lang === 'ja' ? '<div>指で動かして、はなすと落とす</div>' : '<div>Drag to move, release to drop</div>')
+    : lang === 'ja'
+    ? '<div><b>←</b><b>→</b> / <b>A</b><b>D</b> <span style="white-space:nowrap">うごかす</span></div><div><b>Space</b> / <b>↓</b> <span style="white-space:nowrap">落とす</span></div><div><b>P</b> <span style="white-space:nowrap">一時停止</span></div><div>マウス：動かしてクリックで落とす</div>'
+    : '<div><b>←</b><b>→</b> / <b>A</b><b>D</b> <span style="white-space:nowrap">move</span></div><div><b>Space</b> / <b>↓</b> <span style="white-space:nowrap">drop</span></div><div><b>P</b> <span style="white-space:nowrap">pause</span></div><div>Mouse: move, click to drop</div>';
+  if (PANEL.pKeys.innerHTML !== keysHtml) PANEL.pKeys.innerHTML = keysHtml;
+  setTxt(PANEL.pCarL, T.carL);
+  if (CONFIG.pcPathInPanel && CONFIG.pathShow){   // v0.9.8 監査2：道すじ（ボディ／シャシー → 合体 → 完成）
+    const made = state.pathMade || {}, cur = new Set(pathCurrentIds());
+    const ic = id => { const a = id === 'car' ? (CAR_RANKS[rk] && CAR_RANKS[rk].img) : ART.root[id], src = a && a.ok ? a.src : ''; return src ? `<img data-id="${id}" class="${made[id]?'made':''}${cur.has(id)?' cur':''}${id==='car'?' pcar':''}" src="${src}" alt="">` : ''; };
+    const html = `<div class="lbl">${T.pathL}</div>`
+      + `<div class="prow"><span class="pn">${lang==='ja'?'ボディ':'Body'}</span>${PATH_LEFT.map(ic).join('')}</div>`
+      + `<div class="prow"><span class="pn">${lang==='ja'?'シャシー':'Chassis'}</span>${PATH_RIGHT.map(ic).join('')}</div>`
+      + `<div class="prow"><span class="pn">→</span><span class="pj${made.marriage?' made':''}${cur.has('marriage')?' cur':''}" data-id="marriage">${lang==='ja'?'合体':'Join'}</span>${ic('car')}</div>`;
+    if (PANEL.pPath.innerHTML !== html) PANEL.pPath.innerHTML = html;
+  }
+  // 「次」の部品：小さいキャンバスに drawPart で描く（ctx を一時的に差し替え）
+  const nc = PANEL.pNextCv, nctx = nc.getContext('2d');
+  nctx.setTransform(1,0,0,1,0,0); nctx.clearRect(0,0,nc.width,nc.height);
+  if (state.next){
+    const nr = R(state.next.k), sc = (nc.width*0.42)/nr;
+    const saved = ctx; ctx = nctx;
+    try{ nctx.setTransform(sc,0,0,sc,nc.width/2,nc.height/2); drawPart(state.next.k, state.next.bad, 0, 0, 0, now); }catch(e){} finally{ ctx = saved; }
+  }
+}
+PANEL.pPause.onclick = () => { if (state.running && !state.paused) pauseGame(); };
+PANEL.pMute.onclick = () => { toggleAllSound(); blurActive(); };
+resize();
+// テスト用の操作口（QR）。公開ビルドでは tools/build_public.py が下の印の間を消す
+
 </script>
 </body>
 </html>
