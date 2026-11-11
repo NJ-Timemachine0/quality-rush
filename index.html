@@ -8,17 +8,17 @@
 <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
 <link rel="icon" type="image/png" href="assets/ui/favicon.png">
 <style>
-  /* v0.9.7 A4：フォント MPR1c（M PLUS Rounded 1c ExtraBold のサブセット・OFL）。絵文字と ↻⌛⚠ は入っていないので、うしろのフォントで出す */
+  /* v0.9.7 A4：フォント MPR1c（M PLUS Rounded 1c ExtraBold のサブセット・OFL）。絵文字と ⚠ は入っていないので（v1.00-rc：↻⌛ は文字に置きかえた）、うしろのフォントで出す */
   @font-face{font-family:'MPR1c';src:url('assets/font/mplusr1c_xb_subset.woff2') format('woff2');font-weight:800;font-display:swap}
   /* v0.9.7 C3：明るい配色（あーと palette_v100.json） */
   :root{--ink:#2B2F4A;--plate:rgba(255,255,255,.92);--plateShadow:#D9C9F0;--accent:#FFC93C;--accentEdge:#E0A100;--sky:#92C4FF;--pink:#FF8FB8;--lav:#D9C9F0;--track:#EEE6F5;--warnText:#C62828;
     --font:'MPR1c','Hiragino Maru Gothic ProN','Arial Rounded MT Bold',system-ui,'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif}
   html{height:100%;background:linear-gradient(#BFD8FF,#FFE3F1)}
-  html,body{margin:0;height:100%;overflow:hidden;touch-action:none;font-family:var(--font);font-weight:800;color:var(--ink);-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;touch-action:none;font-family:var(--font);font-weight:800;color:var(--ink);-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   /* A1：背景。スマホ縦は bg_portrait、PC横は bg_pc（どちらも cover・中央）。黒い帯は出さない */
   body{background:url('assets/bg/bg_portrait_800x1520.webp') center/cover no-repeat,linear-gradient(#BFD8FF,#FFE3F1)}
   body.pc{background:url('assets/bg/bg_pc_1920x1080.webp') center/cover no-repeat,linear-gradient(#BFD8FF,#FFE3F1)}
-  #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  #wrap{position:relative;width:100%;height:100%;display:flex;justify-content:center;align-items:center;box-sizing:border-box;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);padding:var(--safe-area-inset-top,env(safe-area-inset-top)) var(--safe-area-inset-right,env(safe-area-inset-right)) var(--safe-area-inset-bottom,env(safe-area-inset-bottom)) var(--safe-area-inset-left,env(safe-area-inset-left))}
   #col{display:flex;line-height:0}
   /* C4：PC横のまんなかの列は frame_pc_column の 9-slice（角48px）。絵の中は透明 */
   body.pc #col{border:16px solid transparent;border-image:url('assets/ui/frame_pc_column.webp') 48 fill / 16px stretch}
@@ -134,6 +134,30 @@
   #pPath .pj.made{background:var(--accent)}
   #pPath .pcar{width:44px;height:auto;border-radius:0}
   #pCarImg{height:44px}
+  /* v1.00-rc C7：車図鑑・バッジ */
+  #catOv{z-index:30;justify-content:flex-start;padding:12px 10px 18px}
+  #catOv h1{font-size:24px;margin:4px 0 2px}
+  #catOv h2{font-size:18px;margin:10px 0 4px;color:var(--ink)}
+  #catSum,#badgeNext{font-size:15px;font-weight:800;color:var(--ink)}
+  #catGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;width:min(100%,360px);margin:6px auto}
+  body.pc #catGrid{grid-template-columns:repeat(4,minmax(0,1fr));width:min(96vw,920px)}
+  .cc{position:relative;aspect-ratio:320/220;background:url(assets/ui/catalog_card.webp) 0 0/100% 100% no-repeat}
+  .cc img{position:absolute;left:5.6%;top:8.2%;width:88.8%;height:55.5%;object-fit:contain;object-position:50% 100%}
+  .cc .cn{position:absolute;left:7.5%;right:7.5%;top:70.5%;height:18.6%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden}
+  .cc .cs{position:absolute;left:7%;top:10%;background:rgba(255,255,255,.92);border-radius:10px;padding:0 6px;font-size:14px;font-weight:800;color:#E0A100;line-height:1.35}
+  .cc .cs small{color:var(--ink);font-size:14px;margin-left:4px}
+  .cc.locked .cn{opacity:.8}
+  #badgeGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 4px;width:min(100%,360px);margin:4px auto}
+  body.pc #badgeGrid{grid-template-columns:repeat(6,minmax(0,1fr));width:min(96vw,720px)}
+  .bd{display:flex;flex-direction:column;align-items:center;font-size:14px;line-height:1.2;color:var(--ink)}
+  .bd img{width:56px;height:56px}
+  .bd.off img{filter:grayscale(1) opacity(.45)}
+  .bd.off{opacity:.75}
+  #badgeBar{height:12px;width:min(300px,80vw);background:var(--track);border-radius:6px;overflow:hidden;margin:4px auto}
+  #badgeBarFill{height:100%;background:var(--accent)}
+  .rProg{font-size:15px}
+  .rProg img{width:56px;height:56px;vertical-align:middle;margin:2px}
+  #catBack,#catBtn,#catBtn2{font-size:16px;padding:0 14px;border-width:16px;border-image-width:16px;border-image-source:url('assets/ui/btn_secondary_9s.webp')}
 </style>
 </head>
 <body>
@@ -159,6 +183,7 @@
     <button id="startBtn" disabled>読み込み中…</button>
     <button id="howBtn" disabled>遊び方</button>
     <script>(function(){ var q = new URLSearchParams(location.search).get('lang'); var l = (q==='ja'||q==='en') ? q : ((navigator.language||'').slice(0,2)==='ja' ? 'ja' : 'en'); if (l==='en'){ document.getElementById('startBtn').textContent='Loading…'; document.getElementById('howBtn').textContent='How to play'; } })();</script>
+    <button id="catBtn2" class="hidden"></button>
     <button id="shareBtn" class="hidden"></button>
     <div id="copied"></div>
     <div id="langRow"><button id="langJa">日本語</button><button id="langEn">English</button></div>
@@ -169,6 +194,7 @@
     <button id="resumeBtn"></button>
     <button id="introReplayBtn"></button>
     <button id="howBtn2"></button>
+    <button id="catBtn"></button>
     <button id="setBtn"></button>
     <div id="pauseBest"></div>
     <div id="setOv" class="hidden">
@@ -186,6 +212,15 @@
       <button id="howYes"></button>
       <button id="howNo"></button>
     </div>
+  </div>
+  <div id="catOv" class="ov hidden" role="dialog">
+    <h1 id="catTitle"></h1>
+    <div id="catSum"></div>
+    <div id="catGrid"></div>
+    <h2 id="badgeTitle"></h2>
+    <div id="badgeGrid"></div>
+    <div id="badgeNext"></div><div id="badgeBar"><div id="badgeBarFill"></div></div>
+    <button id="catBack"></button>
   </div>
   <div id="retryOv" class="ov hidden">
     <h1 id="retryTitle" style="font-size:20px;margin:0 0 6px"></h1>
@@ -427,7 +462,7 @@ const CONFIG = {
   pcPathInPanel: true,      // v0.9.8 監査2：横長では道すじを左の板に（キャンバスには描かない）
   pathShow: true, pathH: 50, pathDotPx: 20, pathCurScale: 1.35, pathGray: 0.8,
   pathBoxGap: 61,           // v0.9.5：pathY＝192−61−50＝81
-  gameName: { ja:'パーツポン！工場', en:'Parts Pop Factory' }, versionLabel:'Ver0.9.9', usdPerYen: 0.01,
+  gameName: { ja:'パーツポン！工場', en:'Parts Pop Factory' }, versionLabel:'Ver1.0.0-rc', usdPerYen: 0.01,
   retryEnabled: true, retryRowsRemoved: 1, retryRowPx: 48, retryGraceSec: 3.0, retryDropFreezeSec: 2.0,
   retryInputLockSec: 0.3, retryOfferSec: 8, retryAdFailSec: 2, retryFadeSec: 0.3,
   retryOnAdblock: 'block', retryOnAdError: 'noReward',
@@ -763,6 +798,7 @@ const FX = {}; let fxLoaded = false;
 function loadFx(){
   if (fxLoaded) return; fxLoaded = true;
   const f = n => loadImg(`assets/fx/${n}.webp`, false);
+  UI.cutin = loadImg('assets/ui/marriage_cutin.webp', false); UI.cutinEn = loadImg('assets/ui/marriage_cutin_en.webp', false);   // v1.00-rc：英語は「Final assembly!」の絵
   FX.ring = f('ring_soft'); FX.star = f('star_pop'); FX.confetti = [1,2,3,4].map(i=>f('confetti_'+i));   // v0.9.9 A6
   FX.coin = f('coin'); FX.tag = f('complaint_tag'); FX.crack = f('crack_overlay'); FX.flash = f('flash');
   FX.sparkle = [1,2,3,4].map(i=>f('sparkle_'+i)); FX.smokeB = [1,2,3,4].map(i=>f('smoke_black_'+i)); FX.smokeW = [1,2,3,4].map(i=>f('smoke_white_'+i));
@@ -770,7 +806,7 @@ function loadFx(){
   FX.partsBad = ['screw','wheel','tire','suspension'].map(n => loadImg(`${ART_MANIFEST.partDir}part_${artFile(n)}_bad.webp`, false));   // screw はドア・ボンネット
 }
 const UI = {};
-UI.cutin = loadImg('assets/ui/marriage_cutin.webp', false);   // v0.9.9 A6：「MARRIAGE!」（日本語のとき）
+UI.cutin = { ok:false }; UI.cutinEn = { ok:false };   // v1.00-rc C9：後から読む（loadFx）   // v0.9.9 A6：「MARRIAGE!」（日本語のとき）
 UI.howto = { ja: loadImg('assets/ui/howto3_ja.webp', false), en: loadImg('assets/ui/howto3_en.webp', false) };   // v0.9.8：遊びながらの説明は1マスずつ切り出す
 const howtoSrc = (vert) => `${ART_MANIFEST.uiDir}howto3_${lang==='ja'?'ja':'en'}${vert?'_v':''}.webp`;
 UI.flowSlim = { ok:false }; UI.flowSlim360 = { ok:false };   // v0.9.8：道すじ表示が本体。下の帯の流れ図画像は使わない（公開ビルドに入れない）
@@ -795,9 +831,9 @@ function fmtYen(v){
   return v>=10000 ? `${(v/10000).toLocaleString()}万円` : `${v.toLocaleString()}円`;
 }
 const fmtTime = s => `${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
-// v0.9.1qa：?qa=trailer＝トレーラー爆発の確認用。QA中は保存（ランキング・自己ベスト・設定・既読）を一切しない
+
 const QA_MODE = null;
-try{ if (new URLSearchParams(location.search).get('bh') === '0') CONFIG.blackHoleFx = false; }catch(e){}
+   // v1.00-rc：調整用の URL 指定は公開ビルドから消す（build_public.py）
 // ===== v0.9.6 C1：CrazyGames SDK v3 =====
 // SDK.init() が成功し、environment が 'crazygames' か 'local' のときだけ使う（GitHub Pages など他のドメインは 'disabled'＝呼ぶとエラーになるので使わない）
 const SDKS = { ok:false, env:'none', calls:[], intent:[], muteAudio:false, device:null, locale:null, dataOk:false, gameplay:false, loading:false, migrated:false };
@@ -890,11 +926,14 @@ const TEXT = {
     newPart:{ wheel:'新入荷！ホイール＋タイヤ＝タイヤ付きホイール', tire:'新入荷！タイヤ＋ホイール＝タイヤ付きホイール', frame:'新入荷！サブフレーム＋サスペンション＝足回り',
       suspension:'新入荷！サスペンション＋サブフレーム＝足回り', engine:'新入荷！エンジン＋足回り＝エンジン付き足回り', body:'新入荷！ボディ＋ドア＝艤装ボディ。シャシーとマリッジ！',
       purple:'新入荷！紫を3つ集めるとドア' },
+    catalog:'図鑑', catTitle:'車図鑑', badges:'バッジ', catNew:'NEW! 図鑑に追加', catLocked:'？？？', catSum:(st, n)=>`★ ${st}/24　バッジ ${n}/12`, catShipped:n=>`×${n}`,
+    badgeNext:(n, name)=>`次のバッジ「${name}」まで あと${n}台`, badgeAll:'バッジをぜんぶ集めた！', newBadges:'新しいバッジ',
+    badgeNames:{ ship_1:'はじめての出荷', ship_10:'良品10台', ship_50:'良品50台', ship_150:'良品150台', ship_500:'良品500台', trailer_1:'トレーラー出荷', trailer_5:'トレーラー5台', streak_5:'5台連続 良品', clean_10:'クレーム0で10台', round_3:'3周目に到達', clear_3:'3周目クリア', rank_s:'ランクS' },
     marriage:'マリッジ！', mergeSame:'1つにまとまった', step_drop:'落とす', step_match:'そろえる', step_ship:'出荷！', pathL:'組み立ての道すじ', carL:'作る車',
     floorReset:'ごほうび：床がもとに戻った！', floorRestored:'床がもとに戻った！', hint_purple:'紫を3つ集めるとドア',
     roundStart:n=>`${n}周目スタート！`, roundSub:'軽トラから作り直し。不適合品箱が動くよ！', roundBonus:m=>`売上 ×${m}`, binMoving:'不適合品箱が動いている！', roundsReached:n=>`到達：${n}周目`,
     clear:'3周目クリア！', settle:'決算', unitsShipped:'出荷台数', unitsGood:'良品', unitsBad:'不良', profit:'利益', margin:'利益率', totalScore:'総合点', rankLabel:'ランク', personalRank:'個人ランキング', noRank:'まだ記録なし',
-    binName:'不適合品箱', noMatch:'相手まだ⌛', noMatchTag:'（相手まだ）', introReplay:'組み立てを見る',
+    binName:'不適合品箱', noMatch:'相手まだ…', noMatchTag:'（相手まだ）', introReplay:'組み立てを見る',
     // 最初の説明（release/tutorial_text_draft.md のキー名・文のまま）。tut_merge_ok・tut_bad_ok もりりーさん確定の文
     tut_move:'指で左右に動かして、はなすと落ちるよ', tut_merge:'同じ色の部品どうしをくっつけると組み上がる', tut_car:'部品が全部そろうと車が1台できる！',
     tut_bad:'×の付いた部品は端の不適合品箱へ', tut_scrap:'良い部品を捨てるとお金が減るよ', tut_mechanic:'整備士は不良品にぶつかると直してくれる',
@@ -903,7 +942,7 @@ const TEXT = {
     retry_title:'ラインがいっぱい！ つづける？', retry_sub:'上の部品を1段かたづけて、1回だけつづけられるよ',
     retry_ad:'📺 広告を見てつづける', retry_free:'つづける', retry_no:'結果を見る', retry_loading:'広告を読みこみ中…',
     retry_ok:'つづけます！', retry_grace:'つづき！', retry_ad_fail:'広告を出せませんでした。またあとで試してね',
-    retry_adblock:'広告ブロック中は「つづける」が使えません', rank_retry_mark:'↻', retry_used_note:'↻つづけた',
+    retry_adblock:'広告ブロック中は「つづける」が使えません', rank_retry_mark:'（つづけた）', retry_used_note:'（つづけた）',
     shareText:r=>`${GAME_NAME.ja}で${r.cars}台を出庫、売上${fmtYen(r.sales)}！ 称号は「${r.title}」でした🚗 #パーツポン工場` },
   en:{ start:'Start', loading:'Loading…', retry:'Play again',
     intro:'Slide to aim, release to drop.<br>Same-color parts snap together and build the next stage! Finished cars roll out.<br>⚠️ Rusty parts marked × are defects. Drag them to the 🗑️ at either edge.',
@@ -922,18 +961,21 @@ const TEXT = {
     holdHint:{ panel:'+ another purple = Door Kit', glass:'+ another purple = Door Kit', hinge:'+ another purple = Door Kit', door_window:'+ 1 more purple = Door' },
     holdHintWD:{},
     made:{ tire_wheel:'Wheel Set! Attach to Engine Unit', suspension_frame:'Suspension Set! + Engine = Engine Unit',
-      engine_chassis:'Engine Unit! + Wheel Set = Rolling Chassis', rolling_chassis:'Rolling Chassis! Marriage with Outfitted Body',
+      engine_chassis:'Engine Unit! + Wheel Set = Rolling Chassis', rolling_chassis:'Rolling Chassis! + Outfitted Body = Final assembly!',
       door_window:'Door Kit! 1 more purple = Door', screw:'Door! + Painted Body = Outfitted Body',
-      body_car:'Outfitted Body! Marriage with Rolling Chassis to finish' },
+      body_car:'Outfitted Body! + Rolling Chassis = Final assembly!' },
     holdSep:': ',
     newPart:{ wheel:'New part! Wheel + Tire = Wheel Set', tire:'New part! Tire + Wheel = Wheel Set', frame:'New part! Subframe + Suspension = Suspension Set',
-      suspension:'New part! Suspension + Subframe = Suspension Set', engine:'New part! Engine + Suspension Set = Engine Unit', body:'New part! Body + Door = Outfitted Body. Marriage with chassis!',
+      suspension:'New part! Suspension + Subframe = Suspension Set', engine:'New part! Engine + Suspension Set = Engine Unit', body:'New part! Body + Door = Outfitted Body, then Final assembly!',
       purple:'New part! 3 purples make a Door' },
-    marriage:'Final assembly!', mergeSame:'Merged into one', step_drop:'Drop', step_match:'Match', step_ship:'Ship!', pathL:'Build path', carL:'Building',
+    catalog:'Catalog', catTitle:'Car Catalog', badges:'Badges', catNew:'NEW! Added to catalog', catLocked:'???', catSum:(st, n)=>`★ ${st}/24 · Badges ${n}/12`, catShipped:n=>`×${n}`,
+    badgeNext:(n, name)=>`Next badge "${name}": ${n} more car${n===1?'':'s'}`, badgeAll:'All badges collected!', newBadges:'New badges',
+    badgeNames:{ ship_1:'First shipment', ship_10:'10 good cars', ship_50:'50 good cars', ship_150:'150 good cars', ship_500:'500 good cars', trailer_1:'Semi shipped', trailer_5:'5 semis', streak_5:'5 good in a row', clean_10:'10 cars, 0 complaints', round_3:'Reached round 3', clear_3:'Cleared round 3', rank_s:'Rank S' },
+    marriage:'Final assembly!', mergeSame:'Merged into one', step_drop:'Drop', step_match:'Match', step_ship:'Ship!', pathL:'Build path', carL:'Now building',
     floorReset:'Bonus: the floor is reset!', floorRestored:'Floor restored!', hint_purple:'3 purples make a Door',
     roundStart:n=>`Round ${n} start!`, roundSub:'Back to the Kei truck. The reject bins are moving!', roundBonus:m=>`Sales ×${m}`, binMoving:'Reject bins on the move!', roundsReached:n=>`Reached: Round ${n}`,
     clear:'Round 3 cleared!', settle:'Settlement', unitsShipped:'Shipped', unitsGood:'Good', unitsBad:'Bad', profit:'Profit', margin:'Margin', totalScore:'Score', rankLabel:'Rank', personalRank:'Personal ranking', noRank:'No records yet',
-    binName:'Reject bin', noMatch:'No match yet ⌛', noMatchTag:' (no match yet)', introReplay:'Watch assembly',
+    binName:'Reject bin', noMatch:'No match yet…', noMatchTag:' (no match yet)', introReplay:'Watch assembly',
     tut_move:'Slide left or right, then let go to drop', tut_merge:'Match same-color parts to build them up', tut_car:'All parts in place makes a car!',
     tut_bad:'Drag parts with × to the reject bin at either edge', tut_scrap:'Scrapping good parts costs you money', tut_mechanic:'The mechanic fixes a bad part it touches',
     tut_wait:'No match yet. Drop it, its pair will come', tut_lines:'Top row = body line, bottom = chassis', tut_marriage:'Join the two gray parts: Final assembly!', tut_claim:'Ship a car with a × part: complaint!', howConfirm:'End this game and start with the tutorial?', yes:'Yes', back:'Back', introShort:'Slide, release to drop. Match colors to build a car!',
@@ -941,8 +983,8 @@ const TEXT = {
     retry_title:'The line is full! Continue?', retry_sub:'Clear one row of parts and keep going (once per game)',
     retry_ad:'📺 Watch an ad to continue', retry_free:'Continue', retry_no:'See results', retry_loading:'Loading ad…',
     retry_ok:'Let\'s keep going!', retry_grace:'Back to work!', retry_ad_fail:'Couldn\'t show an ad. Please try again later',
-    retry_adblock:'Continue isn\'t available with an ad blocker', rank_retry_mark:'↻', retry_used_note:'↻ continued',
-    shareText:r=>`I shipped ${r.cars} cars and made ${fmtYen(r.sales)} in ${GAME_NAME.en}! Title: ${r.title} 🚗 #PartsPopFactory` },
+    retry_adblock:'Continue isn\'t available with an ad blocker', rank_retry_mark:'(continued)', retry_used_note:'(continued)',
+    shareText:r=>`I shipped ${r.cars} cars and hit ${fmtYen(r.sales)} in sales in ${GAME_NAME.en}! Title: ${r.title} 🚗 #PartsPopFactory` },
 };
 let lang = 'ja';
 const L = () => TEXT[lang];
@@ -1389,34 +1431,7 @@ function mechanicChanceNow(round = (state ? state.round||1 : 1)){
   const p = CONFIG.mechanicRound2Pct;
   return (round >= 2 && p != null && isFinite(p)) ? p/100 : CONFIG.mechanicChance;
 }
-// v5n：URL で候補を切りかえ（?tire=weak|mid|strong ?mech=4|3|2）
-(function(){ try{ const q = new URLSearchParams(location.search);
-  const t = q.get('tire'); if (t && (CONFIG.tireDecayPresets||{})[t]) CONFIG.tireDecayPreset = t;
-  const m = q.get('mech'); if (m != null && m !== '' && isFinite(+m) && +m >= 0) CONFIG.mechanicRound2Pct = +m;
-  // v5o：?hinge=pity|nearby|deficit|any|off ?mechcd=10 ?magGap ?magForce ?magSec ?magRetry
-  const hg = q.get('hinge'); if (hg === 'off') CONFIG.hingeBoost.enabled = false; else if (['pity','nearby','deficit','any'].includes(hg)){ CONFIG.hingeBoost.enabled = true; CONFIG.hingeBoost.condition = hg; }
-  const num = k => { const v = q.get(k); return (v != null && v !== '' && isFinite(+v) && +v >= 0) ? +v : null; };
-  const hn = num('hingeNear'); if (hn != null) CONFIG.hingeBoost.nearPx = hn;
-  const pr2 = (key, bk, pk) => { const v = q.get(key); if (!v) return; const a = v.split(',').map(Number); if (a.length >= 1 && isFinite(a[0]) && a[0] > 0) CONFIG[bk] = a[0]; if (a.length >= 2 && isFinite(a[1]) && a[1] >= 0) CONFIG[pk] = a[1]; };
-  pr2('carR', 'carRadiusBase', 'carRadiusPerRank'); pr2('bodyR', 'bodyCarRadiusBase', 'bodyCarRadiusPerRank');
-  const pc = q.get('perCar'); if (pc){ const v = pc === 'lite' ? [0.15,1.5,0.015] : (pc === 'orig' ? [0.2,2,0.02] : pc.split(',').map(Number));
-    if (v.length === 3 && v.every(x => isFinite(x) && x >= 0)){ const sh = CONFIG.difficulty.shipped; sh.dropTime.perCar = -v[0]; sh.defect.perCar = v[1]; sh.floorRise.perCar = v[2]; } }
-  const bg = num('binGrace'); if (bg != null) CONFIG.roundBinGrace = bg;
-  const cd = num('mechcd'); if (cd != null) CONFIG.mechanicCooldownSec = cd;
-  // v5p：?doorR=38（ドア・窓つきドアの半径）?glow=0 ?glowUntil=3 ?label=0 ?newpart=0
-  const dr = num('doorR'); if (dr != null && dr > 0) (CONFIG.doorKinds||['screw']).forEach(id => { CONFIG.radius[id] = dr; if (K[id] != null) ITEMS[K[id]].r = dr; });
-  const off = k => q.get(k) === '0' || q.get(k) === 'off';
-  if (off('glow')) CONFIG.partnerGlow = false; else if (q.get('glow') === '1') CONFIG.partnerGlow = true;
-  const gu = num('glowUntil'); if (gu != null) CONFIG.partnerGlowUntilRank = Math.floor(gu);
-  if (off('path')) CONFIG.pathShow = false; else if (q.get('path') === '1') CONFIG.pathShow = true;
-  if (off('autostart')) CONFIG.autoStart = false;   // v0.9.8：?autostart=0 で前のタイトル画面（確認用）
-  if (off('intro')) CONFIG.introBreakShow = 'off'; else if (q.get('intro') === '1') CONFIG.introBreakShow = 'always';
-  if (off('retry')) CONFIG.retryEnabled = false; else if (q.get('retry') === '1') CONFIG.retryEnabled = true;
-  if (q.get('wdoor') === '1' || q.get('wdoor') === 'on') CONFIG.windowDoor = true; else if (off('wdoor')) CONFIG.windowDoor = false;   // v0.8：流れ図の窓つきドア版
-  if (off('label')) CONFIG.holdLabel = false;
-  if (off('newpart')) CONFIG.newPartNotice = false;
-  [['magGap','gapPx'],['magForce','forceMul'],['magSec','maxSec'],['magRetry','retrySec']].forEach(([u,k]) => { const v = num(u); if (v != null) CONFIG.doorMagnet[k] = v; });
-}catch(e){} })();
+   // v1.00-rc：ここまでの調整用 URL 指定は、テスト用ビルドだけ
 function dropLimitAt(n, min = elapsedMin()){   // n＝完成車の台数、min＝経過分
   if (diffBasis() === 'shipped') return shippedVal('dropTime', n);   // n＝出荷台数＋周の足し分
   const byCars = n < 1 ? CONFIG.dropTimeStart : CONFIG.dropTimeFirst - CONFIG.dropTimeStep*(n-1);
@@ -1643,7 +1658,7 @@ function drawNoMatch(heldRect){
   if (!CONFIG.noMatchShow || !state.noMatch.show || !glowActive()) return;
   if (state.noMatch.t >= CONFIG.noMatchSec){ state.noMatch.show = false; return; }
   return;   // v0.9.1：「（相手まだ）」は名前の帯の中に出す（holdLabelParts）。部品の下には出さない
-  const text = L().noMatch || '相手まだ⌛';
+  const text = L().noMatch || '相手まだ…';
   ctx.save(); ctx.font = 'bold 13px sans-serif';
   const w = Math.min(CONFIG.W - 8, Math.ceil(ctx.measureText(text).width) + 12), h = 16;
   let x = CONFIG.W/2 - w/2, y = CONFIG.pathY + CONFIG.pathH + 2;
@@ -1846,6 +1861,11 @@ function fitLabel(parts, maxW){
   }
   return { name: parts.name, desc, tag: parts.tag, w: Math.ceil(fixed + mw(desc)) + pad };
 }
+function fitLabel2(parts, maxW){   // v1.00-rc：名前（＋相手まだ）を1行目、説明を2行目に。入らなければ null
+  if (!parts.desc) return null; const pad = 14, mw = t => ctx.measureText(t).width;
+  const w = Math.ceil(Math.max(mw(parts.name) + mw(parts.tag), mw(parts.desc))) + pad;
+  return w <= maxW ? { name: parts.name, desc: parts.desc, tag: parts.tag, w, two: true } : null;
+}
 function holdLabelRect(text, hx, hy, hr, origR){
   ctx.font = `bold ${CONFIG.holdLabelFontPx}px sans-serif`;
   const parts = typeof text === 'string' ? { name:text, desc:'', tag:'', sep:'' } : text;
@@ -1858,16 +1878,19 @@ function holdLabelRect(text, hx, hy, hr, origR){
     const space = s => s > 0 ? hi - (hx + off) : (hx - off) - lo, full = fitLabel(parts, 1e4);
     const first = hx < W/2 ? 1 : -1; let side;
     if (full.w <= space(first)) side = first; else if (full.w <= space(-first)) side = -first; else side = space(first) >= space(-first) ? first : -first;
-    f = full.w <= space(side) ? full : fitLabel(parts, Math.max(40, space(side)));
+    f = full.w <= space(side) ? full : null;
+    if (!f){ const sides = [side, -side]; for (const sd of sides){ const t2 = fitLabel2(parts, space(sd)); if (t2){ f = t2; side = sd; break; } } }
+    if (!f) f = fitLabel(parts, Math.max(40, space(side)));
     x = side > 0 ? hx + off : hx - off - f.w;
     x = Math.max(lo, Math.min(hi - f.w, x));
   } else {
-    f = fitLabel(parts, maxW);
+    f = fitLabel(parts, maxW); if (/…$/.test(f.desc)) f = fitLabel2(parts, maxW) || f;
     cy = CONFIG.holdLabelTopY + h/2 - lift;
     x = Math.max(4, Math.min(W - 4 - f.w, hx - f.w/2));
   }
-  const w = Math.min(maxW, f.w);
-  return { x, y: cy - h/2, w, h, cy, textW: w - 14, parts: f };
+  const w = Math.min(maxW, f.w), hh = f.two ? h*2 + 2 : h;
+  if (f.two && (origR != null ? origR : hr) < CONFIG.holdLabelSideMinR) cy -= (hh - h)/2;   // 上に出す帯は、2行のぶん上へ（部品にかけない）
+  return { x, y: cy - hh/2, w, h: hh, cy, textW: w - 14, parts: f };
 }
 function drawHoldLabel(){
   if (!CONFIG.holdLabel || !state.running || !state.canDrop || !state.current) { state.holdSnap = null; return null; }
@@ -1877,13 +1900,15 @@ function drawHoldLabel(){
   const hd = heldDraw();
   const parts = holdLabelParts(p); if (!parts || !parts.name) return;
   const r = holdLabelRect(parts, hd.hx, hd.hy, hd.dr, hd.r);
+  if (levelBandOn() && rectsHit(r, levelBandRect())) return r;   // v1.00-rc：LEVEL UP の帯の後ろに名前の帯を透かさない
   ctx.save(); ctx.fillStyle = CONFIG.pal.inkPlate; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(r.x, r.y, r.w, r.h, r.h/2) : ctx.rect(r.x, r.y, r.w, r.h); ctx.fill();
   const purple = ITEMS[p.k].color === 'purple' && !p.bad, f = r.parts;
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  let tx = r.x + 7; const ty = r.cy + 0.5;
+  let tx = r.x + 7; const two = !!f.two, ty = two ? r.cy - r.h/4 + 1 : r.cy + 0.5;
   ctx.fillStyle = p.bad ? '#ff9a8a' : (purple ? '#e6ccff' : '#fff'); ctx.fillText(f.name, tx, ty); tx += ctx.measureText(f.name).width;
-  if (f.desc){ ctx.fillText(f.desc, tx, ty); tx += ctx.measureText(f.desc).width; }
-  if (f.tag){ ctx.fillStyle = CONFIG.noMatchColor; ctx.fillText(f.tag, tx, ty); }
+  if (two){ if (f.tag){ ctx.save(); ctx.fillStyle = CONFIG.noMatchColor; ctx.fillText(f.tag, tx, ty); ctx.restore(); } ctx.fillText(f.desc, r.x + 7, r.cy + r.h/4); }
+  else { if (f.desc){ ctx.fillText(f.desc, tx, ty); tx += ctx.measureText(f.desc).width; }
+  if (f.tag){ ctx.fillStyle = CONFIG.noMatchColor; ctx.fillText(f.tag, tx, ty); } }
   ctx.restore();
   return r;
 }
@@ -1928,6 +1953,7 @@ function drawFallLabel(heldRect){
 }
 function drawNewPart(){
   const n = state.newCur; if (!n || !state.running) return;
+  if (levelBandOn()){ state.newPartUnderBand = (state.newPartUnderBand||0) + 1; return; }   // v1.00-rc：LEVEL UP の帯の後ろから透けて見えないように
   const text = (n.type === 'made' ? L().made : L().newPart)[n.id]; if (!text) return;
   const W = CONFIG.W, h = CONFIG.newPartH, y = CONFIG.newPartY, d = CONFIG.newPartSec, f = Math.min(1, n.t/0.12, (d - n.t)/0.2);
   ctx.save(); ctx.globalAlpha = Math.max(0, f); ctx.font = `bold ${CONFIG.newPartFontPx}px sans-serif`;
@@ -2052,11 +2078,90 @@ function seqShipTexts(){
   if (state.rankUp && state.rankUp.t < 0) state.rankUp.t -= at;
   if (state.roundBanner && state.roundBanner.t < 0) state.roundBanner.t -= at + CONFIG.bannerTime;
 }
+// ===== v1.00-rc C7：車図鑑（qr_catalog_v1）・通算（qr_stats_v1）・バッジ（qr_badges_v1） =====
+const CATALOG_N = 8, BADGE_IDS = ['ship_1','ship_10','ship_50','ship_150','ship_500','trailer_1','trailer_5','streak_5','clean_10','round_3','clear_3','rank_s'];
+const BADGE_FILES = ['assets/ui/badge_01.webp','assets/ui/badge_02.webp','assets/ui/badge_03.webp','assets/ui/badge_04.webp','assets/ui/badge_05.webp','assets/ui/badge_06.webp',
+  'assets/ui/badge_07.webp','assets/ui/badge_08.webp','assets/ui/badge_09.webp','assets/ui/badge_10.webp','assets/ui/badge_11.webp','assets/ui/badge_12.webp'];   // 後から読む（図鑑・結果を開いたとき）
+const SHIP_STEPS = [['ship_1',1],['ship_10',10],['ship_50',50],['ship_150',150],['ship_500',500]];
+function catLoad(){ const c = Store.get('catalog_v1', null); const ok = c && c.v === 1 && Array.isArray(c.cars);
+  const cars = Array.from({length:CATALOG_N}, (_, i) => { const e = ok && c.cars[i]; return { n: e && +e.n || 0, s: [0,1,2].map(j => (e && Array.isArray(e.s) && +e.s[j]) || 0) }; });
+  return { v:1, cars }; }
+function statsLoad(){ const d = { v:1, good:0, bad:0, trailers:0, games:0, bestStreak:0, cleanGames:0 }; const s0 = Store.get('stats_v1', null); if (s0 && s0.v === 1) for (const k in d) if (k !== 'v' && +s0[k] >= 0) d[k] = +s0[k]; return d; }
+function badgesLoad(){ const b = Store.get('badges_v1', null); const o = {}; if (b && typeof b === 'object') BADGE_IDS.forEach(id => { if (+b[id] > 0) o[id] = +b[id]; }); return o; }
+const catStars = c => c.cars.reduce((a, e) => a + e.s.filter(Boolean).length, 0);
+function catReportPct(){ const pct = Math.round(catStars(catLoad()) / 24 * 100); if (QA_MODE) return pct; SDKS.lastPct = pct; sdkCall('game', 'reportGameCompletedPercentage', pct); return pct; }   // 0〜100（★の数÷24）
+function badgeGive(id){ if (QA_MODE) return false; const b = badgesLoad(); if (b[id]) return false; b[id] = Date.now(); Store.set('badges_v1', b); if (state){ (state.newBadges = state.newBadges || []).push(id); } return true; }
+function catOnShip(rank, bad){   // shipCar から：良品なら図鑑の★、通算、バッジ
+  if (QA_MODE || !state) return;
+  const st = statsLoad();
+  if (bad){ st.bad++; state.streakRun = 0; Store.set('stats_v1', st); return; }
+  st.good++; state.streakRun = (state.streakRun||0) + 1; st.bestStreak = Math.max(st.bestStreak, state.streakRun);
+  if (isTrailerRank(rank)) st.trailers++;
+  Store.set('stats_v1', st);
+  const c = catLoad(), e = c.cars[Math.max(0, Math.min(CATALOG_N-1, rank))], now = Date.now(); let newStar = false;
+  e.n++;
+  if (!e.s[0]){ e.s[0] = now; newStar = true; }
+  if (!e.s[1] && e.n >= 10){ e.s[1] = now; newStar = true; }
+  if (!e.s[2] && (state.round||1) >= 3){ e.s[2] = now; newStar = true; }
+  Store.set('catalog_v1', c);
+  if (newStar){ state.catNew = { rank, t: 0, wait: 0 }; catReportPct(); }   // v1.00-rc：カードと音は、ほかのお祝いの文字が全部終わってから（catNewUpdate）
+  SHIP_STEPS.forEach(([id, n]) => { if (st.good >= n) badgeGive(id); });
+  if (st.trailers >= 1) badgeGive('trailer_1'); if (st.trailers >= 5) badgeGive('trailer_5');
+  if (state.streakRun >= 5) badgeGive('streak_5');
+}
+function catOnGameEnd(settle){   // finalizeResult から
+  if (QA_MODE || !state) return;
+  const st = statsLoad(); st.games++; const clean = (state.claims||0) === 0 && (state.carsGood||0) >= 10; if (clean) st.cleanGames++; Store.set('stats_v1', st);
+  if (clean) badgeGive('clean_10');
+  if ((state.round||1) >= 3) badgeGive('round_3');
+  if (state.cleared && (state.round||1) >= 3) badgeGive('clear_3');
+  if (settle && settle.rank === 'S') badgeGive('rank_s');
+}
+function badgeNextInfo(){ const st = statsLoad(), b = badgesLoad(); const nx = SHIP_STEPS.find(([id]) => !b[id]); if (!nx) return null; const prev = SHIP_STEPS[SHIP_STEPS.indexOf(nx) - 1]; const base = prev ? prev[1] : 0;
+  return { id: nx[0], left: Math.max(0, nx[1] - st.good), frac: Math.max(0, Math.min(1, (st.good - base) / (nx[1] - base))) }; }
+// v1.00-rc：お祝いの文字（カットイン・お金・お知らせの帯・ランクアップ・周の帯）が出ているか、出番待ちのあいだは true
+const celebBusy = () => !!(state.cutin || state.money.length || state.toasts.length || state.rankUp || state.roundBanner);
+function levelBandOn(){ const t = state.toasts.find(t => !(t.wait > 0)); return !!(t && t.level && t.t > 0 && !state.cutin); }
+const levelBandRect = () => ({ x: 0, y: CONFIG.bannerY - CONFIG.bannerLevelH/2, w: CONFIG.W, h: CONFIG.bannerLevelH });
+const rectsHit = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+function catNewUpdate(rdt){   // 図鑑のカードは「カットイン → お金 → LEVEL UP → ランクアップ」のあと（見た目だけ。点数・物理は変えない）
+  const cn = state.catNew; if (!cn) return;
+  if (cn.t <= 0 && celebBusy()){ cn.wait += rdt; if (cn.wait > 10) state.catNew = null; return; }   // 10秒待っても出番がなければ出さない（図鑑には記録済み）
+  if (cn.t <= 0) sfx('catalog_new');
+  cn.t += rdt; if (cn.t > 1.2) state.catNew = null;
+}
+function drawCatNew(now){   // ★が付いた瞬間：箱の右下に小さなカード 1.2 秒（止めない）
+  const cn = state && state.catNew; if (!cn || !(cn.t > 0)) return; const t = cn.t;
+  const a = t < 0.15 ? t/0.15 : (t > 1.0 ? (1.2 - t)/0.2 : 1), W = CONFIG.W, w = 196, h = 58, x = W - w - 8, y = BOX.bottom - h - 10;   // v1.00-rc：箱の下（ベルトの上）。持っている部品・LEVEL UP の帯・ランクアップのカードにかからない
+  ctx.save(); ctx.globalAlpha = Math.max(0, a); ctx.fillStyle = 'rgba(255,255,255,.96)'; rrPath(x, y, w, h, 12); ctx.fill(); ctx.strokeStyle = CONFIG.pal.accentEdge; ctx.lineWidth = 2; ctx.stroke();
+  const im = CAR_RANKS[cn.rank] && CAR_RANKS[cn.rank].img; if (im && im.ok){ const iw = 64, ih = Math.min(44, iw*im.height/im.width); ctx.drawImage(im, x + 6, y + h/2 - ih/2, iw, ih); }
+  ctx.fillStyle = CONFIG.pal.ink; ctx.font = 'bold 14px sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  const lines = lang === 'ja' ? ['NEW!', '図鑑に追加'] : ['NEW!', 'Added to catalog']; ctx.fillText(lines[0], x + 76, y + 19); ctx.fillText(lines[1], x + 76, y + 39, w - 80);
+  ctx.restore();
+}
+function renderCatalog(){
+  const T = L(), c = catLoad(), b = badgesLoad(), names = CAR_NAMES[lang];
+  document.getElementById('catTitle').textContent = T.catTitle;
+  document.getElementById('catSum').textContent = T.catSum(catStars(c), Object.keys(b).length);
+  document.getElementById('badgeTitle').textContent = T.badges;
+  document.getElementById('catBack').textContent = T.back2 || T.back;
+  document.getElementById('catGrid').innerHTML = c.cars.map((e, i) => { const got = !!e.s[0];
+    const src = got ? CAR_RANKS[i].src : SILHOUETTES[i];
+    const stars = e.s.map(v => v ? '★' : '☆').join('');
+    return `<div class="cc${got?'':' locked'}" data-rank="${i}"><img src="${src}" alt="${got ? names[i] : T.catLocked}"><div class="cs">${stars}${got ? `<small>${T.catShipped(e.n)}</small>` : ''}</div><div class="cn">${got ? names[i] : T.catLocked}</div></div>`; }).join('');
+  document.getElementById('badgeGrid').innerHTML = BADGE_IDS.map((id, i) => `<div class="bd${b[id]?'':' off'}" data-id="${id}"><img src="${BADGE_FILES[i]}" alt=""><span>${T.badgeNames[id]}</span></div>`).join('');
+  const nx = badgeNextInfo();
+  document.getElementById('badgeNext').textContent = nx ? T.badgeNext(nx.left, T.badgeNames[nx.id]) : (Object.keys(badgesLoad()).length >= BADGE_IDS.length ? T.badgeAll : '');   // 出荷系を取り終えても、他が残っていれば「全部」とは言わない
+  document.getElementById('badgeBarFill').style.width = ((nx ? nx.frac : 1) * 100).toFixed(1) + '%';
+}
+function openCatalog(){ renderCatalog(); document.getElementById('catOv').classList.remove('hidden'); state.catOpen = true; }
+function closeCatalog(){ document.getElementById('catOv').classList.add('hidden'); state.catOpen = false; if (overlayMode === 'result' || state.paused) return; }
 function shipCar(x, y, bad){
   const rank = rankForLevel(state.level), fullValue = carValue(rank), lv0 = state.level;
   const value = (!bad || CONFIG.badCarPays) ? fullValue : 0;
   if (state.firstCarAt == null) state.firstCarAt = state.elapsed;   // 1台目の完成の時刻（時間で床が上がるのはここから）
   state.cars++; state.topRank = Math.max(state.topRank, rank);
+  catOnShip(rank, !!bad);   // v1.00-rc C7
   glowStopCheck(rank);   // v5p：コンパクトカー（partnerGlowUntilRank 2、オーナー決定 11/4）を出庫したら光らせない
   pathMark('marriage'); pathMark('car'); pathReset();   // v0.8：1台出したら道すじを灰色に戻す
   if (value){ state.sales += value; state.grossSales = (state.grossSales||0) + value; state.countRate = (state.sales - state.salesShown)/CONFIG.countUpTime; state.countDelay = 0.35; }
@@ -2376,7 +2481,7 @@ function discard(p){
 }
 
 // ===== 効果音 =====
-const SFX_NAMES = ['drop','merge','merge_big','complete','coin','defect_putter','discard','complaint','floor_rise','warning','mechanic_in','repair','level_up','game_over','round_start','marriage','ui_tap','land'];   // v0.9.9 A8：marriage・ui_tap・land を追加（catalog_new・badge は図鑑の v1.00-rc から）
+const SFX_NAMES = ['drop','merge','merge_big','complete','coin','defect_putter','discard','complaint','floor_rise','warning','mechanic_in','repair','level_up','game_over','round_start','marriage','ui_tap','land','catalog_new','badge'];   // v1.00-rc：catalog_new・badge を使う   // v0.9.9 A8：marriage・ui_tap・land を追加（catalog_new・badge は図鑑の v1.00-rc から）
 const SFX_SOFT = ['drop','merge'];
 let actx, audioUnlocked = false, sfxLoading = false, muted = !!Store.get('muted', false);
 const sfxBuf = {}, sfxEl = {};
@@ -2590,9 +2695,10 @@ function loop(now){
   state.popups = state.popups.filter(p=>p.t<(p.dur||1.2));
   if (state.celebT > 0){ state.celebT -= rdt; state.popups = state.popups.filter(p => p.celeb); }
   for (const t of state.toasts) if (t.wait > 0) t.wait -= rdt;
-  { const head = state.toasts.find(t => !(t.wait > 0)); if (head) head.t += rdt; }   // 1つずつ順番に
+  const cutinBusy = !!state.cutin;   // v1.00-rc：カットインが出ているあいだは、まだ始まっていない LEVEL UP・お金・ランクアップを待たせる（見た目だけ。点数・物理は変えない）
+  { const head = state.toasts.find(t => !(t.wait > 0)); if (head && !((cutinBusy || state.money.length) && head.level && head.t <= 0)) head.t += rdt; }   // LEVEL UP はお金の文字が消えてから   // 1つずつ順番に
   state.toasts = state.toasts.filter(t=>t.t<t.dur);
-  for (const m of state.money) m.t += rdt;
+  for (const m of state.money) if (!(cutinBusy && m.t <= 0)) m.t += rdt;
   state.money = state.money.filter(m => m.t < CONFIG.moneyTime);
   for (const d of state.tagDrops){ const was = d.t; d.t += rdt; if (was < CONFIG.tagFall && d.t >= CONFIG.tagFall) state.shake = Math.max(state.shake, CONFIG.complaintShake); }
   state.tagDrops = state.tagDrops.filter(d => d.t < CONFIG.tagFall);
@@ -2601,7 +2707,9 @@ function loop(now){
     p.t += rdt; p.x += p.vx*rdt; p.y += p.vy*rdt; p.vy += p.g*rdt; p.rot += p.vr*rdt;
   }
   state.parts = state.parts.filter(p=>p.t<p.life);
-  if (state.rankUp){ state.rankUp.t += rdt; if (state.rankUp.t > state.rankUp.dur) state.rankUp = null; }
+  catNewUpdate(rdt);
+  const lvHead = state.toasts.find(t => !(t.wait > 0));
+  if (state.rankUp){ if (!((cutinBusy || state.money.length || (lvHead && lvHead.level)) && state.rankUp.t <= 0)) state.rankUp.t += rdt; if (state.rankUp.t > state.rankUp.dur) state.rankUp = null; }   // ランクアップは LEVEL UP の帯が消えてから
   if (state.banner){ state.banner.t += rdt; if (state.banner.t > state.banner.dur) state.banner = null; }
   if (state.roundBanner){ const rb = state.roundBanner; rb.t += rdt; if (rb.t >= 0 && !rb.sfx){ rb.sfx = true; sfx('round_start'); } if (rb.t > rb.dur) state.roundBanner = null; }
   if (CONFIG.purpleHint && !state.purpleHinted && state.running && state.current && ITEMS[state.current.k].color === 'purple'){ state.purpleHinted = true; }   // v0.9.1：お知らせではなく名前の帯の説明に出す（holdLabelParts）
@@ -2756,7 +2864,8 @@ function drawCutin(){   // v0.9.9：マリッジの文字絵（0.12秒で大き�
   const c = state.cutin; if (!c || state.bh) return; const C = CONFIG.cutin, t = c.t;
   const sc = t < C.inSec ? 0.4 + 0.6*(t/C.inSec) : 1, a = t > C.inSec + C.holdSec ? Math.max(0, 1 - (t - C.inSec - C.holdSec)/C.outSec) : 1;
   ctx.save(); ctx.globalAlpha = a; ctx.translate(CONFIG.W/2, C.y); ctx.scale(sc, sc);
-  if (lang === 'ja' && UI.cutin && UI.cutin.ok){ const w = C.w, h = w*UI.cutin.height/UI.cutin.width; ctx.drawImage(UI.cutin, -w/2, -h/2, w, h); }
+  const cimg = lang === 'ja' ? UI.cutin : UI.cutinEn; state.cutinSrc = cimg && cimg.ok ? (lang === 'ja' ? 'ja' : 'en') : 'text';
+  if (cimg && cimg.ok){ const w = C.w, h = w*cimg.height/cimg.width; ctx.drawImage(cimg, -w/2, -h/2, w, h); }
   else { ctx.font = 'bold 40px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; const txt = L().marriage;
     ctx.lineJoin = 'round'; ctx.strokeStyle = CONFIG.pal.ink; ctx.lineWidth = 10; ctx.strokeText(txt, 0, 2); ctx.strokeStyle = '#3B5FC4'; ctx.lineWidth = 5; ctx.strokeText(txt, 0, 0); ctx.fillStyle = '#FFD84A'; ctx.fillText(txt, 0, 0); }
   ctx.restore(); state.cutinDrawn = (state.cutinDrawn||0) + 1;
@@ -2962,13 +3071,14 @@ function draw(now){
     ctx.fillText(p.text, px, py); ctx.globalAlpha = 1;
   }
   for (const m of state.money){   // 「+N万円」
-    if (m.t < 0) continue;
+    if (m.t < 0 || (state.cutin && m.t <= 0)) continue;
     const k = m.t/CONFIG.moneyTime;
     ctx.globalAlpha = m.celeb ? Math.max(0, Math.min(1, (CONFIG.moneyTime - m.t)/CONFIG.celebFade)) : (k < 0.5 ? 1 : Math.max(0, (1-k)/0.5)); ctx.fillStyle='#ffd84a'; ctx.font=`bold ${CONFIG.moneyFontPx}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
     { ctx.strokeStyle = m.celeb ? '#000' : CONFIG.pal.ink; ctx.lineWidth = m.celeb ? CONFIG.celebOutline*2 : 4; ctx.lineJoin='round'; ctx.strokeText(m.text, Math.max(70, Math.min(W-70, m.x)), moneyY(m, k)); ctx.fillStyle='#ffd84a'; }   // v0.9.7：ふちはいつも
     ctx.fillText(m.text, Math.max(70, Math.min(W-70, m.x)), moneyY(m, k)); ctx.globalAlpha = 1;
   }
   state.toasts.filter(t => !(t.wait > 0)).slice(0,1).forEach((t) => {   // 大事なお知らせ：1つだけ、決まった場所に
+    if (t.level && t.t <= 0) return;   // v1.00-rc：始まる前（カットイン・お金の待ち）は描かない
     const k = t.t/t.dur, y = CONFIG.bannerY;
     ctx.globalAlpha = k < 0.85 ? 1 : (1-k)/0.15;
     if (t.level){   // LEVEL UP：黄色い帯（同じ場所・同じ列）
@@ -2988,6 +3098,7 @@ function draw(now){
     ctx.fillStyle='#ffd84a'; ctx.textAlign='center'; ctx.textBaseline='middle'; drawFitText(L().hint, W/2, 300+hh/2, CONFIG.fitMaxW, CONFIG.hintFontPx, CONFIG.fitMinPx);
   }
   drawTutorial(now);
+  drawCatNew(now);
   if (state.banner){
     const k = state.banner.t/state.banner.dur;
     ctx.globalAlpha = k<0.8 ? 1 : (1-k)/0.2;
@@ -2996,7 +3107,7 @@ function draw(now){
     ctx.fillText(`${state.banner.text}  Lv${state.level}`, W/2 + (k<0.15 ? (1-k/0.15)*-W : 0), 230+CONFIG.centerBannerH/2);
     ctx.globalAlpha = 1;
   }
-  if (state.rankUp && state.rankUp.t >= 0){
+  if (state.rankUp && state.rankUp.t >= 0 && !(state.cutin && state.rankUp.t <= 0)){
     const ru = state.rankUp, k = ru.t/ru.dur, im = CAR_RANKS[ru.rank] && CAR_RANKS[ru.rank].img;
     ctx.globalAlpha = k<0.1 ? k/0.1 : (k>0.8 ? (1-k)/0.2 : 1);
     ctx.fillStyle=CONFIG.pal.inkPlate; ctx.fillRect(0, 372, W, 170);
@@ -3047,6 +3158,7 @@ const ov=document.getElementById('overlay'), ovText=document.getElementById('ovT
 const shareBtn=document.getElementById('shareBtn'), copiedEl=document.getElementById('copied'), flowTitle=document.getElementById('flowTitle');
 const pauseOv=document.getElementById('pauseOv'), howBtn=document.getElementById('howBtn');
 let overlayMode = 'title';
+const pp = t => lang === 'ja' ? `（${t}）` : ` (${t})`, dotSep = () => lang === 'ja' ? '・' : ' · ', colon = () => lang === 'ja' ? '：' : ': ';   // v1.00-rc：英語では半角のかっこ・区切り
 function stepsText(){ document.querySelectorAll('.steps3 .stT').forEach(b => { b.textContent = L()[b.dataset.k] || ''; });
   const want = howtoSrc(false); document.querySelectorAll('img.howto3').forEach(im => { if (im.getAttribute('src') !== want){ im.hidden = false; if (im.nextElementSibling) im.nextElementSibling.hidden = true; im.src = want; } im.alt = `${L().step_drop} → ${L().step_match} → ${L().step_ship}`; });
   const hi = document.getElementById('howImg'); if (hi){ const vert = !pcLayout && innerHeight > innerWidth; const w2 = howtoSrc(vert); if (hi.getAttribute('src') !== w2) hi.src = w2; hi.className = vert ? 'v' : 'h'; hi.alt = `${L().step_drop} → ${L().step_match} → ${L().step_ship}`; } }
@@ -3060,9 +3172,9 @@ function renderOverlay(){
     flowTitle.style.display = '';
     const pr = personalRanks(), best = pr[0];
     let intro = tutWanted() && T.introShort ? T.introShort : T.intro;   // v0.9.3：説明を見る人には1行
-    if (best) intro += `<div class="res" style="margin-top:8px">${T.personalRank} Best: <b>${best.score}</b>（${best.rank}）</div>`;
+    if (best) intro += `<div class="res" style="margin-top:8px">${T.personalRank} Best: <b>${best.score}</b>${pp(best.rank)}</div>`;
     ovText.innerHTML=intro; startBtn.textContent = assetsReady ? T.start : T.loading; startBtn.disabled = !assetsReady;
-    shareBtn.classList.add('hidden');
+    shareBtn.classList.add('hidden'); document.getElementById('catBtn2').classList.add('hidden');
     howBtn.textContent = T.howToPlay; howBtn.disabled = !assetsReady; howBtn.classList.remove('hidden');
   } else {
     howBtn.classList.add('hidden');
@@ -3076,11 +3188,11 @@ function renderOverlay(){
     const marginPct = r.margin != null ? (r.margin*100) : 0;
     let html = `<div class="rCard"><div class="rHead">${head}</div>`;
     if (r.score != null) html += `<div class="rTop"><div class="rRank" id="resRank">${r.scoreRank||'C'}</div><div class="rScore" id="resScore">${r.score}<small>/1000</small></div></div>`
-      + `<div style="font-size:14px">${T.totalScore||'Score'}・${T.rankLabel||'Rank'}`+(r.retry?` <span class="rRetry">${T.retry_used_note||'↻'}</span>`:'')+`</div>`;
+      + `<div style="font-size:14px">${T.totalScore||'Score'}${dotSep()}${T.rankLabel||'Rank'}`+(r.retry?` <span class="rRetry">${T.retry_used_note||''}</span>`:'')+`</div>`;
     if (r.newRecord) html += `<span class="newRec">${T.newRec}</span><br>`;
     html += `<div class="title">${T.titleLine(title)}</div>`;
     html += `<div class="rStats"><b>${T.settle||'Settlement'}</b><br>`;
-    html += `${T.unitsShipped||T.shipped} <b>${r.carsGood||0}</b>${T.unitCars}（${T.unitsGood||'Good'}） / <b>${r.carsBad||0}</b>（${T.unitsBad||'Bad'}）`+(r.claims ? ` / ${T.complaints} ${r.claims}` : '')+`<br>`;
+    html += `${T.unitsShipped||T.shipped} <b>${r.carsGood||0}</b>${T.unitCars}${pp(T.unitsGood||'Good')} / <b>${r.carsBad||0}</b>${pp(T.unitsBad||'Bad')}`+(r.claims ? ` / ${T.complaints} ${r.claims}` : '')+`<br>`;
     html += `${T.thisSales} <b>${fmtYen(gross||0)}</b><br>`;
     html += `${T.profit||'Profit'} <b${profit<0 ? ' class="neg"' : ''}>${fmtYen(profit||0)}</b> / ${T.margin||'Margin'} <b>${(marginPct).toFixed(1)}%</b><br>`;
     html += `${T.best} ${fmtYen(r.bestSales||0)}`+( (r.bestRound||1) >= CONFIG.roundShowFrom ? (lang==='ja' ? `（${T.roundsReached(r.bestRound)}）` : ` (${T.roundsReached(r.bestRound)})`) : '' )+`<br>`;
@@ -3091,10 +3203,15 @@ function renderOverlay(){
     const pr = r.personalRanks || personalRanks();
     html += `<div class="rCard rRanks"><b>${T.personalRank||'Ranking'}</b><br>`;
     if (!pr.length) html += (T.noRank||'—');
-    else pr.forEach((e,i)=>{ html += `${i+1}. ${e.score}（${e.rank||'?'}） ${fmtYen(e.sales||0)} / ${e.cars||0}${T.unitCars}`+(e.retry?` <span class="rRetry">${T.rank_retry_mark||'↻'}</span>`:'')+`<br>`; });
+    else pr.forEach((e,i)=>{ html += `${i+1}. ${e.score}${pp(e.rank||'?')} ${fmtYen(e.sales||0)} / ${e.cars||0}${T.unitCars}`+(e.retry?` <span class="rRetry">${T.rank_retry_mark||''}</span>`:'')+`<br>`; });
     html += `</div>`;
+    { const cc = catLoad(), bb = badgesLoad(), nb = (window.lastResult && window.lastResult.newBadges) || [], nx = badgeNextInfo();   // v1.00-rc：図鑑・バッジの進み
+      html += `<div class="rCard rProg"><b>${T.catalog}${dotSep()}${T.badges}</b><br>${T.catSum(catStars(cc), Object.keys(bb).length)}`;
+      if (nb.length) html += `<br><b>${T.newBadges}</b><br>` + nb.slice(0, 3).map(id => `<img src="${BADGE_FILES[BADGE_IDS.indexOf(id)]}" alt="${T.badgeNames[id]}" title="${T.badgeNames[id]}">`).join('') + `<br>${nb.slice(0, 3).map(id => T.badgeNames[id]).join(' / ')}`;
+      html += `${nx ? '<br>' + T.badgeNext(nx.left, T.badgeNames[nx.id]) : (Object.keys(badgesLoad()).length >= BADGE_IDS.length ? '<br>' + T.badgeAll : '')}</div>`; }
     ovText.innerHTML = html; startBtn.textContent=T.retry; startBtn.disabled = false;
     shareBtn.textContent = T.share; shareBtn.classList.remove('hidden');
+    { const cb = document.getElementById('catBtn2'); cb.textContent = '📖 ' + T.catalog; cb.classList.remove('hidden'); }
   }
   document.getElementById('langJa').classList.toggle('on', lang==='ja');
   document.getElementById('langEn').classList.toggle('on', lang==='en');
@@ -3102,7 +3219,7 @@ function renderOverlay(){
 }
 function renderPause(){
   stepsText();
-  { const pr = personalRanks(), best = pr[0], el = document.getElementById('pauseBest'); if (el) el.textContent = best ? L().bestLine(`${best.score}（${best.rank}）`) : ''; }   // v0.9.8：タイトル画面がないので、ベストは一時停止メニューに
+  { const pr = personalRanks(), best = pr[0], el = document.getElementById('pauseBest'); if (el) el.textContent = best ? L().bestLine(`${best.score}${pp(best.rank)}`) : ''; }   // v0.9.8：タイトル画面がないので、ベストは一時停止メニューに
   document.getElementById('langJa2').classList.toggle('on', lang==='ja'); document.getElementById('langEn2').classList.toggle('on', lang==='en');
   document.getElementById('pauseTitle').textContent = L().pause;
   document.getElementById('resumeBtn').textContent = L().resume;
@@ -3110,11 +3227,12 @@ function renderPause(){
   document.getElementById('howBtn2').textContent = L().howToPlay;
   document.getElementById('howConfirmText').textContent = L().howConfirm; document.getElementById('howYes').textContent = L().yes; document.getElementById('howNo').textContent = L().back;
   document.getElementById('setBtn').textContent = '⚙ ' + L().settings;
+  document.getElementById('catBtn').textContent = '📖 ' + L().catalog;
   renderSettings();
 }
 function renderSettings(){   // v0.9.9 C6
   const T = L(), el = id => document.getElementById(id); if (!el('setOv')) return;
-  const tg = (id, label, on, note) => { const b = el(id); b.innerHTML = `${label}：<b>${on ? T.on : T.off}</b>${note ? ' ' + note : ''}`; b.classList.toggle('off', !on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); };
+  const tg = (id, label, on, note) => { const b = el(id); b.innerHTML = `${label}${colon()}<b>${on ? T.on : T.off}</b>${note ? ' ' + note : ''}`; b.classList.toggle('off', !on); b.setAttribute('aria-pressed', on ? 'true' : 'false'); };
   const sdkMute = SDKS.muteAudio ? '🔇' : '';
   tg('muteBtn2', T.setSfx, !muted, sdkMute); tg('bgmBtn', T.setBgm, Settings.bgm, sdkMute); tg('motionBtn', T.setMotion, Settings.reduceMotion);
   el('setTitle').textContent = T.settings; el('credL').textContent = T.credits; el('setBack').textContent = T.back2;
@@ -3137,6 +3255,9 @@ document.getElementById('howYes').onclick = ()=>{ howCf.classList.add('hidden');
 document.getElementById('muteBtn2').onclick = ()=>setMuted(!muted);
 document.getElementById('bgmBtn').onclick = ()=>setBgmOn(!Settings.bgm);
 document.getElementById('motionBtn').onclick = ()=>{ Settings.set('reduceMotion', !Settings.reduceMotion); renderSettings(); };
+document.getElementById('catBtn').onclick = ()=>openCatalog();
+document.getElementById('catBtn2').onclick = ()=>openCatalog();
+document.getElementById('catBack').onclick = ()=>closeCatalog();
 document.getElementById('setBtn').onclick = ()=>{ renderSettings(); document.getElementById('setOv').classList.remove('hidden'); };
 document.getElementById('setBack').onclick = ()=>{ document.getElementById('setOv').classList.add('hidden'); renderPause(); };
 // v0.9.9 A8：ボタンを押したときの「ポッ」（一時停止中は無音のルールなので、遊んでいる画面・結果画面だけ鳴る）
@@ -3226,6 +3347,7 @@ function finalizeResult(cleared){
   settle.retry = !!state.retryUsed;
   if (settle.rank === 'S') happyOnce('rankS');   // v0.9.6 C1
   const ranks = savePersonalRank(settle);
+  catOnGameEnd(settle);   // v1.00-rc C7
   // v0.7：プレイ時間はゲーム内 elapsed を優先。0 の誤表示防止に壁時計も参照
   const wallSec = state.wallStart ? (performance.now() - state.wallStart) / 1000 : 0;
   const playSec = Math.max(0, Math.round(state.elapsed > 0.5 ? state.elapsed : Math.max(state.elapsed, wallSec)));
@@ -3234,7 +3356,8 @@ function finalizeResult(cleared){
     score:settle.total, scoreRank:settle.rank, scoreBreak:{prod:settle.prod, quality:settle.quality, margin:settle.marginPts, round:settle.roundPts},
     seconds:playSec, level:state.level, discards:state.discards,
     topRank:state.topRank, bestSales:Math.max(prevBest, settle.gross), bestRank:Math.max(prevRank, state.topRank), newRecord,
-    round, bestRound:Math.max(prevRound, round), cleared:!!cleared, retry:!!state.retryUsed, personalRanks:ranks };
+    round, bestRound:Math.max(prevRound, round), cleared:!!cleared, retry:!!state.retryUsed, personalRanks:ranks, newBadges:(state.newBadges||[]).slice() };
+  if ((state.newBadges||[]).length) setTimeout(()=>sfx('badge'), 600);
 }
 function startEnding(){
   if (state.cleared) return;   // クリア後のあふれば無視
@@ -3363,6 +3486,7 @@ var bootDone = false;   // v0.9.8：renderOverlay（起動の最初）から見�
 async function boot(){
   try{ await sdkInit(); }catch(e){}
   sdkMigrate(); reloadSaves();
+  if (catStars(catLoad()) > 0) catReportPct();   // v1.00-rc：起動時に図鑑の進み（★÷24）を知らせる（0 のときは送らない）
   lang = detectLang(); updateTitle(); renderOverlay(); renderPause(); resize();
   SDKS.loading = true; SDKS.intent.push('loadingStart'); sdkCall('game', 'loadingStart');
   const fontP = (document.fonts && document.fonts.load) ? document.fonts.load("800 16px MPR1c").catch(()=>{}) : Promise.resolve();   // v0.9.7 A4
@@ -3387,6 +3511,7 @@ function keyAimStep(rdt){
   setAim(Math.max(0, Math.min(CONFIG.W, (state.rawX != null ? state.rawX : state.aimX) + dir*CONFIG.keyAimSpeed*rdt)));
 }
 window.addEventListener('keydown', e => {
+  if (state && state.catOpen){ if (['Enter','Space','KeyP'].includes(e.code)){ e.preventDefault(); closeCatalog(); } return; }   // 図鑑を開いているあいだはゲームのキーを使わない
   const k = e.key, c = e.code;
   const isL = k === 'ArrowLeft' || c === 'KeyA', isR = k === 'ArrowRight' || c === 'KeyD';
   const isDrop = k === ' ' || c === 'Space' || k === 'ArrowDown' || k === 'Spacebar';
