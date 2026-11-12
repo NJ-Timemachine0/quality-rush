@@ -35,17 +35,19 @@
   .ov.loading > h1, .ov.loading > #loadBox{display:block!important}
   #pauseBest{font-size:16px;margin:2px 0 4px}
   /* ボタン：主（黄）と副（白）は あーとの 9-slice（角44px・下に6pxの厚み）。押すと沈む */
-  button{font-family:var(--font);font-weight:800;font-size:20px;padding:4px 18px;margin:8px;min-height:44px;color:var(--ink);background:transparent;border-style:solid;border-width:18px;border-color:transparent;border-image:url('assets/ui/btn_primary_9s.webp') 44 fill / 18px stretch;border-radius:0;line-height:1.2}
+  /* v1.00-rc 11/12：文字をボタンの面の真ん中に（Android で「Play again」が下の縁にかかっていた）。9-slice 下の厚みぶん、下の余白を少し多めに */
+  button{font-family:var(--font);font-weight:800;font-size:20px;padding:0 18px 6px;margin:8px;min-height:44px;color:var(--ink);background:transparent;border-style:solid;border-width:18px;border-color:transparent;border-image:url('assets/ui/btn_primary_9s.webp') 44 fill / 18px stretch;border-radius:0;line-height:1;display:inline-flex;align-items:center;justify-content:center;text-align:center;-webkit-appearance:none;appearance:none;vertical-align:middle}
   button:active{transform:translateY(3px)}
   button.sec,#howBtn,#introReplayBtn,#howBtn2,#muteBtn2,#howNo,#shareBtn,#retryNoBtn,#langRow button{border-image-source:url('assets/ui/btn_secondary_9s.webp')}
   #langRow{margin-top:10px}
+  #langRow.hidden{display:none}
   #langRow button{font-size:15px;padding:0 10px;border-width:14px;border-image-width:14px;opacity:.75}
   #langRow button.on{opacity:1;border-image-source:url('assets/ui/btn_primary_9s.webp')}
   h1{margin:0 0 6px;color:var(--ink);text-shadow:0 2px 0 #fff,0 0 8px rgba(255,255,255,.9)}
   #ovText{margin:6px 0;font-size:15px;line-height:1.5}
-  #startBtn{font-size:26px;padding:4px 36px;border-width:22px;border-image-width:22px}
-  #howBtn,#introReplayBtn,#howBtn2,#muteBtn2,#howNo,#shareBtn{font-size:16px;padding:0 14px;border-width:16px;border-image-width:16px}
-  #howBtn.hidden{display:none}
+  #startBtn{font-size:26px;padding:0 36px 8px;border-width:22px;border-image-width:22px;min-height:52px}
+  #howBtn,#introReplayBtn,#howBtn2,#muteBtn2,#howNo,#shareBtn{font-size:16px;padding:0 14px 6px;border-width:16px;border-image-width:16px}
+  #howBtn.hidden,#catBtn2.hidden,button.hidden{display:none}
   #howBtn:disabled{opacity:.5}
   #startBtn:disabled{opacity:.6;filter:grayscale(.6)}
   #shareBtn.hidden{display:none}
@@ -110,18 +112,28 @@
   @media (max-height: 560px){ .steps3{margin:4px auto;padding:4px 8px} .steps3 .stHand,.steps3 .stPair,.steps3 .stCar{height:44px} .steps3 .stHand{width:44px} }
   .steps3[hidden]{display:none}
   img.howto3{display:block;width:min(480px,92vw);height:auto;margin:6px auto}
-  @media (max-height: 560px){ img.howto3{width:min(330px,92vw);margin:2px auto} }
+  @media (max-height: 560px){
+    img.howto3{width:min(300px,92vw);margin:1px auto}
+    #pauseOv button, #overlay button{margin:3px 8px}
+    #pauseBest{font-size:15px;margin:0 0 2px}
+    #pauseOv h1, #overlay h1{margin:0 0 2px}
+    #pauseOv{padding:0 10px 6px}
+  }
   #howConfirm{overflow-y:auto;justify-content:safe center!important}
   /* v0.9.9 C6：設定画面 */
-  #setOv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:8px;background:#FFF7EA;padding:14px;text-align:center;overflow-y:auto}
+  #setOv{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:8px;background:#FFF7EA;padding:14px;text-align:center;overflow-y:auto}
   #setOv.hidden{display:none!important}
   #setOv h2{margin:0 0 4px;font-size:22px;color:var(--ink)}
   #setOv button.tg{min-width:230px;font-size:17px;border-image-source:url('assets/ui/btn_secondary_9s.webp');padding:0 14px;border-width:16px;border-image-width:16px}
   #setOv button.tg.off{opacity:.8}
   #setOv button.tg b{color:#2F7D4F}#setOv button.tg.off b{color:#8A6A00}
   #credits{font-size:14px;line-height:1.55;color:var(--ink);background:#fff;border:2px solid var(--lav);border-radius:12px;padding:8px 14px;max-width:min(360px,92vw)}
-  #setBack,#setBtn{font-size:16px;padding:0 14px;border-width:16px;border-image-width:16px;border-image-source:url('assets/ui/btn_secondary_9s.webp')}
-  @media (max-height: 560px){ #setOv{gap:4px;padding:6px} #setOv h2{font-size:18px} #credits{font-size:14px;line-height:1.35;padding:4px 10px} }
+  #setBack,#setBtn,#titleSetBtn{font-size:16px;padding:0 14px;border-width:16px;border-image-width:16px;border-image-source:url('assets/ui/btn_secondary_9s.webp')}
+  #titleSetBtn.hidden{display:none}
+  #titleBest{font-size:18px;line-height:1.3;margin:6px 0 4px;color:var(--ink);font-weight:800}
+  #titleBest:empty{display:none}
+  .howNote{font-size:15px;line-height:1.4;margin:4px auto 6px;max-width:min(440px,94vw);color:var(--ink);font-weight:800}
+  @media (max-height: 560px){ #setOv{gap:4px;padding:6px} #setOv h2{font-size:18px} #credits{font-size:14px;line-height:1.35;padding:4px 10px} #titleBest{font-size:16px;margin:2px 0} .howNote{font-size:14px;line-height:1.3;margin:2px auto 4px} }
   #howImg.h{width:min(480px,92vw);height:auto}
   #howImg.v{width:min(72vw,340px);height:auto}
   /* v0.9.8 監査2：横長の左の板に道すじ */
@@ -179,9 +191,12 @@
     <h1 id="gameTitle">パーツポン！工場</h1>
     <div id="loadBox"><div id="loadBar"><div id="loadFill"></div></div><div id="loadPct">0%</div></div>
     <img id="flowTitle" class="howto3" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><div class="steps3" hidden role="img"><div class="st"><div class="stHand"></div><b class="stT" data-k="step_drop"></b></div><span class="stA">→</span><div class="st"><div class="stPair"><img src="assets/parts_v3/badge_wheel.webp" alt=""><img src="assets/parts_v3/badge_tire.webp" alt=""></div><b class="stT" data-k="step_match"></b></div><span class="stA">→</span><div class="st"><img class="stCar" src="assets/cars/car_lv1_kei.webp" alt=""><b class="stT" data-k="step_ship"></b></div></div>
+    <p class="howNote" id="howNoteTitle"></p>
+    <div id="titleBest"></div>
     <div id="ovText"></div>
     <button id="startBtn" disabled>読み込み中…</button>
     <button id="howBtn" disabled>遊び方</button>
+    <button id="titleSetBtn" class="sec hidden">⚙ 設定</button>
     <script>(function(){ var q = new URLSearchParams(location.search).get('lang'); var l = (q==='ja'||q==='en') ? q : ((navigator.language||'').slice(0,2)==='ja' ? 'ja' : 'en'); if (l==='en'){ document.getElementById('startBtn').textContent='Loading…'; document.getElementById('howBtn').textContent='How to play'; } })();</script>
     <button id="catBtn2" class="hidden"></button>
     <button id="shareBtn" class="hidden"></button>
@@ -191,27 +206,29 @@
   <div id="pauseOv" class="ov hidden">
     <h1 id="pauseTitle"></h1>
     <img class="howto3" alt="" onerror="this.hidden=true;this.nextElementSibling.hidden=false"><div class="steps3" hidden role="img"><div class="st"><div class="stHand"></div><b class="stT" data-k="step_drop"></b></div><span class="stA">→</span><div class="st"><div class="stPair"><img src="assets/parts_v3/badge_wheel.webp" alt=""><img src="assets/parts_v3/badge_tire.webp" alt=""></div><b class="stT" data-k="step_match"></b></div><span class="stA">→</span><div class="st"><img class="stCar" src="assets/cars/car_lv1_kei.webp" alt=""><b class="stT" data-k="step_ship"></b></div></div>
+    <p class="howNote" id="howNotePause"></p>
     <button id="resumeBtn"></button>
     <button id="introReplayBtn"></button>
     <button id="howBtn2"></button>
     <button id="catBtn"></button>
     <button id="setBtn"></button>
     <div id="pauseBest"></div>
-    <div id="setOv" class="hidden">
-      <h2 id="setTitle"></h2>
-      <button id="muteBtn2" class="tg"></button>
-      <button id="bgmBtn" class="tg"></button>
-      <button id="motionBtn" class="tg"></button>
-      <div id="langRow2" style="margin-top:4px"><button id="langJa2" class="sec" style="font-size:15px;padding:0 10px;border-width:14px;border-image-width:14px">日本語</button><button id="langEn2" class="sec" style="font-size:15px;padding:0 10px;border-width:14px;border-image-width:14px">English</button></div>
-      <div id="credits"><b id="credL"></b><br>Music: "Happy Vibes" by Ruskerdax (CC0)<br>Font: M PLUS Rounded 1c (SIL OFL 1.1)<br>Physics: Matter.js (MIT)<br>Game: Timemachine0</div>
-      <button id="setBack"></button>
-    </div>
     <div id="howConfirm" class="hidden" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#FFF7EA;padding:24px;text-align:center">
       <img id="howImg" alt="">
+      <p class="howNote" id="howNoteHow"></p>
       <p id="howConfirmText" style="color:#2B2F4A;font-weight:800;font-size:17px;line-height:1.5;margin:0 0 6px"></p>
       <button id="howYes"></button>
       <button id="howNo"></button>
     </div>
+  </div>
+  <div id="setOv" class="hidden">
+    <h2 id="setTitle"></h2>
+    <button id="muteBtn2" class="tg"></button>
+    <button id="bgmBtn" class="tg"></button>
+    <button id="motionBtn" class="tg"></button>
+    <div id="langRow2" style="margin-top:4px"><button id="langJa2" class="sec" style="font-size:15px;padding:0 10px;border-width:14px;border-image-width:14px">日本語</button><button id="langEn2" class="sec" style="font-size:15px;padding:0 10px;border-width:14px;border-image-width:14px">English</button></div>
+    <div id="credits"><b id="credL"></b><br>Music: "Happy Vibes" by Ruskerdax (CC0)<br>Font: M PLUS Rounded 1c (SIL OFL 1.1)<br>Physics: Matter.js (MIT)<br>Game: Timemachine0</div>
+    <button id="setBack"></button>
   </div>
   <div id="catOv" class="ov hidden" role="dialog">
     <h1 id="catTitle"></h1>
@@ -559,7 +576,7 @@ const CONFIG = {
   badArtAlso: ['screw','door_window'],   // DR3：ドア／組みかけドアは不良材料から作ると不良絵
   // --- 最初の1回だけの説明（docs/tutorial_spec.md） ---
   // --- v0.9.8 C2：最初の30秒 ---
-  autoStart: true,          // 読み込みが終わったら自動で始める（タイトル画面なし・0タップ）。URL ?autostart=0 で前のタイトル画面（確認用）
+  autoStart: false,         // v1.00-rc 11/12：読み込みのあとタイトル画面。スタートボタンで始める（どこをタップしても始まらない）。テスト用ビルドだけ ?autostart=1 で以前の自動開始
   firstWaitMaxSec: 10,      // 自動で始まったゲームの最初の部品は、最初の操作（触る・キー・マウスを動かす）まで投下の時間を止める（上限・実時間秒）
   onboardPictures: true,    // 説明は絵の3つだけ（指マーク／光る相手＋点線／×→箱の矢印）。ほかの文の説明は出さない
   onbHandSize: 84, onbHandDy: 96, onbHandSwing: 70, onbHandPeriod: 1.2,   // 指マーク（hand_drag.webp 2コマ）：大きさ・持つ位置からの下の距離・左右のふれ幅・周期（秒）
@@ -714,6 +731,11 @@ const ART_MANIFEST = {
   tierParts: ['badge_door','badge_door_bad','badge_door_window','badge_door_window_bad','badge_engine','badge_glass','badge_glass_bad','badge_hinge','badge_hinge_bad',
               'badge_panel','badge_tire_wheel','badge_wheel','badge_wheel_bad'],
   // v0.9.8：遊び方の絵（あーと 2026-11-09 納品・README_handoff 6章）。横 960x320＝320x320 のマス×3、縦 480x720＝480x240 のマス×3
+  // v1.00-rc 11/12：遊び方「そろえる／Match」は、あーと最終版（青いホイール＋タイヤがくっつく絵、art_snapshot_0909）。また差し替えるときは下の 4 ファイルを同じ名前・同じ大きさで上書きするだけ（コードは変えない。swap_art.py でも可）。
+  //   assets/ui/howto3_ja.webp      960×320（横、Match は x=320..640 の 320×320）
+  //   assets/ui/howto3_en.webp      960×320
+  //   assets/ui/howto3_ja_v.webp    480×720（縦、Match は y=240..480 の 480×240）
+  //   assets/ui/howto3_en_v.webp    480×720
   uiDir: 'assets/ui/', howto: [ {file:'howto3_ja', w:960, h:320}, {file:'howto3_en', w:960, h:320}, {file:'howto3_ja_v', w:480, h:720}, {file:'howto3_en_v', w:480, h:720} ],
   howtoCell: { h:{ w:320, h:320, dx:320, dy:0 }, v:{ w:480, h:240, dx:0, dy:240 } },
   carDir: 'assets/cars/', silhouetteDir: 'assets/cars/silhouette/',
@@ -938,7 +960,7 @@ const TEXT = {
     tut_move:'指で左右に動かして、はなすと落ちるよ', tut_merge:'同じ色の部品どうしをくっつけると組み上がる', tut_car:'部品が全部そろうと車が1台できる！',
     tut_bad:'×の付いた部品は端の不適合品箱へ', tut_scrap:'良い部品を捨てるとお金が減るよ', tut_mechanic:'整備士は不良品にぶつかると直してくれる',
     tut_wait:'相手がまだ箱にないよ。先に置いておこう', tut_lines:'上の丸＝ボディ、下の丸＝シャシーのライン', tut_marriage:'灰色どうしをくっつけるとマリッジ！', tut_claim:'×の部品が入ったまま出すとクレーム', howConfirm:'今のゲームを終えて、説明つきで始めますか？', yes:'はい', back:'もどる', introShort:'スライドして離すと落ちる。同じ色をくっつけて車を作ろう！',
-    tut_skip:'説明をとばす', onb_bin:'×→🗑️', onb_ok:'OK！', loading:'読み込み中…', bestLine:s=>`ベスト ${s}`, howToPlay:'遊び方', tut_merge_ok:'いいね！', tut_bad_ok:'OK！不良品はただで捨てられるよ',
+    tut_skip:'説明をとばす', onb_bin:'×→🗑️', onb_ok:'OK！', loading:'読み込み中…', bestLine:s=>`ベスト ${s}`, howToPlay:'遊び方', howSame:'同じ絵柄どうしはくっつかず、片方が消えます', tut_merge_ok:'いいね！', tut_bad_ok:'OK！不良品はただで捨てられるよ',
     retry_title:'ラインがいっぱい！ つづける？', retry_sub:'上の部品を1段かたづけて、1回だけつづけられるよ',
     retry_ad:'📺 広告を見てつづける', retry_free:'つづける', retry_no:'結果を見る', retry_loading:'広告を読みこみ中…',
     retry_ok:'つづけます！', retry_grace:'つづき！', retry_ad_fail:'広告を出せませんでした。またあとで試してね',
@@ -979,7 +1001,7 @@ const TEXT = {
     tut_move:'Slide left or right, then let go to drop', tut_merge:'Match same-color parts to build them up', tut_car:'All parts in place makes a car!',
     tut_bad:'Drag parts with × to the reject bin at either edge', tut_scrap:'Scrapping good parts costs you money', tut_mechanic:'The mechanic fixes a bad part it touches',
     tut_wait:'No match yet. Drop it, its pair will come', tut_lines:'Top row = body line, bottom = chassis', tut_marriage:'Join the two gray parts: Final assembly!', tut_claim:'Ship a car with a × part: complaint!', howConfirm:'End this game and start with the tutorial?', yes:'Yes', back:'Back', introShort:'Slide, release to drop. Match colors to build a car!',
-    tut_skip:'Skip tutorial', onb_bin:'×→🗑️', onb_ok:'OK!', loading:'Loading…', bestLine:s=>`Best ${s}`, howToPlay:'How to play', tut_merge_ok:'Nice!', tut_bad_ok:'Good! Defects are free to scrap',
+    tut_skip:'Skip tutorial', onb_bin:'×→🗑️', onb_ok:'OK!', loading:'Loading…', bestLine:s=>`Best ${s}`, howToPlay:'How to play', howSame:'Matching pieces don\'t stick — one of them disappears.', tut_merge_ok:'Nice!', tut_bad_ok:'Good! Defects are free to scrap',
     retry_title:'The line is full! Continue?', retry_sub:'Clear one row of parts and keep going (once per game)',
     retry_ad:'📺 Watch an ad to continue', retry_free:'Continue', retry_no:'See results', retry_loading:'Loading ad…',
     retry_ok:'Let\'s keep going!', retry_grace:'Back to work!', retry_ad_fail:'Couldn\'t show an ad. Please try again later',
@@ -3167,18 +3189,26 @@ function renderOverlay(){
   stepsText();
   copiedEl.textContent = '';
   updateTitle();
-  ov.classList.toggle('loading', overlayMode==='title' && CONFIG.autoStart && !bootDone);   // v0.9.8：自動で始めるときは読み込み画面だけ
+  ov.classList.toggle('loading', overlayMode==='title' && !bootDone);   // 読み込み中はバーだけ。終わったらタイトル（スタートボタン）
+  const titleSet = document.getElementById('titleSetBtn'), titleBest = document.getElementById('titleBest'), langRow = document.getElementById('langRow');
   if (overlayMode==='title'){
     flowTitle.style.display = '';
-    const pr = personalRanks(), best = pr[0];
-    let intro = tutWanted() && T.introShort ? T.introShort : T.intro;   // v0.9.3：説明を見る人には1行
-    if (best) intro += `<div class="res" style="margin-top:8px">${T.personalRank} Best: <b>${best.score}</b>${pp(best.rank)}</div>`;
-    ovText.innerHTML=intro; startBtn.textContent = assetsReady ? T.start : T.loading; startBtn.disabled = !assetsReady;
+    ovText.innerHTML = ''; ovText.style.display = 'none';
+    startBtn.textContent = assetsReady ? T.start : T.loading; startBtn.disabled = !assetsReady;
     shareBtn.classList.add('hidden'); document.getElementById('catBtn2').classList.add('hidden');
     howBtn.textContent = T.howToPlay; howBtn.disabled = !assetsReady; howBtn.classList.remove('hidden');
+    if (titleSet){ titleSet.textContent = '⚙ ' + T.settings; titleSet.classList.toggle('hidden', !assetsReady); titleSet.disabled = !assetsReady; }
+    if (titleBest){ const best = bestEntry(); titleBest.textContent = best ? T.bestLine(`${best.score}${best.rank ? pp(best.rank) : ''}`) : ''; }
+    if (langRow) langRow.classList.add('hidden');   // 言語は設定の中へ（タイトルには出さない）
+    renderHowNotes();
   } else {
     howBtn.classList.add('hidden');
+    if (titleSet) titleSet.classList.add('hidden');
+    if (titleBest) titleBest.textContent = '';
+    if (langRow) langRow.classList.remove('hidden');   // 結果画面では言語を切り替えられる
+    const hn = document.getElementById('howNoteTitle'); if (hn){ hn.textContent = ''; hn.hidden = true; }
     flowTitle.style.display = 'none';
+    ovText.style.display = '';
     const r=window.lastResult || {}, names=CAR_NAMES[lang];
     const title = titleFor(r);
     const head = r.cleared ? (T.clear||'CLEAR') : T.over;
@@ -3219,7 +3249,8 @@ function renderOverlay(){
 }
 function renderPause(){
   stepsText();
-  { const pr = personalRanks(), best = pr[0], el = document.getElementById('pauseBest'); if (el) el.textContent = best ? L().bestLine(`${best.score}${pp(best.rank)}`) : ''; }   // v0.9.8：タイトル画面がないので、ベストは一時停止メニューに
+  { const best = bestEntry(), el = document.getElementById('pauseBest'); if (el) el.textContent = best ? L().bestLine(`${best.score}${best.rank ? pp(best.rank) : ''}`) : ''; }
+  renderHowNotes();
   document.getElementById('langJa2').classList.toggle('on', lang==='ja'); document.getElementById('langEn2').classList.toggle('on', lang==='en');
   document.getElementById('pauseTitle').textContent = L().pause;
   document.getElementById('resumeBtn').textContent = L().resume;
@@ -3258,8 +3289,11 @@ document.getElementById('motionBtn').onclick = ()=>{ Settings.set('reduceMotion'
 document.getElementById('catBtn').onclick = ()=>openCatalog();
 document.getElementById('catBtn2').onclick = ()=>openCatalog();
 document.getElementById('catBack').onclick = ()=>closeCatalog();
-document.getElementById('setBtn').onclick = ()=>{ renderSettings(); document.getElementById('setOv').classList.remove('hidden'); };
-document.getElementById('setBack').onclick = ()=>{ document.getElementById('setOv').classList.add('hidden'); renderPause(); };
+function openSettings(){ renderSettings(); document.getElementById('setOv').classList.remove('hidden'); }
+function closeSettings(){ document.getElementById('setOv').classList.add('hidden'); if (state.paused) renderPause(); else renderOverlay(); }
+document.getElementById('setBtn').onclick = openSettings;
+document.getElementById('titleSetBtn').onclick = openSettings;
+document.getElementById('setBack').onclick = closeSettings;
 // v0.9.9 A8：ボタンを押したときの「ポッ」（一時停止中は無音のルールなので、遊んでいる画面・結果画面だけ鳴る）
 document.addEventListener('click', e => { if (e.target && e.target.closest && e.target.closest('button')) sfx('ui_tap'); }, true);
 document.addEventListener('visibilitychange', ()=>{ if (document.hidden){ keysClear(); pauseGame(true); bgmUpdate(true); try{ if (actx && actx.state === 'running') actx.suspend(); }catch(e){} } else resumeAudio(); });   // v0.9.9：隠れたら無音
@@ -3327,6 +3361,18 @@ function savePersonalRank(entry){
   return list;
 }
 function personalRanks(){ const list = Store.get('personalRanks', []); return Array.isArray(list) ? list : []; }
+// v1.00-rc 11/12：自己最高は既存の qr_personalRanks / qr_bestScore を読む（新しいキーは作らない）
+function bestEntry(){
+  const pr = personalRanks();
+  if (pr[0] && pr[0].score != null && pr[0].score !== '') return pr[0];
+  const s = Store.get('bestScore', 0);
+  if (s) return { score: s, rank: '' };
+  return null;
+}
+function renderHowNotes(){
+  const t = (L().howSame || '');
+  document.querySelectorAll('.howNote').forEach(el => { el.textContent = t; el.hidden = !t; });
+}
 function finishClear(){
   if (state.cleared) return;
   state.cleared = true;
@@ -3462,7 +3508,7 @@ shareBtn.onclick = ()=>{
   const done = ()=>{ copiedEl.textContent = L().copied; };
   try{ navigator.clipboard.writeText(text).then(done, ()=>{ copiedEl.textContent = text; }); }catch(e){ copiedEl.textContent = text; }
 };
-function setAssetsReady(){ if (assetsReady) return; assetsReady = true; buildGrayBadges(); renderOverlay(); setTimeout(()=>{ loadFx(); preloadTiers(1); buildGrayBadges(); }, 0); }
+function setAssetsReady(){ if (assetsReady) return; assetsReady = true; buildGrayBadges(); renderOverlay(); setTimeout(()=>{ buildGrayBadges(); }, 0); }   // v1.00-rc 11/12：cut-in・紙吹雪は startGame（gameplayStart）まで読まない（C9）。startGame が loadFx / preloadTiers を呼ぶ
 document.getElementById('langJa').onclick = ()=>{ lang='ja'; Settings.set('lang','ja'); updateTitle(); renderOverlay(); renderPause(); updatePanels(true); };
 document.getElementById('langJa2').onclick = ()=>document.getElementById('langJa').onclick();   // v0.9.8：言語の切り替えは一時停止メニューへ（v0.99 で設定画面）
 document.getElementById('langEn2').onclick = ()=>document.getElementById('langEn').onclick();
@@ -3519,6 +3565,10 @@ window.addEventListener('keydown', e => {
   const onBtn = e.target && e.target.tagName === 'BUTTON' && visible(e.target.closest('.ov') || e.target);
   if (onBtn && (k === ' ' || k === 'Enter' || c === 'Space')) return;   // フォーカスのあるボタンはブラウザの標準動作（押す）
   if (isL || isR || isDrop || k === 'ArrowUp') e.preventDefault();   // iframe の親ページがスクロールしないように
+  if (visible(document.getElementById('setOv'))){
+    if (isOk && !e.repeat) closeSettings();
+    return;
+  }
   if (visible(retryOv)){
     if (isOk && !e.repeat && state.retryOffer && !state.retryOffer.busy){ const b = ['retryFreeBtn'].map(id => document.getElementById(id)).find(b => b && visible(b) && !b.disabled); if (b) b.click(); }
     return;
