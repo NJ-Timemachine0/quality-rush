@@ -5,3 +5,4 @@
 - Font: M PLUS Rounded 1c — SIL Open Font License 1.1
 - Physics: Matter.js — MIT License
 - Art / SFX: made for this game (team)
+- Art (some images): Created with Grok

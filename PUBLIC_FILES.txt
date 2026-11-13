@@ -1,5 +1,5 @@
 # v0.9.9 public build: files and sizes (bytes) / sha1
-CREDITS.md	306	e2f595a8be19
+CREDITS.md	345	d9d1c824effa
 assets/bg/bg_pc_1920x1080.webp	63854	e7f05d3b1d4f
 assets/bg/bg_portrait_800x1520.webp	19990	dd141e94ab8a
 assets/bgm/LICENSE_bgm.txt	1877	bbf8276d882e
@@ -181,7 +181,7 @@ assets/ui/marriage_cutin.webp	19798	6e3524dba3a8
 assets/ui/marriage_cutin_en.webp	18938	28e0fb940204
 assets/ui/round_banner.webp	13028	62b1b71ecdd4
 assets/ui/round_glow.webp	17122	fc12cc7ac24e
-index.html	304145	89a14d401260
+index.html	304215	0bc8b0b65bb2
 lib/matter.min.js	83476	57578efef4b7
-# total 184 files, 3298984 bytes
+# total 184 files, 3299093 bytes
 # excluded from source (not used): assets/ART_MANIFEST.md, assets/ui/assembly_flow.webp, assets/ui/assembly_flow_slim.webp, assets/ui/assembly_flow_slim_360.webp, assets/ui/assembly_flow_wdoor.webp, assets/ui/icon_badge.webp, assets/ui/icon_catalog.webp, assets/ui/icon_music_off.webp, assets/ui/icon_music_on.webp

@@ -6,5 +6,7 @@ Parts Pop Factory is a physics puzzle game you can play in your phone's browser 
 
 作者 / Author: Timemachine0
 
+Art (some images): Created with Grok
+
 物理演算には [Matter.js](https://github.com/liabru/matter-js)（MIT ライセンス）を使用しています。
 Physics powered by [Matter.js](https://github.com/liabru/matter-js) (MIT License).
