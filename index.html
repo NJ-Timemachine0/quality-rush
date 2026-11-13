@@ -410,7 +410,7 @@ const CONFIG = {
       // v5o：perCar を元の 0.20／2.0／0.02 に戻す（v5l〜v5n は 13台トレーラー用に 0.15／1.5／0.015）。URL ?perCar=0.2,2,0.02（落とす時間は自動でマイナス）／?perCar=lite（0.15,1.5,0.015）
       dropTime:  { zero:6.0, first:5.5, perCar:-0.20,  perMin:-0.05, min:0.9,  max:null },   // 落とすまでの時間（秒）
       defect:    { zero:0,   first:5,   perCar:2.0,    perMin:0.5,   min:0,    max:80 },     // 不良品の率（%）
-      floorRise: { zero:0,   first:0,   perCar:0.02,   perMin:0.02,  min:0,    max:null },   // 床の上がり（箱の高さの割合）。クレーム分と合わせて riseMax まで
+      floorRise: { zero:0,   first:0,   perCar:0.015,  perMin:0.02,  min:0,    max:null },   // 床の上がり（箱の高さの割合）。クレーム分と合わせて riseMax まで。v1.0.0（2026-11-13）：一段緩める＝既存の係数段 0.02→0.015（0.015／0.02／0.025 の一段下）。perMin・first・zero・riseMax は変更しない
       zeroFallbackSec: 120,   // 0台のまま開始からこの秒数をすぎると、落とす時間と床に「1分ごと」の分だけ効かせる（v5j の floorStartFallbackSec 120 と同じ考え。0＝使わない＝0台のあいだずっと 6秒・床0）
       riseMax: 0.70,   // shipped のときの床の上限（時間＋クレーム。time のときは CONFIG.riseMax 0.50）
     },
@@ -479,7 +479,7 @@ const CONFIG = {
   pcPathInPanel: true,      // v0.9.8 監査2：横長では道すじを左の板に（キャンバスには描かない）
   pathShow: true, pathH: 50, pathDotPx: 20, pathCurScale: 1.35, pathGray: 0.8,
   pathBoxGap: 61,           // v0.9.5：pathY＝192−61−50＝81
-  gameName: { ja:'パーツポン！工場', en:'Parts Pop Factory' }, versionLabel:'Ver1.0.0-rc', usdPerYen: 0.01,
+  gameName: { ja:'パーツポン！工場', en:'Parts Pop Factory' }, versionLabel:'Ver1.0.0', usdPerYen: 0.01,
   retryEnabled: true, retryRowsRemoved: 1, retryRowPx: 48, retryGraceSec: 3.0, retryDropFreezeSec: 2.0,
   retryInputLockSec: 0.3, retryOfferSec: 8, retryAdFailSec: 2, retryFadeSec: 0.3,
   retryOnAdblock: 'block', retryOnAdError: 'noReward',
